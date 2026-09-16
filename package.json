@@ -8,13 +8,16 @@
   "scripts": {
     "start": "node --no-warnings=ExperimentalWarning server/index.js",
     "dev": "node --no-warnings=ExperimentalWarning --watch server/index.js --dev",
-    "check:content": "node scripts/validate-content.js"
+    "check:content": "node scripts/validate-content.js",
+    "backup": "node --no-warnings=ExperimentalWarning scripts/backup-db.js"
   },
   "engines": {
     "node": ">=22.13"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",
-    "express": "^5.2.1"
+    "compression": "^1.8.2",
+    "express": "^5.2.1",
+    "nodemailer": "^10.0.10"
   }
 }

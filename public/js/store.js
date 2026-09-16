@@ -178,6 +178,9 @@
   S.logout = async () => {
     await S.flush().catch(() => {});
     try { await api("POST", "/auth/logout", {}); } catch { /* already signed out */ }
+    // The local backup only matters for progress the server has not received yet; on a shared computer
+    // it would otherwise stay readable after signing out.
+    if (!dirty) LS.del(cacheKey());
     LS.del("uk:user");
     S.user = null; S.state = null;
   };

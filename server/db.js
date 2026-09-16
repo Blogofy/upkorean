@@ -61,6 +61,7 @@ export const q = {
 
   getProgress: db.prepare("SELECT state, updated_at FROM progress WHERE user_id = ?"),
   deleteProgress: db.prepare("DELETE FROM progress WHERE user_id = ?"),
+  getWeek: db.prepare("SELECT week_key, week_xp, updated_at FROM progress WHERE user_id = ?"),
   putProgress: db.prepare(`INSERT INTO progress (user_id, state, xp, week_key, week_xp, updated_at) VALUES (?, ?, ?, ?, ?, ?)
     ON CONFLICT(user_id) DO UPDATE SET state = excluded.state, xp = excluded.xp, week_key = excluded.week_key,
     week_xp = excluded.week_xp, updated_at = excluded.updated_at`),
@@ -70,4 +71,26 @@ export const q = {
   insertReset: db.prepare("INSERT INTO resets (token_hash, user_id, expires_at) VALUES (?, ?, ?)"),
   resetUser: db.prepare("SELECT user_id FROM resets WHERE token_hash = ? AND expires_at > ?"),
   deleteResets: db.prepare("DELETE FROM resets WHERE user_id = ?"),
+  purgeResets: db.prepare("DELETE FROM resets WHERE expires_at <= ?"),
 };
+
+// ---------- Backups ----------
+// data/backups/upkorean-<UTC time>.db — a consistent copy taken while the server keeps running.
+export const BACKUP_DIR = path.join(DATA_DIR, "backups");
+const BACKUP_RE = /^upkorean-[\d-]+\.db$/;
+const backupFiles = () => (fs.existsSync(BACKUP_DIR) ? fs.readdirSync(BACKUP_DIR).filter((f) => BACKUP_RE.test(f)).sort() : []);
+
+export function lastBackupAt() {
+  const files = backupFiles();
+  return files.length ? fs.statSync(path.join(BACKUP_DIR, files[files.length - 1])).mtimeMs : 0;
+}
+
+export function backupDb(keep = 14) {
+  fs.mkdirSync(BACKUP_DIR, { recursive: true });
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-");
+  const file = path.join(BACKUP_DIR, `upkorean-${stamp}.db`);
+  db.exec(`VACUUM INTO '${file.replace(/'/g, "''")}'`);
+  const files = backupFiles();
+  for (const old of files.slice(0, Math.max(0, files.length - keep))) fs.rmSync(path.join(BACKUP_DIR, old));
+  return file;
+}

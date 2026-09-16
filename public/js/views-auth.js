@@ -150,8 +150,10 @@
     const email = form.elements.email.value;
     try {
       const r = await S.forgot(email);
-      form.innerHTML = `<p style="margin:0 0 16px;line-height:1.55">Agar <b>${esc(email)}</b> bilan hisob mavjud bo'lsa, parolni tiklash havolasi yuborildi. Havola 30 daqiqa amal qiladi.</p>
-        ${r.devLink ? `<p class="muted" style="font-size:13px;line-height:1.5;margin:0 0 16px">Ishlab chiqish rejimi: email xizmati ulanmagan, havola server logida ham chiqadi.<br><a href="${esc(r.devLink)}" data-act="modal-close">Parolni tiklash sahifasini ochish →</a></p>` : ""}
+      form.innerHTML = `${S.config.mail
+        ? `<p style="margin:0 0 16px;line-height:1.55">Agar <b>${esc(email)}</b> bilan hisob mavjud bo'lsa, parolni tiklash havolasi emailingizga yuborildi. Havola 30 daqiqa amal qiladi. Xat kelmasa, "Spam" papkasini tekshiring.</p>`
+        : `<p style="margin:0 0 16px;line-height:1.55">Email xizmati hali ulanmagan, shuning uchun xat yuborilmaydi. So'rovingiz qayd etildi — parolni tiklash havolasini olish uchun administratorga murojaat qiling. Havola 30 daqiqa amal qiladi.</p>`}
+        ${r.devLink ? `<p class="muted" style="font-size:13px;line-height:1.5;margin:0 0 16px">Ishlab chiqish rejimi (faqat shu kompyuterda ko'rinadi):<br><a href="${esc(r.devLink)}" data-act="modal-close">Parolni tiklash sahifasini ochish →</a></p>` : ""}
         <button type="button" class="btn btn-p" data-act="modal-close">Yopish</button>`;
     } catch (e) { showErr(form, "forgot-err", e); }
   });

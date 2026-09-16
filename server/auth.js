@@ -83,3 +83,20 @@ export function rateLimit({ windowMs, max, key }) {
     next();
   };
 }
+
+// Counts events per key (e.g. failed logins for one email) independent of the client's IP.
+export function counter({ windowMs, max }) {
+  const hits = new Map();
+  const live = (k, now) => { const h = hits.get(k); return h && h.reset > now ? h : null; };
+  return {
+    // Seconds until the key may try again, or 0 when it is under the limit.
+    blocked(k) { const now = Date.now(), h = live(k, now); return h && h.n >= max ? Math.ceil((h.reset - now) / 1000) : 0; },
+    add(k) {
+      const now = Date.now();
+      const h = live(k, now) || { n: 0, reset: now + windowMs };
+      h.n++; hits.set(k, h);
+      if (hits.size > 5000) for (const [kk, v] of hits) if (v.reset <= now) hits.delete(kk);
+    },
+    clear(k) { hits.delete(k); },
+  };
+}

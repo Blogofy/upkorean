@@ -103,6 +103,7 @@
   // Actions shared by several screens or owned by the exercise engine.
   Actions.go = (el) => App.go(el.dataset.href);
   Actions["modal-close"] = () => U.closeModal();
+  Actions.reload = () => location.reload();
   Actions["ex-exit"] = () => X.exit();
   Actions["ex-exit-force"] = () => { U.closeModal(); X.exit(true); };
   Actions["ex-reveal"] = () => X.reveal();
@@ -163,7 +164,23 @@
     else if (r.name === "onboarding") V.onboardingKey(event, Math.max(1, Math.min(3, Number(r.args[0]) || 1)));
   });
 
-  window.addEventListener("hashchange", () => { U.closeModal(); App.render(); });
+  // A new deploy activates its service worker while this page still runs the old scripts. Switch to the new
+  // version on the next navigation — never in the middle of an exercise, onboarding or tutor chat.
+  let updateReady = false;
+  const MID_TASK = ["session", "complete", "onboarding", "tutor"];
+  if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.addEventListener("controllerchange", () => { updateReady = true; });
+  }
+
+  window.addEventListener("hashchange", () => {
+    if (updateReady && !MID_TASK.includes(route().name)) {
+      updateReady = false;
+      const reload = () => location.reload();
+      if (S.user) S.flush().then(reload, reload); else reload();
+      return;
+    }
+    U.closeModal(); App.render();
+  });
   document.addEventListener("ukvoiceschanged", () => {
     if (route().name === "profile" && S.state) App.render();
   });
@@ -181,6 +198,6 @@
       else App.render();
     })
     .catch((error) => {
-      root.innerHTML = `<div class="boot boot-error"><div class="brand"><span class="mark"></span><span class="name">UpKorean</span></div><p>${U.esc(error.message || "Ilovani yuklab bo‘lmadi")}</p><button class="btn btn-p" onclick="location.reload()">Qayta urinish</button></div>`;
+      root.innerHTML = `<div class="boot boot-error"><div class="brand"><span class="mark"></span><span class="name">UpKorean</span></div><p>${U.esc(error.message || "Ilovani yuklab bo‘lmadi")}</p><button class="btn btn-p" data-act="reload">Qayta urinish</button></div>`;
     });
 })();

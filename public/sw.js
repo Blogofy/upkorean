@@ -1,4 +1,5 @@
-const VERSION = "upkorean-v2";
+// The server fills in the build fingerprint of public/ below, so each deploy gets a fresh shell cache.
+const VERSION = "upkorean-__BUILD__";
 const SHELL = [
   "/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/css/styles.css",
   "/js/vocab.js", "/js/examples.js", "/js/util.js", "/js/store.js", "/js/exercise.js",
@@ -6,7 +7,9 @@ const SHELL = [
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(VERSION).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
+  // cache: "reload" skips the browser's HTTP cache so the new version never stores stale files.
+  const requests = SHELL.map((url) => new Request(url, { cache: "reload" }));
+  event.waitUntil(caches.open(VERSION).then((cache) => cache.addAll(requests)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (event) => {
@@ -18,25 +21,17 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  if (url.pathname.startsWith("/api/")) return;
 
   if (req.mode === "navigate") {
     event.respondWith(fetch(req).then((res) => {
-      const copy = res.clone();
-      caches.open(VERSION).then((cache) => cache.put("/index.html", copy));
+      if (res.ok) { const copy = res.clone(); caches.open(VERSION).then((cache) => cache.put("/index.html", copy)); }
       return res;
     }).catch(() => caches.match("/index.html")));
     return;
   }
 
-  event.respondWith(caches.match(req).then((cached) => {
-    const network = fetch(req).then((res) => {
-      if (res.ok && (url.pathname.startsWith("/media/clip/") || SHELL.includes(url.pathname))) {
-        const copy = res.clone();
-        caches.open(VERSION).then((cache) => cache.put(req, copy));
-      }
-      return res;
-    });
-    return cached || network;
-  }));
+  // Only the versioned app shell is served from the cache. API calls and narrator audio (which needs the
+  // account's session and range requests) always go to the network and use normal HTTP caching.
+  if (!SHELL.includes(url.pathname)) return;
+  event.respondWith(caches.match(req).then((cached) => cached || fetch(req)));
 });
