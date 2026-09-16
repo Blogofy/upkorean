@@ -69,7 +69,8 @@ app.use((req, res, next) => {
     console.warn("[ogohlantirish] So'rovlar proksi orqali kelyapti, lekin TRUST_PROXY qo'yilmagan: rate limit barcha foydalanuvchini bitta IP deb hisoblaydi. .env ga TRUST_PROXY=1 qo'shing.");
   }
   res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Referrer-Policy", "same-origin");
+  // Sign in with Google checks the page's origin from the referrer: "same-origin" hides it and the sign-in hangs.
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Content-Security-Policy", CSP);
   if (PROD && req.secure) res.setHeader("Strict-Transport-Security", "max-age=15552000");
