@@ -14,20 +14,16 @@
     const label = `Mastery ${s}/5${weak ? ", zaif" : m ? ", o'zlashtirilgan" : ""}`;
     return `<span class="mbar-wrap"><span class="mbar ${weak ? "weak" : ""} ${sm ? "sm" : ""}" role="img" aria-label="${label}" title="${label}">${[1, 2, 3, 4, 5].map((k) => `<i class="${k <= s ? (m ? "on m" : "on") : ""}"></i>`).join("")}</span>${withCount ? `<span class="mbar-n" aria-hidden="true">${s}/5</span>` : ""}</span>`;
   };
-  // Days 1–30 in rows of seven ("1-hafta" …), each square a link to its day.
+  // Days 1–30 as one grid, each square a link to its day.
   V.dayWeeks = () => {
-    const weeks = [];
-    for (let start = 1; start <= S.DAYS; start += 7) {
-      const days = Array.from({ length: Math.min(7, S.DAYS - start + 1) }, (_, i) => start + i).map((d) => {
-        const st = S.dayStatus(d);
-        const name = { mastered: "o'zlashtirilgan", completed: "tugatilgan", progress: "davom etmoqda", available: "ochiq", locked: "yopiq" }[st];
-        return st === "locked"
-          ? `<span class="dsq locked" role="img" aria-label="Day ${d} — ${name}" title="Day ${d} — ${name}">${d}</span>`
-          : `<a class="dsq ${st}" href="#/day/${d}" aria-label="Day ${d} — ${name}" title="Day ${d} — ${name}">${d}</a>`;
-      }).join("");
-      weeks.push(`<div class="dweek"><span class="dweek-l">${weeks.length + 1}-hafta</span><div class="days">${days}</div></div>`);
-    }
-    return `<div class="dweeks">${weeks.join("")}</div>`;
+    const days = Array.from({ length: S.DAYS }, (_, i) => i + 1).map((d) => {
+      const st = S.dayStatus(d);
+      const name = { mastered: "o'zlashtirilgan", completed: "tugatilgan", progress: "davom etmoqda", available: "ochiq", locked: "yopiq" }[st];
+      return st === "locked"
+        ? `<span class="dsq locked" role="img" aria-label="Day ${d} — ${name}" title="Day ${d} — ${name}">${d}</span>`
+        : `<a class="dsq ${st}" href="#/day/${d}" aria-label="Day ${d} — ${name}" title="Day ${d} — ${name}">${d}</a>`;
+    }).join("");
+    return `<div class="days">${days}</div>`;
   };
   function lostStreakNote() {
     const today = U.today(), yesterday = U.addDays(today, -1);
