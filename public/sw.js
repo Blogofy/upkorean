@@ -2,7 +2,7 @@
 const VERSION = "upkorean-__BUILD__";
 const SHELL = [
   "/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/icon-192.png", "/badge-72.png", "/css/styles.css",
-  "/js/vocab.js", "/js/examples.js", "/js/util.js", "/js/sync.js", "/js/store.js", "/js/push.js", "/js/exercise.js",
+  "/js/vocab.js", "/js/examples.js", "/js/roots.js", "/js/util.js", "/js/sync.js", "/js/store.js", "/js/push.js", "/js/exercise.js",
   "/js/views-auth.js", "/js/tutor.js", "/js/views.js", "/js/app.js"
 ];
 

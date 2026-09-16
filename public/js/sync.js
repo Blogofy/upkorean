@@ -3,7 +3,7 @@
 // - mergeStates: combine two devices' progress when both changed the same starting point (3-way merge).
 (function (root) {
   // Maps whose entries change independently; they are diffed and merged one entry at a time.
-  const MAPS = ["words", "days", "act", "achievements", "challengeDone"];
+  const MAPS = ["words", "days", "act", "notes", "achievements", "challengeDone"];
   const FORBIDDEN = new Set(["__proto__", "prototype", "constructor"]);
 
   const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
@@ -137,6 +137,7 @@
         case "days": o[k] = mergeMap(bl, l, r, mergeDay, known); break;
         case "act": o[k] = mergeMap(bl, l, r, mergeAct, known); break;
         case "achievements": o[k] = mergeMap(bl, l, r, (_, x, y) => earliest(x, y), known); break;
+        case "notes": o[k] = mergeMap(bl, l, r, pick, known); break;
         case "challengeDone": o[k] = mergeMap(bl, l, r, (_, x, y) => x || y, known); break;
         case "xp": case "reviewSessions": o[k] = counter(known ? num(bl) : undefined, l, r); break;
         case "bestStreak": o[k] = Math.max(num(l), num(r)); break;

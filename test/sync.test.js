@@ -161,3 +161,13 @@ test("merge with a missing side returns a copy of the other", () => {
   assert.deepEqual(m, s);
   assert.notEqual(m, s);
 });
+
+test("personal word notes sync one word at a time", () => {
+  const base = { ...baseState(), notes: { "1-4": "관 — bog'lanish" } };
+  const phone = clone(base), laptop = clone(base);
+  phone.notes["1-0"] = "필요 — pul kerak";
+  laptop.notes["1-4"] = "관심 — yurak bog'landi";
+  assert.deepEqual(diffState(base, phone), [{ p: ["notes", "1-0"], v: "필요 — pul kerak" }]);
+  const m = mergeStates(base, phone, laptop);
+  assert.deepEqual(m.notes, { "1-4": "관심 — yurak bog'landi", "1-0": "필요 — pul kerak" });
+});

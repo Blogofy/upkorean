@@ -477,6 +477,47 @@ button.wtile:hover { border-color: var(--pl2); }
 .optk.right { border-color: var(--ok); background: var(--okl); color: var(--okd); }
 .optk.wrong { border-color: var(--bad); background: var(--badl); color: var(--bad); }
 
+/* Guided flow: first meeting with a word, then matching words to meanings */
+.intro { width: 100%; max-width: 940px; }
+.intro-card { padding: 34px 38px; }
+.intro-top { text-align: center; padding-bottom: 24px; margin-bottom: 26px; border-bottom: 1px solid var(--line); }
+.intro-top .word { font-size: 64px; }
+.intro-top .rom { font-size: 15px; margin-top: 8px; }
+.intro-top .mean { font-size: 26px; font-weight: 800; letter-spacing: -.02em; line-height: 1.25; margin-top: 12px; }
+.intro-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 30px; }
+.isec { margin-bottom: 22px; }
+.isec:last-child { margin-bottom: 0; }
+.isec > .upl { display: block; margin-bottom: 10px; }
+.isec.tip, .isec.warn { padding: 14px 16px; border-radius: 12px; font-size: 14px; line-height: 1.5; }
+.isec.tip { background: var(--okl); color: var(--okd); }
+.isec.tip > .upl { color: var(--ok); margin-bottom: 6px; }
+.isec.warn { background: var(--badl); color: var(--badd); }
+.isec.warn > .upl { color: var(--bad); margin-bottom: 6px; }
+.parts { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; margin-bottom: 12px; }
+.part { min-width: 86px; padding: 11px 14px; border-radius: 14px; background: var(--pl); color: var(--on-pl); text-align: center; }
+.part.plain { background: var(--sf2); border: 1px solid var(--line); color: var(--ink2); }
+.part .pk { display: flex; align-items: baseline; justify-content: center; gap: 6px; }
+.part .pk .ko { font-size: 26px; font-weight: 700; }
+.part .ph { font-size: 17px; color: var(--pd); }
+.part .pu { font-size: 13px; font-weight: 600; line-height: 1.3; margin-top: 4px; }
+.plus { align-self: center; color: var(--ink3); font-weight: 700; }
+.idea { font-size: 16px; font-weight: 600; line-height: 1.5; }
+.rel { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 14px; color: var(--ink2); line-height: 1.4; }
+.rel .b { font-size: 16px; font-weight: 700; color: var(--ink); }
+.rel .okc { color: var(--ok); font-weight: 700; }
+.rel .via { margin-left: 8px; font-family: var(--mono); font-size: 12px; color: var(--ink3); white-space: nowrap; }
+.note-in { font-size: 14px; }
+.match { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 14px; }
+.mcol { display: flex; flex-direction: column; gap: 10px; }
+.mt { min-height: 64px; padding: 14px 18px; border-radius: 14px; background: var(--sf); border: 1.5px solid var(--line); font-size: 16px; font-weight: 600; line-height: 1.3; transition: border-color .12s, background .12s; }
+.mt.ko { font-family: var(--ko); font-size: 24px; font-weight: 700; }
+.mt:hover:not(:disabled) { border-color: var(--pl2); }
+.mt.on { border-color: var(--p); background: var(--pl); }
+.mt.right { border-color: var(--ok); background: var(--okl); color: var(--okd); cursor: default; }
+.mt.wrong { border-color: var(--bad); background: var(--badl); color: var(--bad); animation: shake .3s; }
+@keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+@media (prefers-reduced-motion: reduce) { .mt.wrong { animation: none; } }
+
 .done-glyph { font-family: var(--ko); font-size: 54px; font-weight: 900; color: var(--pd); letter-spacing: -.04em; margin-bottom: 14px; }
 
 /* ---------- Tutor ---------- */
@@ -579,6 +620,12 @@ table.tbl { width: 100%; border-collapse: collapse; }
   .wgrid, .choices { grid-template-columns: minmax(0,1fr); }
   .ob h2 { font-size: 28px; }
   .fc-front { padding: 40px 20px; }
+  .intro-card { padding: 24px 18px; }
+  .intro-grid { grid-template-columns: minmax(0,1fr); gap: 22px; }
+  .intro-top .mean { font-size: 22px; }
+  .match { gap: 10px; }
+  .mt { min-height: 56px; padding: 12px; font-size: 14px; }
+  .mt.ko { font-size: 20px; }
   .fc .word { font-size: 56px !important; }
   .cloze { padding: 28px 20px; }
   .cloze .s { font-size: 24px; }

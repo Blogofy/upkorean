@@ -1,4 +1,4 @@
-// Exercise engine: learning stages (flash cards + recall), review sessions and practice quizzes.
+// Exercise engine: learning stages (flash cards or the guided meet → match → recall flow), review sessions and quizzes.
 (function () {
   const U = window.U, S = window.S, esc = U.esc;
   const X = { session: null };
@@ -54,10 +54,30 @@
     return it;
   }
   const ORDER = { card: 0, mc: 1, mcr: 2, type: 3, listen: 4, sent: 5 };
+  const firstPhase = (it) => (!it ? "q" : it.type === "card" ? "front" : it.type === "intro" ? "intro" : "q");
+
+  // Guided flow for one learning block: words in groups of about five. Each group is met on intro cards, matched
+  // with their meanings, then recalled from Uzbek (or by ear). Wrong answers come back a few questions later.
+  const GROUP = 5;
+  function guidedItems(ids) {
+    const n = Math.ceil(ids.length / GROUP);
+    const items = [];
+    let at = 0;
+    for (let g = 0; g < n; g++) {
+      const size = Math.floor(ids.length / n) + (g < ids.length % n ? 1 : 0);
+      const group = ids.slice(at, at + size);
+      at += size;
+      group.forEach((id, i) => items.push({ type: "intro", id, group: g, pos: i, size }));
+      items.push({ type: "match", id: group[0], ids: group, group: g, koOrder: U.shuffle(group), uzOrder: U.shuffle(group) });
+      const wts = { mcr: 3, listen: U.canListen() ? 2 : 0 };
+      U.shuffle(group).forEach((id) => items.push(makeItem(U.weighted(wts) || "mcr", id)));
+    }
+    return items;
+  }
 
   function newSession(kind, items, extra) {
     return Object.assign({
-      kind, items, idx: 0, ok: 0, bad: 0, results: [], phase: items[0] && items[0].type === "card" ? "front" : "q",
+      kind, items, idx: 0, ok: 0, bad: 0, results: [], phase: firstPhase(items[0]), mistakes: {}, tries: {},
       chosen: null, typed: "", correct: null, hint: false, startedAt: Date.now(), itemStart: Date.now(), activeMs: 0,
       xpStart: S.state.xp, instant: true, timer: 0, finished: false, spokenKey: null,
     }, extra);
@@ -72,8 +92,9 @@
     const plan = S.dayPlan(day);
     const stage = plan.stages[ds.stage];
     let items;
+    const guided = S.guidedDay(day);
     if (stage.kind === "learn") {
-      items = plan.blocks[stage.block].map((id) => ({ type: "card", id }));
+      items = guided ? guidedItems(plan.blocks[stage.block]) : plan.blocks[stage.block].map((id) => ({ type: "card", id }));
     } else if (stage.kind === "recall") {
       const wts = typeWeights();
       items = plan.blocks[stage.block].map((id) => makeItem(chooseType(id, wts), id)).sort((a, b) => ORDER[a.type] - ORDER[b.type]);
@@ -83,7 +104,7 @@
       items = U.shuffle(ids).map((id) => makeItem(chooseType(id, wts), id));
     }
     S.save();
-    X.session = newSession("learn", items, { day, stageIdx: ds.stage, stage, plan, cat: "learn" });
+    X.session = newSession("learn", items, { day, stageIdx: ds.stage, stage, plan, cat: "learn", guided });
     App.go("#/session");
   };
 
@@ -134,6 +155,16 @@
     s[correct ? "ok" : "bad"]++;
     s.results.push({ id: it.id, type: it.type, correct });
     S.answer(it.id, correct, it.type, modeOf(s));
+    s.requeued = false;
+    if (!correct) {
+      s.mistakes[it.id] = true;
+      s.tries[it.id] = (s.tries[it.id] || 0) + 1;
+      // Guided days: the word returns three questions later (at most twice), with fresh options.
+      if (s.guided && s.tries[it.id] < 3) {
+        s.items.splice(Math.min(s.idx + 3, s.items.length), 0, makeItem(it.type, it.id));
+        s.requeued = true;
+      }
+    }
     if (s.kind === "review") { S.state.firstTry.total++; if (correct) S.state.firstTry.ok++; }
     S.save();
     if (!s.instant) { X.next(); return; }
@@ -145,10 +176,55 @@
     const s = X.session;
     if (!s) return;
     s.idx++;
-    s.chosen = null; s.typed = ""; s.correct = null; s.hint = false; s.itemStart = Date.now();
+    s.chosen = null; s.typed = ""; s.correct = null; s.hint = false; s.requeued = false; s.matched = []; s.sel = {}; s.flash = null; s.itemStart = Date.now();
     if (s.idx >= s.items.length) { finish(); return; }
-    s.phase = cur().type === "card" ? "front" : "q";
+    s.phase = firstPhase(cur());
     App.render();
+  };
+
+  // Redraws the session in place, keeping the scroll position (App.render jumps to the top).
+  function redraw() {
+    const el = document.querySelector(".ex");
+    if (el && X.session) el.outerHTML = X.render(); else App.render();
+  }
+
+  X.introNext = () => {
+    const s = X.session, it = cur();
+    if (!s || !it || it.type !== "intro") return;
+    trackTime();
+    S.introduce(it.id);
+    S.save();
+    X.next();
+  };
+
+  X.matchPick = (side, id) => {
+    const s = X.session, it = cur();
+    if (!s || !it || it.type !== "match" || s.phase !== "q" || !it.ids.includes(id)) return;
+    s.matched = s.matched || [];
+    if (s.matched.includes(id)) return;
+    s.sel = s.sel || {};
+    s.sel[side] = s.sel[side] === id ? null : id;
+    s.flash = null;
+    const { ko, uz } = s.sel;
+    if (ko && uz) {
+      s.sel = {};
+      if (ko === uz) {
+        s.matched.push(ko);
+        S.addXP(1);
+      } else {
+        s.mistakes[ko] = true;
+        s.flash = { ko, uz };
+        setTimeout(() => { if (X.session === s && s.flash && s.flash.ko === ko && s.flash.uz === uz) { s.flash = null; redraw(); } }, 600);
+      }
+    }
+    if (s.matched.length === it.ids.length) {
+      trackTime();
+      it.ids.forEach((mid) => s.results.push({ id: mid, type: "match", correct: !s.mistakes[mid] }));
+      s.phase = "a";
+      S.save();
+      setTimeout(() => { if (X.session === s && cur() === it && s.phase === "a") X.next(); }, 800);
+    }
+    redraw();
   };
 
   X.reveal = () => { const s = X.session; if (s && s.phase === "front") { s.phase = "back"; App.render(); } };
@@ -238,6 +314,7 @@
     const gained = () => S.state.xp - s.xpStart;
     if (s.kind === "learn") {
       const ds = S.state.days[s.day];
+      if (s.guided && s.stage.kind === "learn") S.settleIntroduced(s.items.filter((i) => i.type === "intro").map((i) => i.id), s.mistakes);
       ds.stage++;
       ds.ok = (ds.ok || 0) + s.ok; ds.bad = (ds.bad || 0) + s.bad; ds.min = (ds.min || 0) + s.activeMs / 60000;
       if (ds.stage >= s.plan.stages.length) {
@@ -280,7 +357,7 @@
     if (it && s.spokenKey !== key) {
       s.spokenKey = key;
       if (it.type === "listen" && s.phase === "q") setTimeout(() => X.play(1), 250);
-      else if (it.type === "card" && s.phase === "front" && S.state.settings.autoAudio) setTimeout(() => X.play(1), 250);
+      else if (((it.type === "card" && s.phase === "front") || it.type === "intro") && S.state.settings.autoAudio) setTimeout(() => X.play(1), 250);
       // question timer
       stopTimer();
       if (s.timer && s.phase === "q" && !s.finished) {
@@ -309,6 +386,12 @@
     if (s.finished) { if (e.key === "Enter") { const b = document.querySelector("[data-primary]"); if (b) b.click(); } return; }
     if (!it) return;
     const n = parseInt(e.key, 10);
+    if (it.type === "intro") {
+      if (e.key === " " || e.key === "ArrowRight" || e.key === "Enter") { e.preventDefault(); X.introNext(); }
+      else if (e.key === "s" || e.key === "S") X.play(1);
+      return;
+    }
+    if (it.type === "match") return;
     if (it.type === "card") {
       if (s.phase === "front" && (e.key === " " || e.key === "ArrowRight" || e.key === "Enter")) { e.preventDefault(); X.reveal(); }
       else if (s.phase === "back" && n >= 1 && n <= 4) X.gradeCard(n);
@@ -335,7 +418,9 @@
     const total = s.items.length;
     const done = s.finished ? total : s.idx;
     let lbl;
-    if (s.kind === "learn") lbl = it && it.type === "card" ? `${s.day}-KUN · O'RGANISH · ${s.stage.block + 1}-BLOK` : `${s.day}-KUN · ${s.stage.kind === "mixed" ? "ARALASH TEST" : it ? TYPE_LABEL[it.type] : "FAOL ESLASH"}`;
+    if (s.kind === "learn" && it && it.type === "intro") lbl = `${s.day}-KUN · TANISHISH · ${it.group + 1}-GURUH`;
+    else if (s.kind === "learn" && it && it.type === "match") lbl = `${s.day}-KUN · JUFTLASH · ${it.group + 1}-GURUH`;
+    else if (s.kind === "learn") lbl = it && it.type === "card" ? `${s.day}-KUN · O'RGANISH · ${s.stage.block + 1}-BLOK` : `${s.day}-KUN · ${s.stage.kind === "mixed" ? "ARALASH TEST" : it ? TYPE_LABEL[it.type] : "FAOL ESLASH"}`;
     else if (s.kind === "review") lbl = `TAKRORLASH · ${it ? TYPE_LABEL[it.type] : ""}`;
     else lbl = `MASHQ · ${esc(s.title).toUpperCase()}`;
     const badges = it && it.type !== "card"
@@ -406,6 +491,78 @@
     </div></div>`;
   }
 
+  // ---------- Guided flow: first meeting and matching ----------
+  function introView(it) {
+    const w = S.word(it.id);
+    const r = S.roots(it.id) || {};
+    const ex = S.example(it.id);
+    const parts = r.parts && r.parts.length > 1
+      ? `<div class="parts">${r.parts.map((p, i) => `${i ? `<span class="plus" aria-hidden="true">+</span>` : ""}<div class="part${p.h ? "" : " plain"}">
+          <div class="pk"><span class="ko">${esc(p.k)}</span>${p.h ? `<span class="ph">${esc(p.h)}</span>` : ""}</div>
+          <div class="pu">${esc(p.uz)}</div></div>`).join("")}</div>`
+      : "";
+    const idea = r.idea ? `<div class="idea">${parts ? "→ " : ""}${esc(r.idea)}</div>` : "";
+    const known = (id) => S.isLearned(id) ? ` <span class="okc">✓</span>` : "";
+    const links = S.rootLinks(it.id).flatMap((l) => l.ids.map((id) => {
+      const o = S.word(id);
+      return `<li><span class="ko b">${esc(o.ko)}</span> — ${esc(o.uz)}${known(id)}<span class="via">${esc(l.k)} ${esc(l.h)}</span></li>`;
+    }));
+    const family = (r.family || []).map(([ko, uz]) => `<li><span class="ko b">${esc(ko)}</span> — ${esc(uz)}</li>`);
+    const related = links.length + family.length
+      ? `<div class="isec"><div class="upl">Bog'liq so'zlar</div><ul class="rel">${links.concat(family).slice(0, 4).join("")}</ul></div>` : "";
+    return `<div class="intro">
+      <div class="ex-cap center" style="margin-bottom:18px">YANGI SO'Z · ${it.pos + 1} / ${it.size}</div>
+      <div class="fc intro-card">
+        <div class="intro-top">
+          <div class="row" style="justify-content:center;align-items:center;gap:14px">
+            <span class="word">${esc(w.ko)}</span>
+            <button class="audio-dot" data-act="ex-play" aria-label="Talaffuz">▸</button>
+          </div>
+          <div class="rom">${rom(w.ko)}</div>
+          <div class="mean">${esc(w.uz)}</div>
+        </div>
+        <div class="intro-grid">
+          <div>
+            ${parts || idea ? `<div class="isec"><div class="upl">${parts ? "Tarkibi" : "Ma'nosi"}</div>${parts}${idea}</div>` : ""}
+            ${r.hint ? `<div class="isec tip"><div class="upl">Eslab qolish</div><div>${esc(r.hint)}</div></div>` : ""}
+            ${r.note ? `<div class="isec warn"><div class="upl">Diqqat</div><div>${esc(r.note)}</div></div>` : ""}
+            ${related}
+          </div>
+          <div>
+            ${ex ? `<div class="isec"><div class="row" style="gap:10px;align-items:center"><span class="upl">Misol</span>${sentBtn}</div>
+              <div class="example" style="margin:10px 0 0">
+                <div class="s">${hlSentence(ex)}</div>
+                <div style="font-size:15px;color:var(--ink2);line-height:1.5">${uzPlain(ex)}</div>
+              </div></div>` : ""}
+            <div class="isec"><label class="upl" for="note-in">O'z eslatmangiz</label>
+              <input class="input note-in" id="note-in" data-input="word-note" data-id="${esc(it.id)}" maxlength="140" autocomplete="off"
+                placeholder="O'zingizga tushunarli bog'lanish yozing…" value="${esc(S.note(it.id))}"></div>
+          </div>
+        </div>
+      </div>
+      <div class="center" style="margin-top:24px">
+        <button class="btn btn-p" style="padding:16px 34px;font-size:16px" data-act="ex-intro-next" data-primary>Tushundim →</button>
+        <div class="kbd-hint" style="margin-top:14px">⏎ · keyingi &nbsp;·&nbsp; S · audio</div>
+      </div>
+    </div>`;
+  }
+
+  function matchView(s, it) {
+    const sel = s.sel || {}, done = s.matched || [], flash = s.flash || {};
+    const col = (side, order) => order.map((id) => {
+      const w = S.word(id);
+      const cls = done.includes(id) ? "right" : flash[side] === id ? "wrong" : sel[side] === id ? "on" : "";
+      return `<button class="mt${side === "ko" ? " ko" : ""} ${cls}" data-act="ex-match" data-side="${side}" data-id="${esc(id)}" ${done.includes(id) ? "disabled" : ""}>${esc(side === "ko" ? w.ko : w.uz)}</button>`;
+    }).join("");
+    return `<div style="width:100%;max-width:760px">
+      <div class="center" style="margin-bottom:28px">
+        <div class="ex-cap" style="margin-bottom:12px">JUFTINI TOPING</div>
+        <div class="muted" style="font-size:15px">${s.phase === "a" ? `<b style="color:var(--ok)">Barakalla! Hammasi to'g'ri.</b>` : "Koreyscha so'zni, keyin uning ma'nosini bosing"}</div>
+      </div>
+      <div class="match"><div class="mcol">${col("ko", it.koOrder)}</div><div class="mcol">${col("uz", it.uzOrder)}</div></div>
+    </div>`;
+  }
+
   function choiceClass(s, it, i) {
     if (s.phase !== "a") return "";
     if (it.opts[i] === it.answer) return "right";
@@ -419,8 +576,9 @@
     const body = ex
       ? `<div class="ko" style="font-size:19px;font-weight:500;line-height:1.5;margin-bottom:6px">${hlSentence(ex)} ${sentBtn}</div><div style="font-size:14px;color:var(--ink2)">${uzPlain(ex)}</div>`
       : `<div class="row" style="gap:12px;align-items:baseline;margin-bottom:4px"><span class="ko" style="font-size:20px;font-weight:700">${esc(w.ko)}</span><span class="mono faint" style="font-size:13px">${rom(w.ko)}</span></div><div style="font-size:14px;color:var(--ink2)">${esc(w.uz)}</div>`;
+    const again = s.requeued ? `<div class="upl" style="color:var(--bad);margin-top:10px">Bu so'z birozdan keyin yana chiqadi</div>` : "";
     return `<div class="feedback" style="${s.correct ? "" : "border-color:rgba(201,72,60,.3)"}">
-      <div class="grow">${body}</div>
+      <div class="grow">${body}${again}</div>
       <button class="btn btn-p btn-sm" style="padding:13px 24px;font-size:15px" data-act="ex-next" data-primary>Keyingi</button>
     </div>`;
   }
@@ -474,7 +632,7 @@
         <div class="row wrap" style="gap:12px">
           <button class="btn btn-p" data-act="ex-next" data-primary>Keyingi so'z</button>
           <button class="btn btn-sec" data-act="ex-flag">${flagged ? "Belgilangan ✓" : "Bu so'zni belgilash"}</button>
-          ${s.correct ? "" : `<span class="kbd-hint" style="margin-left:auto">Bu so'z ertaga yana chiqadi</span>`}
+          ${s.correct ? "" : `<span class="kbd-hint" style="margin-left:auto">${s.requeued ? "Bu so'z birozdan keyin yana chiqadi" : "Bu so'z ertaga yana chiqadi"}</span>`}
         </div>`;
     }
     return `<div style="width:100%;max-width:700px">
@@ -535,7 +693,7 @@
     return `<div style="width:100%;max-width:620px;text-align:center">
       <div class="done-glyph" aria-hidden="true">${learnedStage ? "좋아요" : "잘했어요"}</div>
       <h3 style="margin:0 0 8px;font-size:32px;font-weight:700;letter-spacing:-.02em">${esc(s.stage.label)} tugadi</h3>
-      <p class="muted" style="margin:0 0 30px;font-size:16px;line-height:1.5">${learnedStage ? `${s.items.length} so'z ko'rib chiqildi.` : `${s.ok} / ${s.items.length} to'g'ri${acc !== null ? ` · ${acc}% aniqlik` : ""}.`}
+      <p class="muted" style="margin:0 0 30px;font-size:16px;line-height:1.5">${learnedStage ? `${s.guided ? s.items.filter((i) => i.type === "intro").length : s.items.length} so'z ko'rib chiqildi${s.guided && acc !== null ? ` · ${acc}% aniqlik` : ""}.` : `${s.ok} / ${s.items.length} to'g'ri${acc !== null ? ` · ${acc}% aniqlik` : ""}.`}
         Keyingi bosqich: <b style="color:var(--ink)">${esc(s.nextStage.label)}</b> · ~${s.nextStage.min} daq</p>
       <div class="row" style="justify-content:center;gap:12px">
         <button class="btn btn-p" data-act="learn-continue" data-day="${s.day}" data-primary>Davom etish</button>
@@ -576,6 +734,8 @@
     const it = cur();
     let body;
     if (s.finished) body = s.kind === "learn" ? stageDoneView(s) : summaryView(s);
+    else if (it.type === "intro") body = introView(it);
+    else if (it.type === "match") body = matchView(s, it);
     else if (it.type === "card") body = s.phase === "front" ? cardFront(it) : cardBack(it);
     else if (it.type === "mc" || it.type === "mcr") body = mcView(s, it);
     else if (it.type === "type") body = typeView(s, it);

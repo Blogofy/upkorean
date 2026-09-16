@@ -160,7 +160,8 @@
     audio.onended = finish;
     audio.onerror = fail;
     clip = audio;
-    audio.play().catch(fail);
+    // Autoplay without a tap first (e.g. after a reload) is blocked by the browser: stay quiet, the audio button still works.
+    audio.play().catch((error) => (error && error.name === "NotAllowedError" ? finish() : fail()));
     return true;
   };
 

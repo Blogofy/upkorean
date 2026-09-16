@@ -114,6 +114,9 @@
   Actions["ex-exit"] = () => X.exit();
   Actions["ex-exit-force"] = () => { U.closeModal(); X.exit(true); };
   Actions["ex-reveal"] = () => X.reveal();
+  Actions["ex-intro-next"] = () => X.introNext();
+  Actions["ex-match"] = (el) => X.matchPick(el.dataset.side, el.dataset.id);
+  Inputs["word-note"] = (el) => S.setNote(el.dataset.id, el.value);
   Actions["ex-play"] = () => X.play(1);
   Actions["ex-play-slow"] = () => X.play(0.7);
   Actions["ex-play-sent"] = () => X.playSentence();

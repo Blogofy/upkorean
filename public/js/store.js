@@ -10,6 +10,10 @@
   const DAY_WORDS = Array.from({ length: DAYS }, (_, d) => WORDS.filter((w) => w.day === d + 1));
   // One book sentence per word, keyed by word id so repeated words (e.g. 위험하다 on Day 6 and 25) keep their own sentence.
   const EXAMPLES = Object.fromEntries((window.UK_EXAMPLES || []).map((e) => [e.id, e]));
+  // How each word is built (js/roots.js), and every word that contains a given hanja.
+  const ROOTS = window.UK_ROOTS || {};
+  const HANJA_WORDS = new Map();
+  for (const [id, r] of Object.entries(ROOTS)) for (const p of r.parts || []) if (p.h) HANJA_WORDS.set(p.h, [...(HANJA_WORDS.get(p.h) || []), id]);
 
   // Review ladder: a new word comes back after 1, 3, 7, 16, 35 days (cumulative).
   const INTERVALS = [1, 2, 4, 9, 19, 40];
@@ -38,7 +42,7 @@
         reminders: { on: true, learn: "09:00", review: "20:30", streak: true, social: false },
       }, profile),
       settings: { theme: LS.get("uk:theme", "light"), roman: true, autoAudio: true, speechRate: 0.92, apiKey: "" },
-      words: {}, days: {}, act: {}, log: [], xp: 0, bestStreak: 0,
+      words: {}, days: {}, act: {}, notes: {}, log: [], xp: 0, bestStreak: 0,
       typeStats: Object.fromEntries(EX_TYPES.map((t) => [t, { ok: 0, bad: 0 }])),
       firstTry: { ok: 0, total: 0 },
       quizResults: [], reviewSessions: 0,
@@ -298,6 +302,19 @@
   S.word = (id) => BY_ID[id];
   S.example = (id) => EXAMPLES[id] || null;
   S.clozeExample = (id) => (EXAMPLES[id] && EXAMPLES[id].cloze ? EXAMPLES[id] : null);
+  S.roots = (id) => ROOTS[id] || null;
+  // Other course words sharing a hanja with this one: [{ k, h, uz, ids }]
+  S.rootLinks = (id) => ((ROOTS[id] && ROOTS[id].parts) || []).filter((p) => p.h)
+    .map((p) => ({ k: p.k, h: p.h, uz: p.uz, ids: (HANJA_WORDS.get(p.h) || []).filter((other) => other !== id && BY_ID[other].ko !== BY_ID[id].ko) }))
+    .filter((l) => l.ids.length);
+  // Days whose words all have memory aids are taught with the guided flow (meet → match → recall).
+  S.guidedDay = (d) => !!DAY_WORDS[d - 1] && DAY_WORDS[d - 1].every((w) => ROOTS[w.id]);
+  S.note = (id) => (S.state.notes && S.state.notes[id]) || "";
+  S.setNote = (id, text) => {
+    const t = String(text || "").slice(0, 140);
+    if (t.trim()) S.state.notes[id] = t; else delete S.state.notes[id];
+    S.save();
+  };
   S.mastery = (id) => { const w = S.ws(id); return w && w.learned ? Math.min(5, w.s) : 0; };
   S.isLearned = (id) => { const w = S.ws(id); return !!(w && w.learned); };
   S.isMastered = (id) => { const w = S.ws(id); return !!(w && w.learned && w.s >= MASTER_STEP); };
@@ -331,6 +348,20 @@
     setStep(w, step);
     S.addXP(first ? 4 : 2);
     return INTERVALS[w.s];
+  };
+
+  // First meeting with a word on the guided flow: it counts as learned and comes back tomorrow unless the
+  // practice right after goes without a mistake (S.settleIntroduced).
+  S.introduce = (id) => {
+    const w = touch(id);
+    if (!w.learned) { w.learned = U.today(); act().learned++; setStep(w, 0); S.addXP(4); }
+    w.seen++; w.last = U.today();
+  };
+  S.settleIntroduced = (ids, mistakes) => {
+    for (const id of ids) {
+      const w = S.ws(id);
+      if (w && w.learned === U.today() && w.s === 0 && !mistakes[id]) setStep(w, 1);
+    }
   };
 
   // Exercise answer. mode: "learn" (same-day recall), "review" (spaced repetition), "quiz" (free practice)
@@ -395,8 +426,11 @@
     const blocks = []; let at = 0;
     for (let b = 0; b < nb; b++) { const n = base + (b < extra ? 1 : 0); blocks.push(words.slice(at, at + n).map((w) => w.id)); at += n; }
     const stages = [];
+    const guided = S.guidedDay(d);
     blocks.forEach((ids, b) => {
-      stages.push({ kind: "learn", block: b, label: `O'rganish — ${ids.length} so'z`, min: Math.max(3, Math.round(ids.length * 0.47)) });
+      stages.push(guided
+        ? { kind: "learn", block: b, label: `Tanishish va mashq — ${ids.length} so'z`, min: Math.max(4, Math.round(ids.length * 0.6)) }
+        : { kind: "learn", block: b, label: `O'rganish — ${ids.length} so'z`, min: Math.max(3, Math.round(ids.length * 0.47)) });
       if (b < blocks.length - 1) stages.push({ kind: "recall", block: b, label: "Faol eslash", min: Math.max(2, Math.round(ids.length * 0.3)) });
       else stages.push({ kind: "mixed", block: -1, label: "Aralash test", min: 4 });
     });
