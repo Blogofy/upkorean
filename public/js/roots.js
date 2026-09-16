@@ -1209,6 +1209,15 @@
     // ---------- end of words ----------
   };
 
+  // Where a word comes from: "sino" 한자어 (built from hanja), "native" 고유어 (pure Korean), "loan" 외래어 (borrowed).
+  // Worked out from the parts; listed here are only the words the parts do not tell: borrowings, and Sino-Korean
+  // words shown without a breakdown.
+  const ORIGIN = {
+    "7-18": "loan", "8-1": "loan", "8-2": "loan", "10-15": "loan", "10-27": "loan", "11-13": "loan", "14-12": "loan",
+    "18-11": "loan", "18-12": "loan", "23-16": "loan", "24-17": "loan", "27-31": "loan",
+    "13-0": "sino", "14-17": "sino", "22-33": "sino", "27-3": "sino", "27-25": "sino",
+  };
+
   const CJK = /^[一-鿿]$/;
   // "관關" → { k: "관", h: "關", uz } · "바로=to'g'ri" → { k: "바로", uz } · "+하다" → { k: "하다", uz, ending: true } · " " → { k: " " }
   function parsePart(token) {
@@ -1224,9 +1233,14 @@
   }
 
   const parsed = {};
-  for (const [id, r] of Object.entries(ROOTS)) parsed[id] = Object.assign({}, r, { parts: r.parts ? r.parts.map(parsePart) : null });
+  for (const [id, r] of Object.entries(ROOTS)) {
+    const parts = r.parts ? r.parts.map(parsePart) : null;
+    const origin = ORIGIN[id] || ((parts || []).some((p) => p.h) ? "sino" : "native");
+    parsed[id] = Object.assign({}, r, { parts, origin });
+  }
 
   window.UK_HANJA = HANJA;
+  window.UK_ORIGIN_OVERRIDES = ORIGIN;
   window.UK_SUFFIX = SUFFIX;
   window.UK_ROOTS_RAW = ROOTS;
   window.UK_ROOTS = parsed;

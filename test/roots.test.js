@@ -69,7 +69,7 @@ test("the glossary has no unused hanja", () => {
 });
 
 test("every entry explains something and uses the expected fields", () => {
-  const FIELDS = new Set(["parts", "idea", "family", "hint", "note"]);
+  const FIELDS = new Set(["parts", "idea", "family", "hint", "note", "origin"]);
   for (const [id, r] of ROOTS) {
     assert.ok(r.idea, `${id}: idea is missing`);
     for (const k of Object.keys(r)) assert.ok(FIELDS.has(k), `${id}: unknown field ${k}`);
@@ -77,6 +77,22 @@ test("every entry explains something and uses the expected fields", () => {
     const pieces = (r.parts || []).filter((p) => !p.space);
     if (r.parts) assert.ok(pieces.length > 1 || pieces[0].h, `${id}: a single native piece explains nothing — leave parts out`);
   }
+});
+
+test("every word has an origin that agrees with its parts", () => {
+  const counts = { sino: 0, native: 0, loan: 0 };
+  for (const [id, r] of ROOTS) {
+    assert.ok(r.origin in counts, `${id}: origin ${r.origin}`);
+    counts[r.origin]++;
+    const hasHanja = (r.parts || []).some((p) => p.h);
+    if (r.origin === "sino") continue;
+    assert.ok(!hasHanja, `${id}: ${r.origin} word with hanja parts`);
+  }
+  for (const [id, o] of Object.entries(globalThis.UK_ORIGIN_OVERRIDES)) {
+    assert.ok(WORDS[id], `origin override for unknown word ${id}`);
+    if (o === "sino") assert.ok(!(globalThis.UK_ROOTS[id].parts || []).some((p) => p.h), `${id}: has hanja parts, no override needed`);
+  }
+  assert.ok(counts.sino > 600 && counts.native > 250 && counts.loan >= 10, JSON.stringify(counts));
 });
 
 test("every course word has an entry", () => {

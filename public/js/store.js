@@ -309,6 +309,13 @@
     .filter((l) => l.ids.length);
   // Days whose words all have memory aids are taught with the guided flow (meet → match → recall).
   S.guidedDay = (d) => !!DAY_WORDS[d - 1] && DAY_WORDS[d - 1].every((w) => ROOTS[w.id]);
+  // Word origin: 한자어 (built from hanja), 고유어 (pure Korean), 외래어 (borrowed).
+  S.ORIGINS = {
+    sino: { ko: "한자어", uz: "Ieroglifli so'z", desc: "xitoycha ieroglif (hanja)lardan yasalgan" },
+    native: { ko: "고유어", uz: "Sof koreyscha", desc: "asl koreyscha so'z" },
+    loan: { ko: "외래어", uz: "O'zlashma", desc: "chet tildan olingan" },
+  };
+  S.origin = (id) => (ROOTS[id] && ROOTS[id].origin) || "native";
   S.note = (id) => (S.state.notes && S.state.notes[id]) || "";
   S.setNote = (id, text) => {
     const t = String(text || "").slice(0, 140);

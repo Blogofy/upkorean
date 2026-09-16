@@ -505,10 +505,16 @@
   }
 
   // ---------- Guided flow: first meeting and matching ----------
-  function introView(it) {
-    const w = S.word(it.id);
-    const r = S.roots(it.id) || {};
-    const ex = S.example(it.id);
+  // Origin badge: 한자어 / 고유어 / 외래어.
+  X.originBadge = (id) => {
+    const o = S.origin(id), info = S.ORIGINS[o];
+    return `<span class="origin o-${o}" title="${esc(info.desc)}"><span class="ko">${info.ko}</span> ${esc(info.uz)}</span>`;
+  };
+
+  // How the word is built and what to remember: parts and idea, memory hook, warning, related words.
+  // linkWords: related course words open their own word card (in the word modal).
+  X.rootsHtml = (wordId, { linkWords = false } = {}) => {
+    const r = S.roots(wordId) || {};
     const pieces = (r.parts || []).filter((p) => !p.space);
     const parts = pieces.length > 1 || (pieces[0] && pieces[0].h)
       ? `<div class="parts">${pieces.map((p, i) => `${i ? `<span class="plus" aria-hidden="true">+</span>` : ""}<div class="part${p.h ? "" : " plain"}">
@@ -518,9 +524,9 @@
     const idea = r.idea ? `<div class="idea">${parts ? "→ " : ""}${esc(r.idea)}</div>` : "";
     const known = (id) => S.isLearned(id) ? ` <span class="okc">✓</span>` : "";
     // Course words sharing a hanja — already learned ones first, at most two per hanja — then the entry's own family.
-    const shown = new Set([S.word(it.id).ko]);
+    const shown = new Set([S.word(wordId).ko]);
     const links = [];
-    for (const l of S.rootLinks(it.id)) {
+    for (const l of S.rootLinks(wordId)) {
       const ids = l.ids.slice().sort((a, b) => Number(S.isLearned(b)) - Number(S.isLearned(a)));
       let fromThis = 0;
       for (const id of ids) {
@@ -529,12 +535,22 @@
         if (shown.has(o.ko)) continue;
         shown.add(o.ko);
         fromThis++;
-        links.push(`<li><span class="ko b">${esc(o.ko)}</span> — ${esc(o.uz)}${known(id)}<span class="via">${esc(l.k)} ${esc(l.h)}</span></li>`);
+        const word = linkWords ? `<button class="link ko b" data-act="word" data-id="${esc(id)}">${esc(o.ko)}</button>` : `<span class="ko b">${esc(o.ko)}</span>`;
+        links.push(`<li>${word} — ${esc(o.uz)}${known(id)}<span class="via">${esc(l.k)} ${esc(l.h)}</span></li>`);
       }
     }
     const family = (r.family || []).filter(([ko]) => !shown.has(ko)).map(([ko, uz]) => `<li><span class="ko b">${esc(ko)}</span> — ${esc(uz)}</li>`);
     const related = links.length + family.length
       ? `<div class="isec"><div class="upl">Bog'liq so'zlar</div><ul class="rel">${links.concat(family).slice(0, 5).join("")}</ul></div>` : "";
+    return `${parts || idea ? `<div class="isec"><div class="upl">${parts ? "Tarkibi" : "Ma'nosi"}</div>${parts}${idea}</div>` : ""}
+      ${r.hint ? `<div class="isec tip"><div class="upl">Eslab qolish</div><div>${esc(r.hint)}</div></div>` : ""}
+      ${r.note ? `<div class="isec warn"><div class="upl">Diqqat</div><div>${esc(r.note)}</div></div>` : ""}
+      ${related}`;
+  };
+
+  function introView(it) {
+    const w = S.word(it.id);
+    const ex = S.example(it.id);
     return `<div class="intro">
       <div class="ex-cap center" style="margin-bottom:18px">YANGI SO'Z · ${it.pos + 1} / ${it.size}</div>
       <div class="fc intro-card">
@@ -545,14 +561,10 @@
           </div>
           <div class="rom">${rom(w.ko)}</div>
           <div class="mean">${esc(w.uz)}</div>
+          <div style="margin-top:12px">${X.originBadge(it.id)}</div>
         </div>
         <div class="intro-grid">
-          <div>
-            ${parts || idea ? `<div class="isec"><div class="upl">${parts ? "Tarkibi" : "Ma'nosi"}</div>${parts}${idea}</div>` : ""}
-            ${r.hint ? `<div class="isec tip"><div class="upl">Eslab qolish</div><div>${esc(r.hint)}</div></div>` : ""}
-            ${r.note ? `<div class="isec warn"><div class="upl">Diqqat</div><div>${esc(r.note)}</div></div>` : ""}
-            ${related}
-          </div>
+          <div>${X.rootsHtml(it.id)}</div>
           <div>
             ${ex ? `<div class="isec"><div class="row" style="gap:10px;align-items:center"><span class="upl">Misol</span>${sentBtn}</div>
               <div class="example" style="margin:10px 0 0">

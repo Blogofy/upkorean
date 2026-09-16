@@ -557,7 +557,8 @@
   Actions["prog-range"] = (el) => { progRange = Number(el.dataset.v); App.render(); };
 
   // ---------- Library (G2) ----------
-  const lib = { status: "all", days: [], sort: "mastery-asc", q: "", page: 1 };
+  const lib = { status: "all", origin: "all", days: [], sort: "mastery-asc", q: "", page: 1 };
+  const ORIGIN_ORDER = { sino: 0, native: 1, loan: 2 };
   const PER = 10;
   function libRows() {
     const learned = S.learnedIds();
@@ -569,6 +570,10 @@
     };
     let rows = sets[lib.status] || learned;
     if (lib.days.length) rows = rows.filter((id) => lib.days.includes(S.word(id).day));
+    // Counts per origin for the current status and days, before the origin filter itself.
+    const origins = { all: rows.length, sino: 0, native: 0, loan: 0 };
+    for (const id of rows) origins[S.origin(id)]++;
+    if (lib.origin !== "all") rows = rows.filter((id) => S.origin(id) === lib.origin);
     const q = lib.q.trim().toLowerCase();
     if (q) rows = rows.filter((id) => { const w = S.word(id); return w.ko.includes(q) || w.uz.toLowerCase().includes(q) || U.romanize(w.ko).includes(q); });
     const cmp = {
@@ -577,8 +582,9 @@
       alpha: (a, b) => S.word(a).ko.localeCompare(S.word(b).ko, "ko"),
       day: (a, b) => S.word(a).day - S.word(b).day || S.word(a).i - S.word(b).i,
       due: (a, b) => ((S.ws(a) || {}).due || "9").localeCompare((S.ws(b) || {}).due || "9"),
+      origin: (a, b) => ORIGIN_ORDER[S.origin(a)] - ORIGIN_ORDER[S.origin(b)] || S.word(a).day - S.word(b).day || S.word(a).i - S.word(b).i,
     }[lib.sort];
-    return { rows: rows.slice().sort(cmp), sets };
+    return { rows: rows.slice().sort(cmp), sets, origins };
   }
   function libTable() {
     const { rows } = libRows();
@@ -593,7 +599,7 @@
       ${slice.length ? slice.map((id) => {
         const w = S.word(id), st = S.ws(id), weak = S.isWeak(id), late = st && st.learned && st.due < U.today();
         return `<button class="li ${weak ? "bad" : ""}" style="gap:18px;padding:12px 20px" data-act="word" data-id="${id}">
-          <span class="kw" style="min-width:100px">${esc(w.ko)}</span><span class="mean" style="${weak ? "color:var(--badd)" : ""}">${esc(w.uz)}</span>
+          <span class="kw" style="min-width:100px">${esc(w.ko)} <span class="otag o-${S.origin(id)}" title="${esc(S.ORIGINS[S.origin(id)].uz)}">${S.ORIGINS[S.origin(id)].ko}</span></span><span class="mean" style="${weak ? "color:var(--badd)" : ""}">${esc(w.uz)}</span>
           <span class="mono faint" style="font-size:12px;min-width:44px">D${w.day}</span>
           <span class="hide-sm" style="min-width:124px">${st && st.learned ? V.mbar(id, true, true) : `<span class="faint" style="font-size:12px">—</span>`}</span>
           <span class="mono muted hide-sm hide-lg" style="font-size:12px;min-width:72px">${st ? `${st.seen} · ${st.ok}✓` : "0"}</span>
@@ -606,17 +612,20 @@
       </div>`;
   }
   V.library = () => {
-    const { sets } = libRows();
+    const { sets, origins } = libRows();
+    const og = [["all", "Hammasi", ""], ...Object.entries(S.ORIGINS).map(([k, o]) => [k, o.uz, o.ko])];
     const learnedDays = [...new Set(S.learnedIds().map((id) => S.word(id).day))].sort((a, b) => a - b);
     const st = [["all", "Hammasi"], ["mastered", "O'zlashtirilgan"], ["learning", "O'rganilmoqda"], ["weak", "Zaif"], ["recent", "Yaqinda o'rganilgan"], ["flag", "Belgilanganlar"], ["unlearned", "Hali o'rganilmagan"]];
     const body = `<div class="page collapse-md" style="padding:28px 40px;display:grid;grid-template-columns:220px minmax(0,1fr);gap:32px">
       <div class="stack" style="gap:22px">
         <div><div class="upl" style="margin-bottom:10px">Holat</div>
           <div class="nav" style="gap:4px">${st.map(([k, l]) => `<a href="javascript:void 0" class="${lib.status === k ? "on" : ""}" data-act="lib-status" data-k="${k}" style="padding:9px 12px">${l}<span class="cnt" style="${k === "weak" && sets.weak.length ? "color:var(--bad)" : ""}">${sets[k].length}</span></a>`).join("")}</div></div>
+        <div><div class="upl" style="margin-bottom:10px">Kelib chiqishi</div>
+          <div class="nav" style="gap:4px">${og.map(([k, l, ko]) => `<a href="javascript:void 0" class="${lib.origin === k ? "on" : ""}" data-act="lib-origin" data-k="${k}" style="padding:9px 12px" title="${k === "all" ? "" : esc(S.ORIGINS[k].desc)}">${ko ? `<span class="ko" style="font-weight:700">${ko}</span>` : ""}${l}<span class="cnt">${origins[k]}</span></a>`).join("")}</div></div>
         <div><div class="upl" style="margin-bottom:10px">Kun</div>
           <div class="days">${(lib.status === "unlearned" ? Array.from({ length: S.DAYS }, (_, i) => i + 1) : learnedDays).map((d) => `<button class="dsq ${lib.days.includes(d) ? "completed" : "available"}" style="width:28px;height:28px" data-act="lib-day" data-d="${d}">${d}</button>`).join("") || `<span class="faint" style="font-size:12px">—</span>`}</div></div>
         <div><div class="upl" style="margin-bottom:10px">Saralash</div>
-          ${U.dropdown({ change: "lib-sort", value: lib.sort, label: "Saralash", block: true, options: [["mastery-asc", "O'zlashtirish: kamidan"], ["mastery-desc", "O'zlashtirish: ko'pidan"], ["due", "Keyingi takrorlash"], ["day", "Kun bo'yicha"], ["alpha", "Alifbo (가나다)"]] })}</div>
+          ${U.dropdown({ change: "lib-sort", value: lib.sort, label: "Saralash", block: true, options: [["mastery-asc", "O'zlashtirish: kamidan"], ["mastery-desc", "O'zlashtirish: ko'pidan"], ["due", "Keyingi takrorlash"], ["day", "Kun bo'yicha"], ["origin", "Kelib chiqishi (한자어 → 고유어 → 외래어)"], ["alpha", "Alifbo (가나다)"]] })}</div>
       </div>
       <div style="min-width:0">
         <div class="row wrap" style="gap:10px;margin-bottom:18px">
@@ -630,15 +639,17 @@
   };
   const refreshLib = () => { const el = document.getElementById("lib-table"); if (el) el.innerHTML = libTable(); };
   Actions["lib-status"] = (el) => { lib.status = el.dataset.k; lib.page = 1; App.render(); };
+  Actions["lib-origin"] = (el) => { lib.origin = el.dataset.k; lib.page = 1; App.render(); };
   Actions["lib-day"] = (el) => { const d = Number(el.dataset.d); const i = lib.days.indexOf(d); if (i >= 0) lib.days.splice(i, 1); else lib.days.push(d); lib.page = 1; App.render(); };
   Actions["lib-page"] = (el) => { lib.page = Number(el.dataset.p); refreshLib(); };
   Changes["lib-sort"] = (el) => { lib.sort = el.value; lib.page = 1; refreshLib(); };
   Inputs["lib-search"] = (el) => { lib.q = el.value; lib.page = 1; refreshLib(); };
   Actions["lib-export"] = () => {
     const { rows } = libRows();
-    const csv = ["korean,romanization,uzbek,day,mastery,seen,correct,wrong,next_review"].concat(rows.map((id) => {
+    const csv = ["korean,romanization,uzbek,origin,hanja,day,mastery,seen,correct,wrong,next_review"].concat(rows.map((id) => {
       const w = S.word(id), st = S.ws(id) || {};
-      return [w.ko, U.romanize(w.ko), w.uz, w.day, S.mastery(id), st.seen || 0, st.ok || 0, st.bad || 0, st.due || ""].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",");
+      const hanja = ((S.roots(id) || {}).parts || []).map((p) => p.h || "").join("");
+      return [w.ko, U.romanize(w.ko), w.uz, S.ORIGINS[S.origin(id)].ko, hanja, w.day, S.mastery(id), st.seen || 0, st.ok || 0, st.bad || 0, st.due || ""].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",");
     })).join("\n");
     U.download(`upkorean-sozlar-${U.today()}.csv`, "﻿" + csv, "text/csv;charset=utf-8");
   };
@@ -656,9 +667,11 @@
     U.modal(`${w.day}-kun so'zi`, `
       <div class="row" style="align-items:baseline;gap:14px;margin-bottom:4px"><span class="ko" style="font-size:44px;font-weight:700;letter-spacing:-.03em">${esc(w.ko)}</span>
         <button class="audio-dot" data-act="say" data-kind="words" data-id="${esc(id)}" data-text="${esc(w.ko)}" aria-label="Talaffuz">▸</button></div>
-      <div class="mono faint" style="font-size:14px;margin-bottom:18px">[ ${esc(U.romanize(w.ko))} ]</div>
+      <div class="row wrap" style="gap:12px;align-items:center;margin-bottom:18px"><span class="mono faint" style="font-size:14px">[ ${esc(U.romanize(w.ko))} ]</span>${X.originBadge(id)}</div>
       <div class="upl" style="margin-bottom:6px">Ma'nosi</div>
       <div style="font-size:22px;font-weight:700;margin-bottom:18px">${esc(w.uz)}</div>
+      <div class="modal-roots">${X.rootsHtml(id, { linkWords: true })}</div>
+      ${S.note(id) ? `<div class="isec"><div class="upl">O'z eslatmangiz</div><div style="font-size:15px">${esc(S.note(id))}</div></div>` : ""}
       ${ex ? `<div class="example"><div class="s" style="font-size:18px">${esc(ex.ko).replace(esc(ex.hl), `<b>${esc(ex.hl)}</b>`)} <button class="audio-dot" style="width:28px;height:28px;font-size:12px;vertical-align:middle" data-act="say" data-kind="sentences" data-id="${esc(id)}" data-text="${esc(ex.ko)}" aria-label="Gapni eshitish">▸</button></div><div class="muted" style="font-size:14px">${esc(ex.uz.replace(/[{}]/g, ""))}</div></div>` : ""}
       ${st && st.learned ? `<div class="strip" style="margin:16px 0"><div><div class="upl s">O'zlashtirish</div><div class="v" style="margin-top:10px">${V.mbar(id)}</div></div>
         <div><div class="upl s">Ko'rish</div><div class="v"><b>${st.seen}</b><span>${st.ok}✓ ${st.bad}✕</span></div></div>
