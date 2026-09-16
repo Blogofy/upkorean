@@ -664,14 +664,19 @@
   Actions.word = (el) => V.wordModal(el.dataset.id);
   V.wordModal = (id) => {
     const w = S.word(id), st = S.ws(id), ex = S.example(id);
+    const rs = X.rootsSections(id, { linkWords: true });
+    const note = S.note(id) ? `<div class="isec"><div class="upl">O'z eslatmangiz</div><div style="font-size:15px">${esc(S.note(id))}</div></div>` : "";
+    const left = rs.build + rs.hint + rs.note, right = rs.related + note;
     U.modal(`${w.day}-kun so'zi`, `
-      <div class="row" style="align-items:baseline;gap:14px;margin-bottom:4px"><span class="ko" style="font-size:44px;font-weight:700;letter-spacing:-.03em">${esc(w.ko)}</span>
-        <button class="audio-dot" data-act="say" data-kind="words" data-id="${esc(id)}" data-text="${esc(w.ko)}" aria-label="Talaffuz">▸</button></div>
-      <div class="row wrap" style="gap:12px;align-items:center;margin-bottom:18px"><span class="mono faint" style="font-size:14px">[ ${esc(U.romanize(w.ko))} ]</span>${X.originBadge(id)}</div>
-      <div class="upl" style="margin-bottom:6px">Ma'nosi</div>
-      <div style="font-size:22px;font-weight:700;margin-bottom:18px">${esc(w.uz)}</div>
-      <div class="modal-roots">${X.rootsHtml(id, { linkWords: true })}</div>
-      ${S.note(id) ? `<div class="isec"><div class="upl">O'z eslatmangiz</div><div style="font-size:15px">${esc(S.note(id))}</div></div>` : ""}
+      <div class="wm-head">
+        <div>
+          <div class="row" style="align-items:center;gap:14px"><span class="ko" style="font-size:44px;font-weight:700;letter-spacing:-.03em;line-height:1.15">${esc(w.ko)}</span>
+            <button class="audio-dot" data-act="say" data-kind="words" data-id="${esc(id)}" data-text="${esc(w.ko)}" aria-label="Talaffuz">▸</button></div>
+          <div class="row wrap" style="gap:12px;align-items:center;margin-top:6px"><span class="mono faint" style="font-size:14px">[ ${esc(U.romanize(w.ko))} ]</span>${X.originBadge(id)}</div>
+        </div>
+        <div class="wm-mean"><div class="upl" style="margin-bottom:6px">Ma'nosi</div><div style="font-size:22px;font-weight:700;line-height:1.3">${esc(w.uz)}</div></div>
+      </div>
+      ${left || right ? `<div class="wm-grid modal-roots"><div>${left}</div><div>${right}</div></div>` : ""}
       ${ex ? `<div class="example"><div class="s" style="font-size:18px">${esc(ex.ko).replace(esc(ex.hl), `<b>${esc(ex.hl)}</b>`)} <button class="audio-dot" style="width:28px;height:28px;font-size:12px;vertical-align:middle" data-act="say" data-kind="sentences" data-id="${esc(id)}" data-text="${esc(ex.ko)}" aria-label="Gapni eshitish">▸</button></div><div class="muted" style="font-size:14px">${esc(ex.uz.replace(/[{}]/g, ""))}</div></div>` : ""}
       ${st && st.learned ? `<div class="strip" style="margin:16px 0"><div><div class="upl s">O'zlashtirish</div><div class="v" style="margin-top:10px">${V.mbar(id)}</div></div>
         <div><div class="upl s">Ko'rish</div><div class="v"><b>${st.seen}</b><span>${st.ok}✓ ${st.bad}✕</span></div></div>
@@ -680,7 +685,7 @@
       <div class="row wrap" style="gap:10px">
         ${st && st.learned ? `<button class="btn btn-sec btn-sm" data-act="flag" data-id="${id}">${st.flag ? "Belgilangan ✓" : "Qiyin deb belgilash"}</button>` : ""}
         <button class="btn btn-ghost btn-sm" data-act="modal-close">Yopish</button>
-      </div>`);
+      </div>`, { width: 900 });
   };
   Actions.say = (el) => U.playClip(el.dataset.kind || "words", el.dataset.id);
   Actions.flag = (el) => { S.flag(el.dataset.id); V.wordModal(el.dataset.id); App.render(); };

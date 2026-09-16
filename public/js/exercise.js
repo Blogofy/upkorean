@@ -513,7 +513,8 @@
 
   // How the word is built and what to remember: parts and idea, memory hook, warning, related words.
   // linkWords: related course words open their own word card (in the word modal).
-  X.rootsHtml = (wordId, { linkWords = false } = {}) => {
+  X.rootsHtml = (wordId, opts) => { const s = X.rootsSections(wordId, opts); return s.build + s.hint + s.note + s.related; };
+  X.rootsSections = (wordId, { linkWords = false } = {}) => {
     const r = S.roots(wordId) || {};
     const pieces = (r.parts || []).filter((p) => !p.space);
     const parts = pieces.length > 1 || (pieces[0] && pieces[0].h)
@@ -542,10 +543,12 @@
     const family = (r.family || []).filter(([ko]) => !shown.has(ko)).map(([ko, uz]) => `<li><span class="ko b">${esc(ko)}</span> — ${esc(uz)}</li>`);
     const related = links.length + family.length
       ? `<div class="isec"><div class="upl">Bog'liq so'zlar</div><ul class="rel">${links.concat(family).slice(0, 5).join("")}</ul></div>` : "";
-    return `${parts || idea ? `<div class="isec"><div class="upl">${parts ? "Tarkibi" : "Ma'nosi"}</div>${parts}${idea}</div>` : ""}
-      ${r.hint ? `<div class="isec tip"><div class="upl">Eslab qolish</div><div>${esc(r.hint)}</div></div>` : ""}
-      ${r.note ? `<div class="isec warn"><div class="upl">Diqqat</div><div>${esc(r.note)}</div></div>` : ""}
-      ${related}`;
+    return {
+      build: parts || idea ? `<div class="isec"><div class="upl">${parts ? "Tarkibi" : "Ma'nosi"}</div>${parts}${idea}</div>` : "",
+      hint: r.hint ? `<div class="isec tip"><div class="upl">Eslab qolish</div><div>${esc(r.hint)}</div></div>` : "",
+      note: r.note ? `<div class="isec warn"><div class="upl">Diqqat</div><div>${esc(r.note)}</div></div>` : "",
+      related,
+    };
   };
 
   function introView(it) {

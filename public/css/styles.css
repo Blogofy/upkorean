@@ -515,6 +515,9 @@ button.wtile:hover { border-color: var(--pl2); }
 .o-native { background: var(--okl); color: var(--okd); }
 .o-loan { background: var(--sf2); color: var(--ink2); border: 1px solid var(--line); }
 .modal-roots .isec { margin-bottom: 18px; }
+.wm-head { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 32px; align-items: end; padding-bottom: 20px; margin-bottom: 22px; border-bottom: 1px solid var(--line); }
+.wm-mean { padding-bottom: 6px; }
+.wm-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 32px; }
 .modal-roots .part .pk .ko { font-size: 22px; }
 .rel .link.b { font-size: 16px; color: var(--pd); text-decoration: underline; text-underline-offset: 3px; }
 .match { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 14px; }
@@ -632,6 +635,7 @@ table.tbl { width: 100%; border-collapse: collapse; }
   .fc-front { padding: 40px 20px; }
   .intro-card { padding: 24px 18px; }
   .intro-grid { grid-template-columns: minmax(0,1fr); gap: 22px; }
+  .wm-head, .wm-grid { grid-template-columns: minmax(0,1fr); gap: 14px; }
   .intro-top .mean { font-size: 22px; }
   .match { gap: 10px; }
   .mt { min-height: 56px; padding: 12px; font-size: 14px; }

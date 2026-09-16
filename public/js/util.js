@@ -174,11 +174,11 @@
     wrap.appendChild(t);
     setTimeout(() => t.remove(), ms);
   };
-  U.modal = (title, bodyHtml, { wide = false } = {}) => {
+  U.modal = (title, bodyHtml, { wide = false, width = 0 } = {}) => {
     U.closeModal();
     const bg = document.createElement("div");
     bg.className = "modal-bg"; bg.id = "modal";
-    bg.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="${U.esc(title)}" style="${wide ? "max-width:720px" : ""}">
+    bg.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="${U.esc(title)}" style="${width ? `max-width:${width}px` : wide ? "max-width:720px" : ""}">
       <div class="modal-h"><div class="modal-title" style="font-size:19px;font-weight:700;letter-spacing:-.01em">${U.esc(title)}</div>
       <button class="iconbtn" data-act="modal-close" aria-label="Yopish">✕</button></div>
       <div class="modal-b">${bodyHtml}</div></div>`;
