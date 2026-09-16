@@ -214,7 +214,7 @@
     return `<div class="bub me"><div class="kt">${html}</div></div>`;
   }
   function tutorBubble(m, i, c) {
-    const say = narratorSentenceId(m.ko) ? `<button class="audio-dot" style="width:28px;height:28px;font-size:11px;margin-left:8px;vertical-align:middle" data-act="chat-say" data-i="${i}" aria-label="Diktor ovozida eshitish">▸</button>` : "";
+    const say = narratorSentenceId(m.ko) ? `<button class="audio-dot" style="width:28px;height:28px;font-size:12px;margin-left:8px;vertical-align:middle" data-act="chat-say" data-i="${i}" aria-label="Diktor ovozida eshitish">▸</button>` : "";
     const reply = `<div class="kt">${highlight(m.ko, c)}${say}</div>${T.ui.showTr && m.uz ? `<div class="ut">${esc(m.uz)}</div>` : ""}`;
     if (!m.correction) return `<div class="bub">${reply}</div>`;
     const x = m.correction;
@@ -249,7 +249,7 @@
           <button class="chip" data-act="chat-new">Yangi suhbat</button>
         </div>
         <div class="chat-log" id="chat-log" aria-live="polite">
-          <div class="center mono faint" style="font-size:11px">${U.diffDays(U.dateKey(startTime), U.today()) === 0 ? "BUGUN" : U.fmtDayMonth(U.dateKey(startTime)).toUpperCase()} · ${String(startTime.getHours()).padStart(2, "0")}:${String(startTime.getMinutes()).padStart(2, "0")}</div>
+          <div class="center mono faint" style="font-size:12px">${U.diffDays(U.dateKey(startTime), U.today()) === 0 ? "BUGUN" : U.fmtDayMonth(U.dateKey(startTime)).toUpperCase()} · ${String(startTime.getHours()).padStart(2, "0")}:${String(startTime.getMinutes()).padStart(2, "0")}</div>
           ${c.messages.map((m, i) => (m.role === "user" ? userBubble(m) : tutorBubble(m, i, c))).join("")}
           ${ui.sending ? `<div class="bub" style="width:auto;padding:16px 20px"><span class="typing-dots"><i></i><i></i><i></i></span></div>` : ""}
           ${ui.error ? `<div class="card row" style="gap:12px;padding:14px 18px;border-color:rgba(201,72,60,.3);max-width:520px"><span class="grow badc" style="font-size:14px">${esc(ui.error)}</span><button class="btn btn-sec btn-sm" data-act="chat-retry">Qayta urinish</button></div>` : ""}
@@ -264,9 +264,9 @@
             <button class="send" data-act="chat-send" aria-label="Yuborish" ${ui.sending ? "disabled" : ""}>↑</button>
           </div>
           <div class="row wrap" style="gap:16px;margin-top:12px">
-            <span class="mono faint" style="font-size:11px">한 / EN klaviatura</span>
-            <span class="mono faint" style="font-size:11px">⏎ · yuborish</span>
-            ${hasSR ? `<button class="mono faint" style="font-size:11px" data-act="chat-mic">🎙 ovozli javob</button>` : ""}
+            <span class="mono faint" style="font-size:12px">한 / EN klaviatura</span>
+            <span class="mono faint" style="font-size:12px">⏎ · yuborish</span>
+            ${hasSR ? `<button class="mono faint" style="font-size:12px" data-act="chat-mic">🎙 ovozli javob</button>` : ""}
           </div>
         </div>
       </div>
@@ -275,7 +275,7 @@
           <div class="stack" style="gap:8px">${inConv.length ? inConv.slice(0, 10).map((w) => {
             const st = c.used[w.ko];
             return `<div class="row" style="gap:10px;padding:10px 12px;border-radius:10px;background:${st === false ? "var(--badl)" : "var(--sf)"}">
-              <button class="audio-dot" style="width:24px;height:24px;font-size:10px;flex:none" data-act="say" data-kind="words" data-id="${esc(w.id)}" data-text="${esc(w.ko)}" aria-label="${esc(w.ko)} — diktor talaffuzi">▸</button>
+              <button class="audio-dot" style="width:24px;height:24px;font-size:12px;flex:none" data-act="say" data-kind="words" data-id="${esc(w.id)}" data-text="${esc(w.ko)}" aria-label="${esc(w.ko)} — diktor talaffuzi">▸</button>
               <span class="ko" style="font-size:16px;font-weight:700">${esc(w.ko)}</span><span class="grow" style="font-size:13px;color:${st === false ? "var(--badd)" : "var(--ink2)"};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(w.uz)}</span>
               <span style="font-size:12px;color:${st === false ? "var(--bad)" : st ? "var(--ok)" : "var(--ink3)"}">${st === false ? "✕" : st ? "✓" : "·"}</span></div>`; }).join("")
             : `<div class="faint" style="font-size:13px">Suhbatda ishlatilgan so'zlar shu yerda ko'rinadi.</div>`}</div></div>

@@ -203,7 +203,7 @@
   const OB_STEPS = 2;
   const obTop = (step) => `<div class="ob-top">
       <div class="brand"><div class="mark"></div><span class="name">UpKorean</span></div>
-      <div class="ob-steps">${Array.from({ length: OB_STEPS }, (_, i) => `<i class="${i < step ? "on" : ""}"></i>`).join("")}<span class="mono faint" style="font-size:11px;margin-left:8px">${step} / ${OB_STEPS}</span></div>
+      <div class="ob-steps">${Array.from({ length: OB_STEPS }, (_, i) => `<i class="${i < step ? "on" : ""}"></i>`).join("")}<span class="mono faint" style="font-size:12px;margin-left:8px">${step} / ${OB_STEPS}</span></div>
       <button class="link" style="color:var(--ink3)" data-act="ob-skip">Keyinroq</button>
     </div>`;
 
@@ -226,7 +226,7 @@
           </div>
           <div class="row wrap" style="gap:16px;margin-top:30px">
             <button class="btn btn-p" style="padding:15px 30px" data-act="ob-go" data-step="2">Davom etish</button>
-            <span class="kbd-hint hide-sm" style="margin-left:auto;font-size:11px">1 2 3 · tanlash &nbsp; ⏎ · davom</span>
+            <span class="kbd-hint hide-sm" style="margin-left:auto;font-size:12px">1 2 3 · tanlash &nbsp; ⏎ · davom</span>
           </div>
         </div>
         <div class="plan">
@@ -236,7 +236,7 @@
           <div><div class="n">${pace.min} daq</div><div class="l">kunlik o'rtacha vaqt</div></div>
           <div class="sep"></div>
           <div><div class="n">${U.fmtShort(end)}</div><div class="l">tugash sanasi</div></div>
-          <div class="mono" style="font-size:11px;color:var(--on-pl3);line-height:1.5">Kechqurun takrorlash sessiyasi bu vaqtga kirmagan</div>
+          <div class="mono" style="font-size:12px;color:var(--on-pl3);line-height:1.5">Kechqurun takrorlash sessiyasi bu vaqtga kirmagan</div>
         </div></div>`;
     } else {
       const r = p.reminders;

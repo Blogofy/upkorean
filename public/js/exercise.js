@@ -328,7 +328,7 @@
   const hlSentence = (ex) => esc(ex.ko).replace(esc(ex.hl), `<b>${esc(ex.hl)}</b>`);
   const uzPlain = (ex) => esc(ex.uz.replace(/[{}]/g, ""));
   const uzBlank = (ex) => esc(ex.uz.replace(/\{.*?\}/, "______"));
-  const sentBtn = `<button class="audio-dot" style="width:28px;height:28px;font-size:11px" data-act="ex-play-sent" aria-label="Gapni eshitish">▸</button>`;
+  const sentBtn = `<button class="audio-dot" style="width:28px;height:28px;font-size:12px" data-act="ex-play-sent" aria-label="Gapni eshitish">▸</button>`;
 
   function header(s) {
     const it = cur();
@@ -401,7 +401,7 @@
           <div style="font-size:15px;font-weight:700;margin-bottom:4px">${days === 1 ? "Ertaga" : `${days} kundan keyin`}</div>
           <div style="font-size:13px;color:var(--ink2);line-height:1.45">«Bildim» uchun. Javobingizga qarab interval o'zgaradi</div>
         </div>
-        <div class="kbd-hint" style="margin-top:auto;font-size:11px;line-height:1.6">1–4 · baholash<br>→ keyingi so'z</div>
+        <div class="kbd-hint" style="margin-top:auto;font-size:12px;line-height:1.6">1–4 · baholash<br>→ keyingi so'z</div>
       </div>
     </div></div>`;
   }
@@ -533,7 +533,7 @@
     const learnedStage = s.stage.kind === "learn";
     const acc = s.ok + s.bad ? U.pct(s.ok, s.ok + s.bad) : null;
     return `<div style="width:100%;max-width:620px;text-align:center">
-      <div class="done-glyph">${learnedStage ? "좋아요" : "잘했어요"}</div>
+      <div class="done-glyph" aria-hidden="true">${learnedStage ? "좋아요" : "잘했어요"}</div>
       <h3 style="margin:0 0 8px;font-size:32px;font-weight:800;letter-spacing:-.035em">${esc(s.stage.label)} tugadi</h3>
       <p class="muted" style="margin:0 0 30px;font-size:16px;line-height:1.5">${learnedStage ? `${s.items.length} so'z ko'rib chiqildi.` : `${s.ok} / ${s.items.length} to'g'ri${acc !== null ? ` · ${acc}% aniqlik` : ""}.`}
         Keyingi bosqich: <b style="color:var(--ink)">${esc(s.nextStage.label)}</b> · ~${s.nextStage.min} daq</p>
@@ -552,7 +552,7 @@
     const title = s.kind === "review" ? "Takrorlash tugadi" : `${esc(s.title)} tugadi`;
     return `<div style="width:100%;max-width:820px">
       <div class="center" style="margin-bottom:30px">
-        <div class="done-glyph">${s.ok === total ? "완벽" : "완료"}</div>
+        <div class="done-glyph" aria-hidden="true">${s.ok === total ? "완벽" : "완료"}</div>
         <h3 style="margin:0 0 8px;font-size:34px;font-weight:800;letter-spacing:-.035em">${title}</h3>
         <p class="muted" style="margin:0;font-size:16px">${s.ok} / ${total} to'g'ri javob${s.kind === "review" ? " · noto'g'rilar ertaga yana chiqadi" : ""}</p>
       </div>
@@ -563,7 +563,7 @@
         <div><div class="upl s">Xato</div><div class="v"><b class="${wrong.length ? "badc" : ""}">${wrong.length}</b><span>ta</span></div></div>
       </div>
       ${wrong.length ? `<div class="card pad" style="margin-bottom:24px"><div class="card-title" style="margin-bottom:14px">Qayta ko'rish kerak</div>
-        <div class="stack" style="gap:11px">${wrong.slice(0, 6).map((id) => { const w = S.word(id); return `<div class="row" style="gap:14px"><span class="ko" style="font-size:18px;font-weight:700;min-width:96px">${esc(w.ko)}</span><span class="grow muted">${esc(w.uz)}</span><span class="mono badc" style="font-size:11px">${U.dueLabel((S.ws(id) || {}).due || U.today())}</span></div>`; }).join("")}</div></div>` : ""}
+        <div class="stack" style="gap:11px">${wrong.slice(0, 6).map((id) => { const w = S.word(id); return `<div class="row" style="gap:14px"><span class="ko" style="font-size:18px;font-weight:700;min-width:96px">${esc(w.ko)}</span><span class="grow muted">${esc(w.uz)}</span><span class="mono badc" style="font-size:12px">${U.dueLabel((S.ws(id) || {}).due || U.today())}</span></div>`; }).join("")}</div></div>` : ""}
       <div class="row wrap" style="justify-content:center;gap:12px">
         ${wrong.length ? `<button class="btn btn-p" data-act="quiz-ids" data-ids="${wrong.join(",")}" data-primary>${wrong.length} ta xatoni mashq qilish</button>` : `<button class="btn btn-p" data-act="go" data-href="#/dashboard" data-primary>Dashboard</button>`}
         <button class="btn btn-sec" data-act="go" data-href="${s.kind === "review" ? "#/review" : "#/quiz"}">${s.kind === "review" ? "Takrorlash markazi" : "Boshqa mashq"}</button>

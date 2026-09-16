@@ -9,10 +9,33 @@
   const Forms = (window.Forms = window.Forms || {});
 
   // ---------- Small pieces ----------
-  V.mbar = (id, sm) => {
+  V.mbar = (id, sm, withCount) => {
     const s = S.mastery(id), weak = S.isWeak(id), m = S.isMastered(id);
-    return `<span class="mbar ${weak ? "weak" : ""} ${sm ? "sm" : ""}" title="Mastery ${s}/5">${[1, 2, 3, 4, 5].map((k) => `<i class="${k <= s ? (m ? "on m" : "on") : ""}"></i>`).join("")}</span>`;
+    const label = `Mastery ${s}/5${weak ? ", zaif" : m ? ", o'zlashtirilgan" : ""}`;
+    return `<span class="mbar-wrap"><span class="mbar ${weak ? "weak" : ""} ${sm ? "sm" : ""}" role="img" aria-label="${label}" title="${label}">${[1, 2, 3, 4, 5].map((k) => `<i class="${k <= s ? (m ? "on m" : "on") : ""}"></i>`).join("")}</span>${withCount ? `<span class="mbar-n" aria-hidden="true">${s}/5</span>` : ""}</span>`;
   };
+  // Days 1–30 in rows of seven ("1-hafta" …), each square a link to its day.
+  V.dayWeeks = () => {
+    const weeks = [];
+    for (let start = 1; start <= S.DAYS; start += 7) {
+      const days = Array.from({ length: Math.min(7, S.DAYS - start + 1) }, (_, i) => start + i).map((d) => {
+        const st = S.dayStatus(d);
+        const name = { mastered: "o'zlashtirilgan", completed: "tugatilgan", progress: "davom etmoqda", available: "ochiq", locked: "yopiq" }[st];
+        return st === "locked"
+          ? `<span class="dsq locked" role="img" aria-label="Day ${d} — ${name}" title="Day ${d} — ${name}">${d}</span>`
+          : `<a class="dsq ${st}" href="#/day/${d}" aria-label="Day ${d} — ${name}" title="Day ${d} — ${name}">${d}</a>`;
+      }).join("");
+      weeks.push(`<div class="dweek"><span class="dweek-l">${weeks.length + 1}-hafta</span><div class="days">${days}</div></div>`);
+    }
+    return `<div class="dweeks">${weeks.join("")}</div>`;
+  };
+  function lostStreakNote() {
+    const today = U.today(), yesterday = U.addDays(today, -1);
+    const a = S.state.act;
+    const active = (k) => !!a[k] && (a[k].learned > 0 || a[k].reviewed > 0 || Object.values(a[k].min || {}).reduce((x, y) => x + y, 0) >= 1);
+    if (S.streak() > 0 || !S.state.bestStreak || active(today) || active(yesterday)) return "";
+    return `<span class="streak-lost">Streak uzildi (eng uzuni ${S.state.bestStreak} kun) — bugungi bitta mashq yangisini boshlaydi.</span> `;
+  }
   const dot = (kind) => `<span style="width:7px;height:7px;border-radius:99px;flex:none;background:${kind === "ok" ? "var(--ok)" : kind === "pd" ? "var(--pd)" : "var(--p)"}"></span>`;
   const toggle = (on, act, k, label) => `<button class="toggle ${on ? "on" : ""}" data-act="${act}" data-k="${k}" role="switch" aria-checked="${!!on}" aria-label="${esc(label)}"></button>`;
   const initial = () => esc((S.state.profile.name || "?").trim().charAt(0).toUpperCase());
@@ -41,15 +64,15 @@
         <nav class="nav" aria-label="Asosiy">${nav}</nav>
         <div class="side-foot">
           <a href="#/achievements" class="lvl" style="color:inherit">
-            <div class="row between" style="align-items:baseline"><span style="font-size:12px;font-weight:700">Level ${lv.level}</span>
-              <span class="mono muted" style="font-size:11px">${U.num(lv.xp)} / ${U.num(lv.next)}</span></div>
+            <div class="row between" style="align-items:baseline"><span style="font-size:13px;font-weight:700">Level ${lv.level}</span>
+              <span class="mono muted" style="font-size:12px">${U.num(lv.xp)} / ${U.num(lv.next)}</span></div>
             <div class="prog"><div style="width:${lv.pct}%"></div></div>
           </a>
           <div class="row" style="gap:6px">
             <a href="#/profile" class="me grow" style="color:inherit">
               <div class="avatar">${initial()}</div>
               <div class="grow"><div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${firstName()}</div>
-                <div class="faint" style="font-size:11px">TOPIK II</div></div>
+                <div class="faint" style="font-size:13px">TOPIK II</div></div>
             </a>
             <button class="iconbtn" data-act="theme-toggle" title="Tema" aria-label="Temani almashtirish">◐</button>
           </div>
@@ -94,7 +117,7 @@
         <div class="row" style="align-items:baseline;gap:10px;margin-bottom:5px"><span class="big">${S.TOTAL}</span><span class="bigsub">so'z o'rganildi</span></div>
         <p>Endi asosiy ish — takrorlash. Mastery'ga yetmagan so'zlarni har kuni mustahkamlang.</p>
         <div class="row wrap"><button class="btn btn-pd" data-act="review-start" data-mode="due" ${due ? "" : "disabled"}>Takrorlash · ${due}</button>
-        <a class="btn btn-glass" href="#/quiz">Mashqlar</a></div></div><div class="wm">졸업</div></div>`;
+        <a class="btn btn-glass" href="#/quiz">Mashqlar</a></div></div><div class="wm" aria-hidden="true">졸업</div></div>`;
     } else {
       const block = stage.block >= 0 ? plan.blocks[stage.block] : plan.words;
       const sample = block.slice(0, 3).map((id) => S.word(id).ko).join(", ");
@@ -110,10 +133,10 @@
         <div class="row wrap">
           <button class="btn btn-pd" data-act="learn" data-day="${cd}">${ds.stage ? "Davom etish" : "Darsni boshlash"}</button>
           <button class="btn btn-glass" data-act="review-start" data-mode="due" ${due ? "" : "disabled"}>Takrorlash · ${due}</button>
-        </div></div><div class="wm">오늘</div></div>`;
+        </div></div><div class="wm" aria-hidden="true">오늘</div></div>`;
     }
 
-    const squares = Array.from({ length: S.DAYS }, (_, i) => { const d = i + 1, st = S.dayStatus(d); return `<a class="dsq ${st}" ${st === "locked" ? `aria-disabled="true" title="Day ${d} — yopiq"` : `href="#/day/${d}" title="Day ${d}"`}>${d}</a>`; }).join("");
+    const squares = V.dayWeeks();
     const weakList = weak.slice(0, 3);
     const logs = S.state.log.slice(0, 3);
     const week = S.weekRhythm();
@@ -123,7 +146,7 @@
     const body = `<div class="page">
       <div style="margin-bottom:16px">
         <h3 class="page-h">Salom, ${firstName()}</h3>
-        <p class="page-p">${done ? `Kurs tugadi — bugun ${due} ta takrorlash kutmoqda.` : `Day ${cd} — ${remaining} so'z bugun${due ? `, kechqurun ${due} ta takrorlash` : ""}.`}</p>
+        <p class="page-p">${lostStreakNote()}${done ? `Kurs tugadi — bugun ${due} ta takrorlash kutmoqda.` : `Day ${cd} — ${remaining} so'z bugun${due ? `, kechqurun ${due} ta takrorlash` : ""}.`}</p>
       </div>
       ${hero}
       <div class="strip" style="margin-bottom:16px">
@@ -136,7 +159,7 @@
       <div class="collapse-md" style="display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:22px">
         <div style="min-width:0">
           <div class="row between" style="margin-bottom:11px"><span class="card-title">${S.DAYS} kunlik yo'l</span><a class="link" href="#/course">Butun kursni ko'rish</a></div>
-          <div class="days" style="margin-bottom:16px">${squares}</div>
+          <div style="margin-bottom:16px">${squares}</div>
           <div class="row between" style="margin-bottom:11px"><span class="card-title">Zaif so'zlar</span>
             ${weak.length ? `<button class="link" data-act="quiz-weak">${weak.length} tasini mashq qilish</button>` : ""}</div>
           <div class="list">${weakList.length ? weakList.map((id) => { const w = S.word(id), st = S.ws(id); return `<button class="li" data-act="word" data-id="${id}">
@@ -148,12 +171,12 @@
           <div class="card-title" style="margin-bottom:11px">So'nggi faollik</div>
           <div class="card" style="padding:4px 18px;margin-bottom:16px">
             ${logs.length ? logs.map((l, i) => `<div class="row" style="gap:12px;padding:12px 0;${i < logs.length - 1 ? "border-bottom:1px solid var(--line)" : ""}">${dot(l.kind)}
-              <span class="grow" style="font-size:13px">${esc(l.text)}</span><span class="mono faint" style="font-size:11px">${U.relTime(l.t)}</span></div>`).join("")
+              <span class="grow" style="font-size:13px">${esc(l.text)}</span><span class="mono faint" style="font-size:12px">${U.relTime(l.t)}</span></div>`).join("")
             : `<div class="empty" style="padding:18px 0">Birinchi darsdan keyin faollik shu yerda ko'rinadi.</div>`}
           </div>
           <div class="card pad" style="padding:18px;margin-bottom:16px">
             <div class="row between" style="margin-bottom:14px"><span class="card-title">Haftalik ritm</span>
-              <span class="mono faint" style="font-size:11px">${week.filter((w) => w.min >= 1 || w.words).length} / 7 kun</span></div>
+              <span class="mono faint" style="font-size:12px">${week.filter((w) => w.min >= 1 || w.words).length} / 7 kun</span></div>
             <div class="bars" style="height:72px">${week.map((w) => {
               const h = w.min >= 1 ? Math.max(8, Math.round((w.min / maxMin) * 56)) : 6;
               const cls = w.min < 1 ? "zero" : w.today && w.min < goalMin ? "cur" : "";
@@ -163,7 +186,7 @@
             <div class="row between" style="margin-bottom:12px"><span class="card-title">Kunlik challenge</span>
               <span class="mono ${ch.done ? "okc" : "accent"}" style="font-size:12px">${ch.done ? "bajarildi" : `+${ch.reward} XP`}</span></div>
             <div class="stack" style="gap:10px">${ch.items.map((i) => `<div><div class="row between" style="margin-bottom:5px"><span style="font-size:13px">${esc(i.label)}</span>
-              <span class="mono ${i.cur >= i.goal ? "okc" : "faint"}" style="font-size:11px">${i.cur >= i.goal ? "✓" : `${i.cur}/${i.goal}`}</span></div>
+              <span class="mono ${i.cur >= i.goal ? "okc" : "faint"}" style="font-size:12px">${i.cur >= i.goal ? "✓" : `${i.cur}/${i.goal}`}</span></div>
               <div class="prog" style="height:5px"><div style="width:${U.pct(i.cur, i.goal)}%;${i.cur >= i.goal ? "background:var(--ok)" : ""}"></div></div></div>`).join("")}</div>
           </div>
         </div>
@@ -183,7 +206,7 @@
       let sub = "", right = "";
       if (st === "mastered") { sub = `${n} so'z · mastered`; right = "✓"; }
       else if (st === "completed") { sub = `${n} so'z · ${U.pct(ds.ok || 0, (ds.ok || 0) + (ds.bad || 0)) || 100}%`; right = "✓"; }
-      else if (st === "progress") { sub = `${S.dayLearned(d)} / ${n} so'z`; right = d === cur ? `<span style="font-size:11px;font-weight:700;color:var(--pd)">bugun</span>` : ""; }
+      else if (st === "progress") { sub = `${S.dayLearned(d)} / ${n} so'z`; right = d === cur ? `<span style="font-size:12px;font-weight:700;color:var(--pd)">bugun</span>` : ""; }
       else sub = `${n} so'z · ochiq`;
       const plan = st === "progress" ? S.dayPlan(d) : null;
       return `<a href="#/day/${d}" class="dtile ${st}" style="color:inherit"><div class="dn"><span>DAY ${d}</span><span>${right}</span></div>
@@ -242,10 +265,10 @@
           <div class="card-title" style="margin-bottom:16px">Kun bosqichlari</div>
           <div class="stack" style="gap:14px">${plan.stages.map((sg, i) => {
             const isDone = ds.done || i < ds.stage, isCur = !ds.done && i === ds.stage;
-            return `<div class="row" style="gap:12px"><span style="width:24px;height:24px;border-radius:99px;flex:none;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;
+            return `<div class="row" style="gap:12px"><span style="width:24px;height:24px;border-radius:99px;flex:none;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;
               background:${isDone ? "var(--p)" : isCur ? "var(--pl)" : "var(--bg)"};color:${isDone ? "#fff" : isCur ? "var(--pd)" : "var(--ink3)"}">${isDone ? "✓" : i + 1}</span>
               <span class="grow" style="font-size:14px;${isCur ? "font-weight:600" : "color:var(--ink2)"}">${esc(sg.label)}</span>
-              <span class="mono faint" style="font-size:11px">${sg.min} daq</span></div>`; }).join("")}</div>
+              <span class="mono faint" style="font-size:12px">${sg.min} daq</span></div>`; }).join("")}</div>
         </div>
         <div class="card-pl" style="padding:20px">
           <div style="font-size:13px;font-weight:700;margin-bottom:8px">Spaced repetition</div>
@@ -254,7 +277,7 @@
         <div class="card pad">
           <div style="font-size:13px;font-weight:700;margin-bottom:10px">Blok o'lchami</div>
           <div class="picks">${[11, 17, 33].map((n) => `<button class="${plan.pace === n ? "on" : ""}" data-act="day-pace" data-day="${d}" data-v="${n}" ${started && (ds.stage > 0 || ds.done) ? "disabled" : ""}>${n}</button>`).join("")}</div>
-          ${started && (ds.stage > 0 || ds.done) ? `<div class="faint" style="font-size:12px;margin-top:8px">Kun boshlangan — o'lcham keyingi kunlarga Profil'dan o'zgartiriladi.</div>` : ""}
+          ${started && (ds.stage > 0 || ds.done) ? `<div class="faint" style="font-size:13px;margin-top:8px">Kun boshlangan — o'lcham keyingi kunlarga Profil'dan o'zgartiriladi.</div>` : ""}
         </div>
       </div></div>`;
     const top = `<header class="topbar"><a class="back" href="#/course">← 30 kunlik kurs</a><span class="sub" style="display:inline">DAY ${d}</span>
@@ -285,7 +308,7 @@
     }).filter(([, n]) => n > 0);
     return `<div class="ex"><div class="ex-body"><div style="width:100%;max-width:960px">
       <div class="center" style="margin-bottom:34px">
-        <div class="done-glyph">완료</div>
+        <div class="done-glyph" aria-hidden="true">완료</div>
         <h3 style="margin:0 0 8px;font-size:36px;font-weight:800;letter-spacing:-.035em">Day ${d} tugadi</h3>
         <p class="muted" style="margin:0;font-size:16px">${words.length} so'z o'rganildi. Streak ${S.streak()} kunga yetdi.</p>
       </div>
@@ -299,7 +322,7 @@
         <div class="card" style="padding:22px 24px;border-radius:16px">
           <div class="card-title" style="margin-bottom:14px">Qayta ko'rish kerak</div>
           <div class="stack" style="gap:11px">${weak.length ? weak.slice(0, 4).map((w) => `<div class="row" style="gap:14px"><span class="ko" style="font-size:18px;font-weight:700;min-width:84px">${esc(w.ko)}</span>
-            <span class="grow muted" style="font-size:14px">${esc(w.uz)}</span><span class="mono badc" style="font-size:11px">${S.ws(w.id).bad} xato</span></div>`).join("")
+            <span class="grow muted" style="font-size:14px">${esc(w.uz)}</span><span class="mono badc" style="font-size:12px">${S.ws(w.id).bad} xato</span></div>`).join("")
             : `<div class="muted" style="font-size:14px">Barcha so'zlar yaxshi o'zlashtirildi.</div>`}</div>
         </div>
         <div class="card-pl" style="padding:22px 24px;border-radius:16px">
@@ -337,7 +360,7 @@
         <div class="row wrap">
           <button class="btn btn-pd" data-act="review-start" data-mode="due" ${due.length ? "" : "disabled"}>Sessiyani boshlash</button>
           <button class="btn btn-glass" data-act="review-start" data-mode="weak" ${lists.weak.length ? "" : "disabled"}>Faqat zaiflarini</button>
-        </div></div><div class="wm" style="font-size:80px;line-height:.9">복습</div></div>
+        </div></div><div class="wm" aria-hidden="true" style="font-size:80px;line-height:.9">복습</div></div>
       <div class="two-sm" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px">
         ${cards.map(([k, t, d]) => `<button class="card" style="padding:18px 22px;text-align:left;${reviewTab === k ? "border:1.5px solid var(--p)" : ""}" data-act="review-tab" data-k="${k}">
           <div class="upl s" style="${reviewTab === k ? "color:var(--pd)" : ""};margin-bottom:10px">${t}</div>
@@ -351,7 +374,7 @@
       <div class="list">${shown.length ? shown.map((id) => {
         const w = S.word(id), st = S.ws(id), late = st.due < U.today();
         return `<button class="li ${late ? "bad" : ""}" style="gap:18px;padding:13px 20px" data-act="word" data-id="${id}">
-          <span class="mono ${late ? "badc" : "faint"}" style="font-size:11px;min-width:44px">D${w.day}</span>
+          <span class="mono ${late ? "badc" : "faint"}" style="font-size:12px;min-width:44px">D${w.day}</span>
           <span class="kw">${esc(w.ko)}</span><span class="mean" style="${late ? "color:var(--badd)" : ""}">${esc(w.uz)}</span>
           ${V.mbar(id)}
           <span class="meta hide-sm" style="min-width:70px">${U.ago(st.last)}</span>
@@ -398,7 +421,7 @@
     };
     const recent = S.state.quizResults.slice(0, 3);
     const body = learned.length < 4 ? `<div class="page"><div class="card pad center" style="max-width:560px;margin:40px auto;padding:40px">
-        <div class="done-glyph" style="font-size:44px">연습</div><h3 style="margin:0 0 8px;font-size:22px">Mashq uchun so'z yo'q</h3>
+        <div class="done-glyph" aria-hidden="true" style="font-size:44px">연습</div><h3 style="margin:0 0 8px;font-size:22px">Mashq uchun so'z yo'q</h3>
         <p class="muted" style="margin:0 0 20px">Avval kunlik darsda kamida 4 ta so'z o'rganing.</p>
         <button class="btn btn-p" data-act="learn" data-day="${S.currentDay()}">Day ${S.currentDay()} ni boshlash</button></div></div>`
       : `<div class="page collapse-md" style="padding:36px 48px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:44px">
@@ -410,16 +433,16 @@
       <div class="stack" style="gap:14px">
         <div class="card" style="padding:22px">
           <div class="card-title" style="margin-bottom:16px">Sozlamalar</div>
-          <div style="font-size:12px;font-weight:600;color:var(--ink3);margin-bottom:8px">So'z manbasi</div>
+          <div style="font-size:13px;font-weight:600;color:var(--ink3);margin-bottom:8px">So'z manbasi</div>
           <div class="stack" style="gap:6px;margin-bottom:${quizCfg.source === "days" ? 10 : 20}px">
             ${[["all", `Hamma o'rganilgan (${learned.length})`], ["weak", `Faqat zaif so'zlar (${S.weakIds().length})`], ["days", "Tanlangan kunlar"]].map(([k, l]) =>
               `<button class="chip ${quizCfg.source === k ? "on" : ""}" style="border-radius:10px;padding:11px 14px;font-size:14px;justify-content:flex-start" data-act="quiz-src" data-k="${k}">${l}</button>`).join("")}
           </div>
           ${quizCfg.source === "days" ? `<div class="days" style="margin-bottom:20px">${[...new Set(learned.map((id) => S.word(id).day))].sort((a, b) => a - b).map((d) =>
             `<button class="dsq ${quizCfg.days.includes(d) ? "completed" : "available"}" data-act="quiz-day" data-d="${d}">${d}</button>`).join("")}</div>` : ""}
-          <div style="font-size:12px;font-weight:600;color:var(--ink3);margin-bottom:8px">Savol soni</div>
+          <div style="font-size:13px;font-weight:600;color:var(--ink3);margin-bottom:8px">Savol soni</div>
           <div class="picks" style="margin-bottom:20px">${[10, 20, 40].map((n) => `<button class="${quizCfg.count === n ? "on" : ""}" data-act="quiz-count" data-n="${n}">${n}</button>`).join("")}</div>
-          <div class="row between" style="padding:12px 0;border-top:1px solid var(--line)"><span>Vaqt chegarasi <span class="faint" style="font-size:12px">· 20s</span></span>${toggle(quizCfg.timer, "quiz-opt", "timer", "Vaqt chegarasi")}</div>
+          <div class="row between" style="padding:12px 0;border-top:1px solid var(--line)"><span>Vaqt chegarasi <span class="faint" style="font-size:13px">· 20s</span></span>${toggle(quizCfg.timer, "quiz-opt", "timer", "Vaqt chegarasi")}</div>
           <div class="row between" style="padding:12px 0;border-top:1px solid var(--line)"><span>Darhol javob ko'rsatish</span>${toggle(quizCfg.instant, "quiz-opt", "instant", "Darhol javob")}</div>
         </div>
         <div class="card" style="padding:22px">
@@ -496,7 +519,7 @@
           <div style="overflow-x:auto"><div class="bars" style="height:150px;gap:${n > 20 ? 4 : 7}px;min-width:${n > 30 ? n * 14 : 0}px">${series.map((x) => {
             const h = x.v ? Math.max(8, Math.round((x.v / max) * 124)) : 5;
             return `<div class="col" title="${U.fmtDayMonth(x.k)}: ${x.learned} yangi, ${x.v - x.learned} takror"><div class="${x.v ? (x.k === today ? "cur" : "") : "zero"}" style="height:${h}px"></div>
-              <span class="mono ${x.k === today ? "cur" : ""}" style="font-size:10px">${U.parseKey(x.k).getDate()}</span></div>`; }).join("")}</div></div>
+              <span class="mono ${x.k === today ? "cur" : ""}" style="font-size:12px">${U.parseKey(x.k).getDate()}</span></div>`; }).join("")}</div></div>
         </div>
         <div class="collapse-md" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
           <div class="card" style="padding:20px 22px">
@@ -570,14 +593,14 @@
     for (let p = Math.max(1, lib.page - 2); p <= Math.min(pages, lib.page + 2); p++) pg.push(p);
     return `<div class="list"><div class="li head" style="gap:18px">
         <span style="min-width:100px">So'z</span><span class="grow">Ma'nosi</span><span style="min-width:44px">Kun</span>
-        <span style="min-width:88px" class="hide-sm">Mastery</span><span style="min-width:72px" class="hide-sm">Ko'rishlar</span><span style="min-width:72px;text-align:right">Keyingi</span></div>
+        <span style="min-width:124px" class="hide-sm">Mastery</span><span style="min-width:72px" class="hide-sm hide-lg">Ko'rishlar</span><span style="min-width:72px;text-align:right">Keyingi</span></div>
       ${slice.length ? slice.map((id) => {
         const w = S.word(id), st = S.ws(id), weak = S.isWeak(id), late = st && st.learned && st.due < U.today();
         return `<button class="li ${weak ? "bad" : ""}" style="gap:18px;padding:12px 20px" data-act="word" data-id="${id}">
           <span class="kw" style="min-width:100px">${esc(w.ko)}</span><span class="mean" style="${weak ? "color:var(--badd)" : ""}">${esc(w.uz)}</span>
           <span class="mono faint" style="font-size:12px;min-width:44px">D${w.day}</span>
-          <span class="hide-sm" style="min-width:88px">${st && st.learned ? V.mbar(id, true) : `<span class="faint" style="font-size:12px">—</span>`}</span>
-          <span class="mono muted hide-sm" style="font-size:12px;min-width:72px">${st ? `${st.seen} · ${st.ok}✓` : "0"}</span>
+          <span class="hide-sm" style="min-width:124px">${st && st.learned ? V.mbar(id, true, true) : `<span class="faint" style="font-size:12px">—</span>`}</span>
+          <span class="mono muted hide-sm hide-lg" style="font-size:12px;min-width:72px">${st ? `${st.seen} · ${st.ok}✓` : "0"}</span>
           <span class="mono" style="font-size:12px;min-width:72px;text-align:right;color:${!st || !st.learned ? "var(--ink3)" : late ? "var(--bad)" : st.due <= U.today() ? "var(--pd)" : "var(--ink3)"}">${st && st.learned ? U.dueLabel(st.due) : "yangi"}</span></button>`; }).join("")
       : `<div class="empty">Hech narsa topilmadi.</div>`}</div>
       <div class="row between" style="margin-top:16px">
@@ -603,7 +626,7 @@
         <div class="row wrap" style="gap:10px;margin-bottom:18px">
           <input class="input grow" style="padding:13px 16px;font-size:14px;background:var(--sf);min-width:200px" placeholder="한국어 yoki o'zbekcha izlash…" value="${esc(lib.q)}" data-input="lib-search" aria-label="Qidirish">
           <button class="btn btn-sec btn-sm" style="padding:13px 20px;font-size:14px" data-act="lib-export">Eksport</button>
-          <button class="btn btn-p btn-sm" style="padding:13px 20px;font-size:14px" data-act="lib-practice">Tanlanganni mashq qilish</button>
+          <button class="btn btn-p btn-sm" style="padding:13px 20px;font-size:14px" data-act="lib-practice">Shu ro'yxatni mashq qilish</button>
         </div>
         <div id="lib-table">${libTable()}</div>
       </div></div>`;
@@ -640,7 +663,7 @@
       <div class="mono faint" style="font-size:14px;margin-bottom:18px">[ ${esc(U.romanize(w.ko))} ]</div>
       <div class="upl" style="margin-bottom:6px">Ma'nosi</div>
       <div style="font-size:22px;font-weight:700;margin-bottom:18px">${esc(w.uz)}</div>
-      ${ex ? `<div class="example"><div class="s" style="font-size:18px">${esc(ex.ko).replace(esc(ex.hl), `<b>${esc(ex.hl)}</b>`)} <button class="audio-dot" style="width:28px;height:28px;font-size:11px;vertical-align:middle" data-act="say" data-kind="sentences" data-id="${esc(id)}" data-text="${esc(ex.ko)}" aria-label="Gapni eshitish">▸</button></div><div class="muted" style="font-size:14px">${esc(ex.uz.replace(/[{}]/g, ""))}</div></div>` : ""}
+      ${ex ? `<div class="example"><div class="s" style="font-size:18px">${esc(ex.ko).replace(esc(ex.hl), `<b>${esc(ex.hl)}</b>`)} <button class="audio-dot" style="width:28px;height:28px;font-size:12px;vertical-align:middle" data-act="say" data-kind="sentences" data-id="${esc(id)}" data-text="${esc(ex.ko)}" aria-label="Gapni eshitish">▸</button></div><div class="muted" style="font-size:14px">${esc(ex.uz.replace(/[{}]/g, ""))}</div></div>` : ""}
       ${st && st.learned ? `<div class="strip" style="margin:16px 0"><div><div class="upl s">Mastery</div><div class="v" style="margin-top:10px">${V.mbar(id)}</div></div>
         <div><div class="upl s">Ko'rish</div><div class="v"><b>${st.seen}</b><span>${st.ok}✓ ${st.bad}✕</span></div></div>
         <div><div class="upl s">Keyingi</div><div class="v"><b style="font-size:17px">${U.dueLabel(st.due)}</b></div></div></div>`
@@ -683,19 +706,19 @@
       </div>
       <div class="stack" style="gap:16px">
         <div class="card" style="padding:22px">
-          <div class="row between" style="margin-bottom:16px"><span class="card-title">Leaderboard</span><span class="mono faint" style="font-size:11px">bu hafta${board && board.total ? ` · ${board.total} ishtirokchi` : ""}</span></div>
+          <div class="row between" style="margin-bottom:16px"><span class="card-title">Leaderboard</span><span class="mono faint" style="font-size:12px">bu hafta${board && board.total ? ` · ${board.total} ishtirokchi` : ""}</span></div>
           <div class="stack" style="gap:11px">${!board ? `<div class="faint" style="font-size:13px">Yuklanmoqda…</div>` : board.rows.length ? board.rows.map((r) => r.me
             ? `<div class="row" style="gap:12px;padding:9px 11px;margin:0 -11px;border-radius:10px;background:var(--pl)"><span class="mono accent" style="font-size:12px;min-width:18px">${r.rank}</span>
-                <span class="avatar" style="width:26px;height:26px;border-radius:8px;background:var(--pdb);color:#fff;font-size:11px">${initial()}</span><span class="grow" style="font-size:13px;font-weight:700;color:var(--on-pl)">Siz</span><span class="mono accent" style="font-size:12px;font-weight:500">${U.num(r.xp)}</span></div>`
+                <span class="avatar" style="width:26px;height:26px;border-radius:8px;background:var(--pdb);color:#fff;font-size:12px">${initial()}</span><span class="grow" style="font-size:13px;font-weight:700;color:var(--on-pl)">Siz</span><span class="mono accent" style="font-size:12px;font-weight:500">${U.num(r.xp)}</span></div>`
             : `<div class="row" style="gap:12px"><span class="mono faint" style="font-size:12px;min-width:18px">${r.rank}</span>
-                <span class="avatar" style="width:26px;height:26px;border-radius:8px;background:var(--bg);color:var(--ink2);font-size:11px">${esc(r.name.charAt(0))}</span><span class="grow" style="font-size:13px">${esc(r.name)}</span><span class="mono" style="font-size:12px">${U.num(r.xp)}</span></div>`).join("")
+                <span class="avatar" style="width:26px;height:26px;border-radius:8px;background:var(--bg);color:var(--ink2);font-size:12px">${esc(r.name.charAt(0))}</span><span class="grow" style="font-size:13px">${esc(r.name)}</span><span class="mono" style="font-size:12px">${U.num(r.xp)}</span></div>`).join("")
             : `<div class="faint" style="font-size:13px">Bu hafta hali hech kim XP to'plamadi.</div>`}
             ${board && board.offline ? `<div class="faint" style="font-size:12px">Serverga ulanib bo'lmadi.</div>` : ""}</div>
         </div>
         <div class="card" style="padding:22px">
           <div class="card-title" style="margin-bottom:16px">Kunlik challenge</div>
           <div class="stack" style="gap:14px">${ch.items.map((i) => `<div><div class="row between" style="margin-bottom:6px"><span style="font-size:13px">${esc(i.label)}</span>
-            <span class="mono ${i.cur >= i.goal ? "okc" : "faint"}" style="font-size:11px">${i.cur >= i.goal ? "bajarildi" : `${i.cur}/${i.goal}`}</span></div>
+            <span class="mono ${i.cur >= i.goal ? "okc" : "faint"}" style="font-size:12px">${i.cur >= i.goal ? "bajarildi" : `${i.cur}/${i.goal}`}</span></div>
             <div class="prog" style="height:5px"><div style="width:${U.pct(i.cur, i.goal)}%;${i.cur >= i.goal ? "background:var(--ok)" : ""}"></div></div></div>`).join("")}</div>
           <div class="row between" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)"><span class="muted" style="font-size:13px">Mukofot</span><span class="mono ${ch.done ? "okc" : "accent"}" style="font-size:13px">${ch.done ? "olindi ✓" : `+${ch.reward} XP`}</span></div>
         </div>
@@ -710,7 +733,7 @@
     const startKey = Object.values(S.state.days).length ? (Object.values(S.state.days).map((d) => d.doneAt).filter(Boolean).sort()[0] || p.joined) : p.joined;
     const endKey = U.addDays(startKey, S.DAYS);
     const row = (label, right) => `<div class="set-row"><div class="set-l">${label}</div><div class="set-r">${right}</div></div>`;
-    const hint = (text) => ` <span class="faint" style="font-size:12px">· ${text}</span>`;
+    const hint = (text) => ` <span class="faint" style="font-size:13px">· ${text}</span>`;
     const perm = Push.permission();
     const body = `<div class="page prof">
       <div class="prof-head">
@@ -718,7 +741,7 @@
         <div class="prof-id">
           <h3 class="page-h">${esc(p.name)}</h3>
           <p class="page-p">${esc(S.user.email)}</p>
-          <p class="prof-meta">${U.fmtDayMonth(S.user.createdAt || p.joined)}dan a'zo · Level ${lv.level}</p>
+          <p class="prof-meta">${U.fmtDayMonth([S.user.createdAt, p.joined].filter(Boolean).sort()[0])}dan a'zo · Level ${lv.level}</p>
         </div>
         ${S.user.demo ? `<span class="tag">demo hisob</span>` : `<button class="btn btn-sec btn-sm prof-edit" data-act="edit-name">Tahrirlash</button>`}
       </div>
