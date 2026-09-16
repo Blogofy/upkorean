@@ -9,7 +9,7 @@
     talk: { ko: "대화", name: "Erkin suhbat", desc: "O'rgangan so'zlaringiz bilan tabiiy dialog. Xatolar darhol tushuntiriladi." },
     fix: { ko: "교정", name: "Gap tuzatish", desc: "Siz gap yozasiz, AI grammatika va so'z tanlovini tuzatadi." },
     weak: { ko: "약점", name: "Zaif so'zlar mashqi", desc: "Zaif so'zlarni suhbat ichida takrorlash — kontekstda yodlash." },
-    quiz: { ko: "시험", name: "AI quiz", desc: "Sizning darajangizga moslangan savollar." },
+    quiz: { ko: "시험", name: "AI test", desc: "Sizning darajangizga moslangan savollar." },
   };
   const conv = () => S.state.tutor.current;
 
@@ -26,7 +26,7 @@
     if (ids.length > 60) ids = U.sample(ids, 60);
     return ids.map((id) => ({ id, ko: S.word(id).ko, uz: S.word(id).uz }));
   }
-  const topicLabel = (c) => c.mode === "weak" ? "Zaif so'zlar" : c.topic === "day" ? `Day ${c.day} vocabulary` : c.topic === "all" ? "Barcha o'rganilgan so'zlar" : "Erkin mavzu";
+  const topicLabel = (c) => c.mode === "weak" ? "Zaif so'zlar" : c.topic === "day" ? `${c.day}-kun so'zlari` : c.topic === "all" ? "Barcha o'rganilgan so'zlar" : "Erkin mavzu";
   const stemOf = (ko) => {
     const base = ko.split("/")[0].replace(/\(.*?\)\s*/g, "").replace(/^N\s+|\s+N$/g, "").trim();
     if (base.length > 2 && base.endsWith("하다")) return base.slice(0, -2);
@@ -41,12 +41,12 @@
       <div class="coming-soon-card">
         <div class="coming-lock" aria-hidden="true">AI</div>
         <span class="tag">TEZ KUNDA</span>
-        <h3 class="page-h">AI Tutor tayyorlanmoqda</h3>
+        <h3 class="page-h">AI ustoz tayyorlanmoqda</h3>
         <p class="page-p">Koreyscha suhbat, grammatika tuzatish va shaxsiy mashqlar keyingi yangilanishlardan birida ochiladi.</p>
         <a class="btn btn-p" href="#/quiz">Hozircha oddiy mashqlarni ishlash</a>
       </div>
     </div>`;
-    return V.shell("tutor", V.topbar("AI Tutor", "tez kunda"), body);
+    return V.shell("tutor", V.topbar("AI ustoz", "tez kunda"), body);
   };
   Actions["tutor-mode"] = (el) => { T.ui.mode = el.dataset.k; App.render(); };
   Actions["tutor-topic"] = (el) => { T.ui.topic = el.dataset.k; App.render(); };
@@ -151,7 +151,7 @@
     S.addMinutes("tutor", delta);
     c.lastAt = now;
     const t = S.state.tutor;
-    if (!c.counted) { c.counted = true; t.sessions++; S.log(`AI Tutor bilan suhbat — ${MODES[c.mode].name}`, "pd"); }
+    if (!c.counted) { c.counted = true; t.sessions++; S.log(`AI ustoz bilan suhbat — ${MODES[c.mode].name}`, "pd"); }
     t.lastAt = now; t.lastMin = (now - c.startedAt) / 60000;
     c.messages.push({ role: "user", text: text.slice(0, 1000) });
     S.save();
@@ -244,7 +244,7 @@
         <div class="chat-head">
           <a class="iconbtn" href="#/tutor" aria-label="Orqaga">←</a>
           <div class="avatar ko" style="font-size:15px;font-weight:700">선</div>
-          <div class="grow"><div style="font-size:15px;font-weight:700">선생님 · AI Tutor${c.forceOffline ? ` <span class="tag" style="margin-left:6px">offline</span>` : ""}</div>
+          <div class="grow"><div style="font-size:15px;font-weight:700">선생님 · AI ustoz${c.forceOffline ? ` <span class="tag" style="margin-left:6px">oflayn</span>` : ""}</div>
             <div class="muted" style="font-size:12px">${esc(topicLabel(c))} · ${MODES[c.mode].name} · TOPIK II</div></div>
           <button class="chip" data-act="chat-new">Yangi suhbat</button>
         </div>
@@ -294,7 +294,7 @@
           </div></div>
         <div class="stack" style="margin-top:auto;gap:8px">
           <button class="btn btn-sec btn-sm btn-block" data-act="quiz-weak" ${S.weakIds().length ? "" : "disabled"}>Zaif so'zlar bilan mashq</button>
-          <button class="btn btn-sec btn-sm btn-block" data-act="tutor-quiz">AI quiz yaratish</button>
+          <button class="btn btn-sec btn-sm btn-block" data-act="tutor-quiz">AI test yaratish</button>
         </div>
       </aside>
     </div>`;

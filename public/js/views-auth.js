@@ -13,7 +13,7 @@
       <div>
         <div class="hangul" style="font-size:104px">한국어<br>단어</div>
         <div style="height:1px;background:rgba(124,63,11,.18);margin:36px 0 26px;max-width:420px"></div>
-        <p>${S.DAYS} kunlik TOPIK II vocabulary kursi. Har kuni 33 so'z — o'rganish, active recall va spaced repetition bilan mustahkamlanadi.</p>
+        <p>${S.DAYS} kunlik TOPIK II lug'at kursi. Har kuni 33 so'z — o'rganish, faol eslash va oraliqli takrorlash bilan mustahkamlanadi.</p>
         <div class="auth-stats">
           <div><b>${S.TOTAL}</b><span>so'z</span></div>
           <div><b>${S.DAYS}</b><span>kun</span></div>
@@ -31,8 +31,8 @@
         <p>Bir oyda ${S.TOTAL} so'z. Har kuni 20–35 daqiqa, kechqurun takrorlash bilan.</p>
         <div class="auth-steps">
           <div><i>1</i>Kunlik dars — 33 yangi so'z</div>
-          <div><i>2</i>Active recall — 5 xil mashq</div>
-          <div><i>3</i>Spaced repetition — avtomatik takrorlash</div>
+          <div><i>2</i>Faol eslash — 5 xil mashq</div>
+          <div><i>3</i>Oraliqli takrorlash — so'z o'z vaqtida qaytadi</div>
         </div>
       </div>
       <div class="foot">TOPIK TEAM · online maktab</div>
@@ -49,7 +49,7 @@
 
   V.login = () => {
     const prev = S.lastUserPreview();
-    const lead = prev && prev.name ? `Day ${prev.day} sizni kutib turibdi${prev.streak ? ` — streak ${prev.streak} kun` : ""}.` : "Kursni davom ettirish uchun hisobingizga kiring.";
+    const lead = prev && prev.name ? `${prev.day}-kun sizni kutib turibdi${prev.streak ? ` — seriya ${prev.streak} kun` : ""}.` : "Kursni davom ettirish uchun hisobingizga kiring.";
     return `<div class="auth">${artLogin()}
       <div class="auth-form"><form data-form="login" novalidate>
         ${tabs("login")}
@@ -74,7 +74,7 @@
       <div class="auth-form"><form data-form="register" novalidate>
         ${tabs("register")}
         <h2>Hisob yaratish</h2>
-        <p class="lead">Keyingi qadamda darajangizni aniqlaymiz.</p>
+        <p class="lead">Keyingi qadamda kuniga nechta so'z o'rganishni tanlaysiz.</p>
         <label class="field-label" for="r-name">Ism</label>
         <input class="input" id="r-name" name="name" autocomplete="given-name" required maxlength="60" style="margin-bottom:18px" autofocus>
         <label class="field-label" for="r-email">Email</label>
@@ -169,7 +169,7 @@
   };
   Actions["google-off"] = () => U.toast("Google orqali kirish serverda sozlanmagan (GOOGLE_CLIENT_ID)");
   Actions.demo = async () => {
-    try { await S.demo(); App.go("#/dashboard"); U.toast("Demo hisob: Aziza — Day 5"); } catch (e) { U.toast(e.message); }
+    try { await S.demo(); App.go("#/dashboard"); U.toast("Demo hisob: Aziza — 5-kun"); } catch (e) { U.toast(e.message); }
   };
 
   // Google Identity Services button (only when the server has GOOGLE_CLIENT_ID)
@@ -250,14 +250,14 @@
         <p class="lead">Har kuni shu vaqtda telefon yoki kompyuteringizga bildirishnoma keladi — sayt yopiq bo'lsa ham. Profilda istalgan vaqtda o'zgartirasiz.</p>
         <div class="card ob-rem">
           <div class="ob-rem-row">
-            <div class="grow"><div class="t">Kunlik eslatmalar</div><div class="d">Dars, takrorlash va streak haqida</div></div>
+            <div class="grow"><div class="t">Kunlik eslatmalar</div><div class="d">Dars, takrorlash va seriya haqida</div></div>
             <button class="toggle lg ${r.on ? "on" : ""}" data-act="rem-toggle" data-k="on" role="switch" aria-checked="${r.on}" aria-label="Eslatmalar"></button>
           </div>
           ${timeRow("learn", "Bugungi dars", "Yangi so'zlarni o'rganish vaqti")}
           ${timeRow("review", "Takrorlash", "Kechki takrorlash vaqti")}
         </div>
         <div class="row wrap" style="gap:16px;margin-top:30px">
-          <button class="btn btn-p" style="padding:15px 30px" data-act="ob-finish">Day 1 ni boshlash</button>
+          <button class="btn btn-p" style="padding:15px 30px" data-act="ob-finish">1-kunni boshlash</button>
           <button class="btn btn-ghost" data-act="ob-go" data-step="1">Orqaga</button>
         </div></div>`;
     }

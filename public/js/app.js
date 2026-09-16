@@ -14,9 +14,9 @@
   const root = document.getElementById("app");
 
   const TITLES = {
-    dashboard: "Dashboard", course: "Kurs", review: "Takrorlash",
-    quiz: "Mashqlar", progress: "Progress", library: "Lug‘at",
-    achievements: "Yutuqlar", profile: "Profil", tutor: "AI Tutor",
+    dashboard: "Bosh sahifa", course: "Kurs", review: "Takrorlash",
+    quiz: "Mashqlar", progress: "Natijalar", library: "So'zlar bazasi",
+    achievements: "Yutuqlar", profile: "Profil", tutor: "AI ustoz",
     login: "Kirish", register: "Ro‘yxatdan o‘tish",
   };
 

@@ -72,7 +72,7 @@ export function reminderFor(kind, state, today) {
     while (day <= DAYS && state.days && state.days[day] && state.days[day].done) day++;
     if (day > DAYS) return null;
     const min = MINUTES[state.profile && state.profile.pace] || 22;
-    return { title: "Bugungi dars vaqti", body: `Day ${day} sizni kutmoqda — taxminan ${min} daqiqa.`, url: `/#/day/${day}`, tag: "learn" };
+    return { title: "Bugungi dars vaqti", body: `${day}-kun sizni kutmoqda — taxminan ${min} daqiqa.`, url: `/#/day/${day}`, tag: "learn" };
   }
   if (kind === "review") {
     const due = Object.values(state.words || {}).filter((w) => w && w.learned && w.due && w.due <= today).length;
@@ -84,7 +84,7 @@ export function reminderFor(kind, state, today) {
     let streak = 0;
     for (let d = prevDay(today); activeOn(act[d]); d = prevDay(d)) streak++;
     if (!streak) return null;
-    return { title: `${streak} kunlik streak xavf ostida`, body: "Bugun hali mashq qilmadingiz. Streakni saqlash uchun bir nechta so'z takrorlang.", url: "/#/review", tag: "streak" };
+    return { title: `${streak} kunlik seriya xavf ostida`, body: "Bugun hali mashq qilmadingiz. Seriyani saqlash uchun bir nechta so'z takrorlang.", url: "/#/review", tag: "streak" };
   }
   return null;
 }

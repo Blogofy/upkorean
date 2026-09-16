@@ -44,14 +44,14 @@ test("reminder content depends on what the learner still has to do today", () =>
   const studied = { act: { [TODAY]: { learned: 5, reviewed: 0, xp: 20, min: {} } } };
   assert.equal(reminderFor("learn", studied, TODAY), null);
   const fresh = { days: { 1: { done: true }, 2: { done: true } }, act: {}, profile: { pace: 33 } };
-  assert.match(reminderFor("learn", fresh, TODAY).body, /Day 3 .* 40 daqiqa/);
+  assert.match(reminderFor("learn", fresh, TODAY).body, /3-kun .* 40 daqiqa/);
 
   const words = { a: { learned: "x", due: "2026-09-15" }, b: { learned: "x", due: TODAY }, c: { learned: "x", due: "2026-09-20" }, d: { due: "2026-09-01" } };
   assert.match(reminderFor("review", { words }, TODAY).body, /^2 ta so'z/);
   assert.equal(reminderFor("review", { words: { c: words.c } }, TODAY), null);
 
   const act = { "2026-09-15": { learned: 1, min: {} }, "2026-09-14": { reviewed: 2, min: {} }, "2026-09-12": { learned: 3, min: {} } };
-  assert.equal(reminderFor("streak", { act }, TODAY).title, "2 kunlik streak xavf ostida");
+  assert.equal(reminderFor("streak", { act }, TODAY).title, "2 kunlik seriya xavf ostida");
   assert.equal(reminderFor("streak", { act: {} }, TODAY), null);
 });
 

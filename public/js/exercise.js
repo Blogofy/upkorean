@@ -3,16 +3,16 @@
   const U = window.U, S = window.S, esc = U.esc;
   const X = { session: null };
 
-  const TYPE_LABEL = { mc: "ACTIVE RECALL", mcr: "ACTIVE RECALL", type: "TYPING RECALL", listen: "LISTENING", sent: "SENTENCE COMPLETION" };
+  const TYPE_LABEL = { mc: "FAOL ESLASH", mcr: "FAOL ESLASH", type: "YOZIB ESLASH", listen: "TINGLASH", sent: "GAPNI TO'LDIRISH" };
   X.QUIZ_TYPES = {
-    mixed: { name: "Mixed quiz", desc: "Barcha turlardan aralash — eng samarali test.", mins: 0.3 },
-    mc: { name: "Multiple choice", desc: "4 variantdan to'g'ri ma'noni tanlash.", mins: 0.2 },
-    ko2uz: { name: "Korean → Uzbek", ko: "한 → 우", desc: "Tanish yo'nalish — passiv bilimni tekshiradi.", mins: 0.2 },
-    uz2ko: { name: "Uzbek → Korean", ko: "우 → 한", desc: "Qiyinroq — aktiv recall'ni mustahkamlaydi.", mins: 0.3 },
-    type: { name: "Typing", desc: "Hangul klaviaturada yozish — imloni tekshiradi.", mins: 0.45 },
-    listen: { name: "Listening", desc: "Audio eshitib so'zni aniqlash.", mins: 0.25 },
-    sent: { name: "Sentence completion", desc: "Gapda bo'sh joyni to'ldirish — kontekst.", mins: 0.4 },
-    checkpoint: { name: "Checkpoint test", desc: "6 kunlik material bo'yicha nazorat.", mins: 0.3 },
+    mixed: { name: "Aralash test", desc: "Barcha turlardan aralash — eng samarali test.", mins: 0.3 },
+    mc: { name: "Variantli test", desc: "4 variantdan to'g'ri ma'noni tanlash.", mins: 0.2 },
+    ko2uz: { name: "Koreyscha → o'zbekcha", ko: "한 → 우", desc: "Tanish yo'nalish — passiv bilimni tekshiradi.", mins: 0.2 },
+    uz2ko: { name: "O'zbekcha → koreyscha", ko: "우 → 한", desc: "Qiyinroq — faol eslashni mustahkamlaydi.", mins: 0.3 },
+    type: { name: "Yozish", desc: "Hangul klaviaturada yozish — imloni tekshiradi.", mins: 0.45 },
+    listen: { name: "Tinglash", desc: "Audio eshitib so'zni aniqlash.", mins: 0.25 },
+    sent: { name: "Gapni to'ldirish", desc: "Gapda bo'sh joyni to'ldirish — kontekst.", mins: 0.4 },
+    checkpoint: { name: "Nazorat testi", desc: "6 kunlik material bo'yicha nazorat.", mins: 0.3 },
   };
 
   // ---------- Item building ----------
@@ -68,7 +68,7 @@
     const st = S.state;
     if (!st.days[day]) st.days[day] = { stage: 0, pace: st.profile.pace, done: false, ok: 0, bad: 0, min: 0, xp: 0 };
     const ds = st.days[day];
-    if (ds.done) { X.startQuiz({ type: "mixed", ids: S.DAY_WORDS[day - 1].map((w) => w.id), count: 20, title: `Day ${day} takrori` }); return; }
+    if (ds.done) { X.startQuiz({ type: "mixed", ids: S.DAY_WORDS[day - 1].map((w) => w.id), count: 20, title: `${day}-kun takrori` }); return; }
     const plan = S.dayPlan(day);
     const stage = plan.stages[ds.stage];
     let items;
@@ -102,7 +102,7 @@
     let pool = (opts.ids || S.learnedIds()).filter((id) => S.word(id));
     const qt = opts.type || "mixed";
     if (qt === "sent") pool = pool.filter((id) => S.clozeExample(id));
-    if (qt === "listen" && !U.canListen()) { U.toast("Listening uchun audio mavjud emas"); return; }
+    if (qt === "listen" && !U.canListen()) { U.toast("Tinglash uchun audio mavjud emas"); return; }
     if (pool.length < 4 && qt !== "sent") { U.toast("Mashq uchun kamida 4 ta o'rganilgan so'z kerak"); return; }
     if (!pool.length) { U.toast("Bu mashq uchun misol gaplar hali yo'q"); return; }
     const count = Math.min(opts.count || 20, pool.length);
@@ -244,7 +244,7 @@
         ds.done = true; ds.doneAt = U.today();
         S.addXP(50);
         ds.xp = (ds.xp || 0) + gained();
-        S.log(`Day ${s.day} tugatildi — ${s.plan.words.length} so'z`, "ok");
+        S.log(`${s.day}-kun tugatildi — ${s.plan.words.length} so'z`, "ok");
         S.save();
         X.session = null;
         App.go(`#/complete/${s.day}`);
@@ -335,7 +335,7 @@
     const total = s.items.length;
     const done = s.finished ? total : s.idx;
     let lbl;
-    if (s.kind === "learn") lbl = it && it.type === "card" ? `DAY ${s.day} · LEARN · BLOK ${s.stage.block + 1}` : `DAY ${s.day} · ${s.stage.kind === "mixed" ? "MIXED QUIZ" : it ? TYPE_LABEL[it.type] : "ACTIVE RECALL"}`;
+    if (s.kind === "learn") lbl = it && it.type === "card" ? `${s.day}-KUN · O'RGANISH · ${s.stage.block + 1}-BLOK` : `${s.day}-KUN · ${s.stage.kind === "mixed" ? "ARALASH TEST" : it ? TYPE_LABEL[it.type] : "FAOL ESLASH"}`;
     else if (s.kind === "review") lbl = `TAKRORLASH · ${it ? TYPE_LABEL[it.type] : ""}`;
     else lbl = `MASHQ · ${esc(s.title).toUpperCase()}`;
     const badges = it && it.type !== "card"
@@ -386,7 +386,7 @@
           <div style="font-size:15px;color:var(--ink2);line-height:1.5">${uzPlain(ex)}</div>
           ${S.state.settings.roman ? `<div class="mono faint" style="font-size:12px;margin-top:12px">[ ${esc(U.romanize(ex.ko.replace(/[.?!]$/, "")))} ]</div>` : ""}
         </div>` : ""}
-        ${ex && ex.note ? `<div style="font-size:13px;color:var(--ink3);line-height:1.5">${esc(ex.note)}</div>` : `<div style="font-size:13px;color:var(--ink3);line-height:1.5">Day ${w.day} · TOPIK II lug'ati</div>`}
+        ${ex && ex.note ? `<div style="font-size:13px;color:var(--ink3);line-height:1.5">${esc(ex.note)}</div>` : `<div style="font-size:13px;color:var(--ink3);line-height:1.5">${w.day}-kun · TOPIK II lug'ati</div>`}
       </div>
       <div class="r">
         <div>
@@ -399,7 +399,7 @@
         <div>
           <div class="upl" style="margin-bottom:10px">Keyingi takrorlash</div>
           <div style="font-size:15px;font-weight:700;margin-bottom:4px">${days === 1 ? "Ertaga" : `${days} kundan keyin`}</div>
-          <div style="font-size:13px;color:var(--ink2);line-height:1.45">«Bildim» uchun. Javobingizga qarab interval o'zgaradi</div>
+          <div style="font-size:13px;color:var(--ink2);line-height:1.45">«Bildim» uchun. Javobingizga qarab keyingi takrorlash vaqti o'zgaradi</div>
         </div>
         <div class="kbd-hint" style="margin-top:auto;font-size:12px;line-height:1.6">1–4 · baholash<br>→ keyingi so'z</div>
       </div>
@@ -534,7 +534,7 @@
     const acc = s.ok + s.bad ? U.pct(s.ok, s.ok + s.bad) : null;
     return `<div style="width:100%;max-width:620px;text-align:center">
       <div class="done-glyph" aria-hidden="true">${learnedStage ? "좋아요" : "잘했어요"}</div>
-      <h3 style="margin:0 0 8px;font-size:32px;font-weight:800;letter-spacing:-.035em">${esc(s.stage.label)} tugadi</h3>
+      <h3 style="margin:0 0 8px;font-size:32px;font-weight:700;letter-spacing:-.02em">${esc(s.stage.label)} tugadi</h3>
       <p class="muted" style="margin:0 0 30px;font-size:16px;line-height:1.5">${learnedStage ? `${s.items.length} so'z ko'rib chiqildi.` : `${s.ok} / ${s.items.length} to'g'ri${acc !== null ? ` · ${acc}% aniqlik` : ""}.`}
         Keyingi bosqich: <b style="color:var(--ink)">${esc(s.nextStage.label)}</b> · ~${s.nextStage.min} daq</p>
       <div class="row" style="justify-content:center;gap:12px">
@@ -553,7 +553,7 @@
     return `<div style="width:100%;max-width:820px">
       <div class="center" style="margin-bottom:30px">
         <div class="done-glyph" aria-hidden="true">${s.ok === total ? "완벽" : "완료"}</div>
-        <h3 style="margin:0 0 8px;font-size:34px;font-weight:800;letter-spacing:-.035em">${title}</h3>
+        <h3 style="margin:0 0 8px;font-size:34px;font-weight:700;letter-spacing:-.02em">${title}</h3>
         <p class="muted" style="margin:0;font-size:16px">${s.ok} / ${total} to'g'ri javob${s.kind === "review" ? " · noto'g'rilar ertaga yana chiqadi" : ""}</p>
       </div>
       <div class="strip lg" style="margin-bottom:20px">
@@ -565,9 +565,9 @@
       ${wrong.length ? `<div class="card pad" style="margin-bottom:24px"><div class="card-title" style="margin-bottom:14px">Qayta ko'rish kerak</div>
         <div class="stack" style="gap:11px">${wrong.slice(0, 6).map((id) => { const w = S.word(id); return `<div class="row" style="gap:14px"><span class="ko" style="font-size:18px;font-weight:700;min-width:96px">${esc(w.ko)}</span><span class="grow muted">${esc(w.uz)}</span><span class="mono badc" style="font-size:12px">${U.dueLabel((S.ws(id) || {}).due || U.today())}</span></div>`; }).join("")}</div></div>` : ""}
       <div class="row wrap" style="justify-content:center;gap:12px">
-        ${wrong.length ? `<button class="btn btn-p" data-act="quiz-ids" data-ids="${wrong.join(",")}" data-primary>${wrong.length} ta xatoni mashq qilish</button>` : `<button class="btn btn-p" data-act="go" data-href="#/dashboard" data-primary>Dashboard</button>`}
+        ${wrong.length ? `<button class="btn btn-p" data-act="quiz-ids" data-ids="${wrong.join(",")}" data-primary>${wrong.length} ta xatoni mashq qilish</button>` : `<button class="btn btn-p" data-act="go" data-href="#/dashboard" data-primary>Bosh sahifa</button>`}
         <button class="btn btn-sec" data-act="go" data-href="${s.kind === "review" ? "#/review" : "#/quiz"}">${s.kind === "review" ? "Takrorlash markazi" : "Boshqa mashq"}</button>
-        ${wrong.length ? `<button class="btn btn-ghost" data-act="go" data-href="#/dashboard">Dashboard</button>` : ""}
+        ${wrong.length ? `<button class="btn btn-ghost" data-act="go" data-href="#/dashboard">Bosh sahifa</button>` : ""}
       </div></div>`;
   }
 

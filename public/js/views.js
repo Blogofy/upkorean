@@ -11,7 +11,7 @@
   // ---------- Small pieces ----------
   V.mbar = (id, sm, withCount) => {
     const s = S.mastery(id), weak = S.isWeak(id), m = S.isMastered(id);
-    const label = `Mastery ${s}/5${weak ? ", zaif" : m ? ", o'zlashtirilgan" : ""}`;
+    const label = `O'zlashtirish ${s}/5${weak ? ", zaif" : m ? ", o'zlashtirilgan" : ""}`;
     return `<span class="mbar-wrap"><span class="mbar ${weak ? "weak" : ""} ${sm ? "sm" : ""}" role="img" aria-label="${label}" title="${label}">${[1, 2, 3, 4, 5].map((k) => `<i class="${k <= s ? (m ? "on m" : "on") : ""}"></i>`).join("")}</span>${withCount ? `<span class="mbar-n" aria-hidden="true">${s}/5</span>` : ""}</span>`;
   };
   // Days 1–30 as one grid, each square a link to its day.
@@ -20,8 +20,8 @@
       const st = S.dayStatus(d);
       const name = { mastered: "o'zlashtirilgan", completed: "tugatilgan", progress: "davom etmoqda", available: "ochiq", locked: "yopiq" }[st];
       return st === "locked"
-        ? `<span class="dsq locked" role="img" aria-label="Day ${d} — ${name}" title="Day ${d} — ${name}">${d}</span>`
-        : `<a class="dsq ${st}" href="#/day/${d}" aria-label="Day ${d} — ${name}" title="Day ${d} — ${name}">${d}</a>`;
+        ? `<span class="dsq locked" role="img" aria-label="${d}-kun — ${name}" title="${d}-kun — ${name}">${d}</span>`
+        : `<a class="dsq ${st}" href="#/day/${d}" aria-label="${d}-kun — ${name}" title="${d}-kun — ${name}">${d}</a>`;
     }).join("");
     return `<div class="days">${days}</div>`;
   };
@@ -30,7 +30,7 @@
     const a = S.state.act;
     const active = (k) => !!a[k] && (a[k].learned > 0 || a[k].reviewed > 0 || Object.values(a[k].min || {}).reduce((x, y) => x + y, 0) >= 1);
     if (S.streak() > 0 || !S.state.bestStreak || active(today) || active(yesterday)) return "";
-    return `<span class="streak-lost">Streak uzildi (eng uzuni ${S.state.bestStreak} kun) — bugungi bitta mashq yangisini boshlaydi.</span> `;
+    return `<span class="streak-lost">Seriya uzildi (eng uzuni ${S.state.bestStreak} kun) — bugungi bitta mashq yangisini boshlaydi.</span> `;
   }
   const dot = (kind) => `<span style="width:7px;height:7px;border-radius:99px;flex:none;background:${kind === "ok" ? "var(--ok)" : kind === "pd" ? "var(--pd)" : "var(--p)"}"></span>`;
   const toggle = (on, act, k, label) => `<button class="toggle ${on ? "on" : ""}" data-act="${act}" data-k="${k}" role="switch" aria-checked="${!!on}" aria-label="${esc(label)}"></button>`;
@@ -39,8 +39,8 @@
 
   // ---------- Shell ----------
   const NAV = [
-    ["dashboard", "Dashboard"], ["course", "30 kunlik kurs"], ["review", "Takrorlash"], ["quiz", "Mashqlar"],
-    ["tutor", "AI Tutor"], ["library", "So'zlar bazasi"], null, ["progress", "Progress"], ["achievements", "Yutuqlar"],
+    ["dashboard", "Bosh sahifa"], ["course", "30 kunlik kurs"], ["review", "Takrorlash"], ["quiz", "Mashqlar"],
+    ["tutor", "AI ustoz"], ["library", "So'zlar bazasi"], null, ["progress", "Natijalar"], ["achievements", "Yutuqlar"],
   ];
   V.shell = (active, top, body) => {
     const lv = S.levelInfo();
@@ -60,7 +60,7 @@
         <nav class="nav" aria-label="Asosiy">${nav}</nav>
         <div class="side-foot">
           <a href="#/achievements" class="lvl" style="color:inherit">
-            <div class="row between" style="align-items:baseline"><span style="font-size:13px;font-weight:700">Level ${lv.level}</span>
+            <div class="row between" style="align-items:baseline"><span style="font-size:13px;font-weight:700">${lv.level}-daraja</span>
               <span class="mono muted" style="font-size:12px">${U.num(lv.xp)} / ${U.num(lv.next)}</span></div>
             <div class="prog"><div style="width:${lv.pct}%"></div></div>
           </a>
@@ -70,7 +70,7 @@
               <div class="grow"><div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${firstName()}</div>
                 <div class="faint" style="font-size:13px">TOPIK II</div></div>
             </a>
-            <button class="iconbtn" data-act="theme-toggle" title="Tema" aria-label="Temani almashtirish">◐</button>
+            <button class="iconbtn" data-act="theme-toggle" title="Mavzu" aria-label="Mavzuni almashtirish">◐</button>
           </div>
         </div>
       </aside>
@@ -81,10 +81,10 @@
       <button class="iconbtn menu-btn" data-act="menu" aria-label="Menyu">☰</button>
       <span class="title">${title}</span>${sub ? `<span class="sub">${sub}</span>` : ""}
       <div class="right">${right}
-        <div class="pill streak" title="Kunlik streak"><span>streak</span><b>${S.streak()}</b></div>
+        <div class="pill streak" title="Kunlik seriya"><span>seriya</span><b>${S.streak()}</b></div>
         <div class="pill xp hide-sm"><span>XP</span><b>${U.num(S.state.xp)}</b></div>
-        ${S.offline ? `<span class="offline-pill" title="Progress qurilmada saqlanadi va internet qaytganda sinxronlanadi">offline</span>` : ""}
-        ${S.syncError && !S.offline ? `<span class="badge-bad" title="Progress serverga saqlanmadi — qayta urinilmoqda">sync</span>` : ""}
+        ${S.offline ? `<span class="offline-pill" title="Natijalar qurilmada saqlanadi va internet qaytganda sinxronlanadi">oflayn</span>` : ""}
+        ${S.syncError && !S.offline ? `<span class="badge-bad" title="Natijalar serverga saqlanmadi — qayta urinilmoqda">saqlanmadi</span>` : ""}
       </div></header>`;
 
   Actions.menu = () => document.getElementById("side").classList.toggle("open");
@@ -111,7 +111,7 @@
       hero = `<div class="hero" style="margin-bottom:16px"><div>
         <div class="eyebrow">${S.DAYS} / ${S.DAYS} · KURS TUGADI</div>
         <div class="row" style="align-items:baseline;gap:10px;margin-bottom:5px"><span class="big">${S.TOTAL}</span><span class="bigsub">so'z o'rganildi</span></div>
-        <p>Endi asosiy ish — takrorlash. Mastery'ga yetmagan so'zlarni har kuni mustahkamlang.</p>
+        <p>Endi asosiy ish — takrorlash. To'liq o'zlashtirilmagan so'zlarni har kuni mustahkamlang.</p>
         <div class="row wrap"><button class="btn btn-pd" data-act="review-start" data-mode="due" ${due ? "" : "disabled"}>Takrorlash · ${due}</button>
         <a class="btn btn-glass" href="#/quiz">Mashqlar</a></div></div><div class="wm" aria-hidden="true">졸업</div></div>`;
     } else {
@@ -119,10 +119,10 @@
       const sample = block.slice(0, 3).map((id) => S.word(id).ko).join(", ");
       let big, bigsub, text;
       if (stage.kind === "learn") { big = block.length; bigsub = "yangi so'z"; text = `${ORD[stage.block] || `${stage.block + 1}-`} blok: ${esc(sample)}${block.length > 3 ? ` va yana ${block.length - 3} so'z.` : "."}`; }
-      else if (stage.kind === "recall") { big = block.length; bigsub = "so'z · active recall"; text = `${ORD[stage.block] || ""} blok so'zlarini mashq bilan mustahkamlash — ~${stage.min} daqiqa.`; }
+      else if (stage.kind === "recall") { big = block.length; bigsub = "so'z · faol eslash"; text = `${ORD[stage.block] || ""} blok so'zlarini mashq bilan mustahkamlash — ~${stage.min} daqiqa.`; }
       else { big = Math.min(12, plan.words.length); bigsub = "savol · mixed quiz"; text = `Kunning oxirgi bosqichi — barcha ${plan.words.length} so'z bo'yicha aralash test.`; }
       hero = `<div class="hero" style="margin-bottom:16px"><div style="min-width:0">
-        <div class="eyebrow">DAY ${cd} / ${S.DAYS} · BUGUNGI DARS</div>
+        <div class="eyebrow">${cd}-KUN / ${S.DAYS} · BUGUNGI DARS</div>
         <div class="row" style="align-items:baseline;gap:10px;margin-bottom:5px"><span class="big">${big}</span><span class="bigsub">${bigsub}</span></div>
         <p>${text}</p>
         <div class="bar"><div style="width:${U.pct(ds.stage, plan.stages.length)}%"></div></div>
@@ -142,12 +142,12 @@
     const body = `<div class="page">
       <div style="margin-bottom:16px">
         <h3 class="page-h">Salom, ${firstName()}</h3>
-        <p class="page-p">${lostStreakNote()}${done ? `Kurs tugadi — bugun ${due} ta takrorlash kutmoqda.` : `Day ${cd} — ${remaining} so'z bugun${due ? `, kechqurun ${due} ta takrorlash` : ""}.`}</p>
+        <p class="page-p">${lostStreakNote()}${done ? `Kurs tugadi — bugun ${due} ta takrorlash kutmoqda.` : `${cd}-kun — bugun ${remaining} so'z${due ? `, kechqurun ${due} ta takrorlash` : ""}.`}</p>
       </div>
       ${hero}
       <div class="strip" style="margin-bottom:16px">
         <div><div class="upl s">O'rganilgan</div><div class="v"><b>${learned}</b><span>/ ${S.TOTAL}</span></div></div>
-        <div><div class="upl s">Mastered</div><div class="v"><b>${mastered}</b><span>so'z</span></div></div>
+        <div><div class="upl s">O'zlashtirilgan</div><div class="v"><b>${mastered}</b><span>so'z</span></div></div>
         <div><div class="upl s">Aniqlik</div><div class="v"><b>${acc ?? "—"}</b><span>${acc === null ? "" : "%"}</span></div></div>
         <div><div class="upl s">Bu hafta</div><div class="v"><b>${wk.v}</b><span>${wk.u}</span></div></div>
         <div><div class="upl s">Zaif so'zlar</div><div class="v"><b class="${weak.length ? "badc" : ""}">${weak.length}</b><span>ta</span></div></div>
@@ -179,7 +179,7 @@
               return `<div class="col" title="${w.lbl}: ${Math.round(w.min)} daq"><div class="${cls}" style="height:${h}px"></div><span class="${w.today ? "cur" : ""}">${w.lbl}</span></div>`; }).join("")}</div>
           </div>
           <div class="card pad" style="padding:18px">
-            <div class="row between" style="margin-bottom:12px"><span class="card-title">Kunlik challenge</span>
+            <div class="row between" style="margin-bottom:12px"><span class="card-title">Kunlik vazifa</span>
               <span class="mono ${ch.done ? "okc" : "accent"}" style="font-size:12px">${ch.done ? "bajarildi" : `+${ch.reward} XP`}</span></div>
             <div class="stack" style="gap:10px">${ch.items.map((i) => `<div><div class="row between" style="margin-bottom:5px"><span style="font-size:13px">${esc(i.label)}</span>
               <span class="mono ${i.cur >= i.goal ? "okc" : "faint"}" style="font-size:12px">${i.cur >= i.goal ? "✓" : `${i.cur}/${i.goal}`}</span></div>
@@ -187,7 +187,7 @@
           </div>
         </div>
       </div></div>`;
-    return V.shell("dashboard", V.topbar("Dashboard", U.fmtLong(U.today())), body);
+    return V.shell("dashboard", V.topbar("Bosh sahifa", U.fmtLong(U.today())), body);
   };
 
   // ---------- Course roadmap (C1) ----------
@@ -198,30 +198,30 @@
     const tile = (d) => {
       const st = S.dayStatus(d), ds = S.dayState(d), words = S.DAY_WORDS[d - 1], n = words.length;
       const head = S.DAY_WORDS[d - 1][0].ko;
-      if (st === "locked") return `<div class="dtile locked" aria-disabled="true"><div class="dn">DAY ${d}</div><div class="dw">${esc(head)}</div><div class="ds">yopiq</div></div>`;
+      if (st === "locked") return `<div class="dtile locked" aria-disabled="true"><div class="dn">${d}-KUN</div><div class="dw">${esc(head)}</div><div class="ds">yopiq</div></div>`;
       let sub = "", right = "";
-      if (st === "mastered") { sub = `${n} so'z · mastered`; right = "✓"; }
+      if (st === "mastered") { sub = `${n} so'z · o'zlashtirilgan`; right = "✓"; }
       else if (st === "completed") { sub = `${n} so'z · ${U.pct(ds.ok || 0, (ds.ok || 0) + (ds.bad || 0)) || 100}%`; right = "✓"; }
       else if (st === "progress") { sub = `${S.dayLearned(d)} / ${n} so'z`; right = d === cur ? `<span style="font-size:12px;font-weight:700;color:var(--pd)">bugun</span>` : ""; }
       else sub = `${n} so'z · ochiq`;
       const plan = st === "progress" ? S.dayPlan(d) : null;
-      return `<a href="#/day/${d}" class="dtile ${st}" style="color:inherit"><div class="dn"><span>DAY ${d}</span><span>${right}</span></div>
+      return `<a href="#/day/${d}" class="dtile ${st}" style="color:inherit"><div class="dn"><span>${d}-KUN</span><span>${right}</span></div>
         <div class="dw">${esc(head)}</div><div class="ds">${sub}</div>
         ${plan ? `<div class="mini"><div style="width:${U.pct(ds.stage || 0, plan.stages.length)}%"></div></div>` : ""}</a>`;
     };
     const body = `<div class="page" style="padding:32px">
       <div class="row wrap between" style="align-items:flex-end;margin-bottom:22px;gap:16px">
-        <div><h3 class="page-h" style="font-size:26px">TOPIK II vocabulary · ${S.DAYS} kun</h3>
-          <p class="page-p">Har kunda ~33 so'z. Kun tugallanishi uchun learn + recall bosqichlari kerak.</p></div>
+        <div><h3 class="page-h" style="font-size:26px">TOPIK II lug'ati · ${S.DAYS} kun</h3>
+          <p class="page-p">Har kunda ~33 so'z. Kun tugashi uchun o'rganish va faol eslash bosqichlari kerak.</p></div>
         <div class="legend">
-          <span><i style="background:var(--pdb)"></i>Mastered</span><span><i style="background:var(--p)"></i>Completed</span>
-          <span><i style="background:var(--pl);border:1.5px solid var(--p)"></i>In progress</span>
-          <span><i style="background:var(--sf);border:1px solid var(--line)"></i>Available</span><span><i style="background:var(--sf2);border:1px solid var(--line)"></i>Locked</span>
+          <span><i style="background:var(--pdb)"></i>O'zlashtirilgan</span><span><i style="background:var(--p)"></i>Tugatilgan</span>
+          <span><i style="background:var(--pl);border:1.5px solid var(--p)"></i>Davom etmoqda</span>
+          <span><i style="background:var(--sf);border:1px solid var(--line)"></i>Ochiq</span><span><i style="background:var(--sf2);border:1px solid var(--line)"></i>Yopiq</span>
         </div>
       </div>
       <div class="dgrid">${Array.from({ length: shown }, (_, i) => tile(i + 1)).join("")}</div>
       ${shown < S.DAYS ? `<div class="card row wrap" style="gap:14px;margin-top:20px;padding:18px 22px">
-        <span class="mono faint" style="font-size:12px">DAY ${shown + 1} — ${S.DAYS}</span>
+        <span class="mono faint" style="font-size:12px">${shown + 1}–${S.DAYS}-KUNLAR</span>
         <span class="grow muted" style="font-size:14px">Qolgan ${S.DAYS - shown} kun ketma-ket ochiladi: joriy kundan 2 kun oldinga o'tish mumkin.</span>
         <button class="link" data-act="course-all">Hammasini ko'rish</button></div>` : ""}
     </div>`;
@@ -245,12 +245,12 @@
     const body = `<div class="page collapse-md" style="padding:36px 48px;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:44px">
       <div style="min-width:0">
         <div class="row wrap between" style="align-items:flex-end;margin-bottom:24px;gap:16px">
-          <div><div class="eyebrow" style="margin-bottom:10px">DAY ${d} / ${S.DAYS}</div>
+          <div><div class="eyebrow" style="margin-bottom:10px">${d}-KUN / ${S.DAYS}</div>
             <h3 class="page-h" style="font-size:30px;margin-bottom:6px">${esc(S.dayTitle(d))}</h3>
             <p class="page-p">${words.length} so'z · ${plan.blocks.length} blok · ~${plan.minutes} daqiqa</p></div>
           ${cta}
         </div>
-        ${locked ? `<div class="card pad" style="margin-bottom:16px;background:var(--sf2)"><span class="muted">Bu kun Day ${d - 2} tugagandan keyin ochiladi. Hozirgi kun: <a href="#/day/${S.currentDay()}">Day ${S.currentDay()}</a>.</span></div>` : ""}
+        ${locked ? `<div class="card pad" style="margin-bottom:16px;background:var(--sf2)"><span class="muted">Bu kun ${d - 2}-kun tugagandan keyin ochiladi. Hozirgi kun: <a href="#/day/${S.currentDay()}">${S.currentDay()}-kun</a>.</span></div>` : ""}
         <div class="wgrid">${shownWords.map((id) => { const w = S.word(id); return `<button class="wtile" data-act="word" data-id="${id}">
             <div class="k">${esc(w.ko)}</div><div class="row between" style="gap:8px"><span class="u">${esc(w.uz)}</span>${S.isLearned(id) ? V.mbar(id, true) : ""}</div></button>`; }).join("")}
           ${!dayAllWords && words.length > 14 ? `<button class="wtile" style="display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:var(--pd)" data-act="day-all">+${words.length - 14} so'z</button>` : ""}
@@ -267,7 +267,7 @@
               <span class="mono faint" style="font-size:12px">${sg.min} daq</span></div>`; }).join("")}</div>
         </div>
         <div class="card-pl" style="padding:20px">
-          <div style="font-size:13px;font-weight:700;margin-bottom:8px">Spaced repetition</div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:8px">Oraliqli takrorlash</div>
           <p style="margin:0;font-size:13px;line-height:1.55">Bugungi so'zlar 1, 3, 7 va 16-kunlarda avtomatik qaytariladi. Xato qilgan so'z ertaga yana chiqadi.</p>
         </div>
         <div class="card pad">
@@ -276,7 +276,7 @@
           ${started && (ds.stage > 0 || ds.done) ? `<div class="faint" style="font-size:13px;margin-top:8px">Kun boshlangan — o'lcham keyingi kunlarga Profil'dan o'zgartiriladi.</div>` : ""}
         </div>
       </div></div>`;
-    const top = `<header class="topbar"><a class="back" href="#/course">← 30 kunlik kurs</a><span class="sub" style="display:inline">DAY ${d}</span>
+    const top = `<header class="topbar"><a class="back" href="#/course">← 30 kunlik kurs</a><span class="sub" style="display:inline">${d}-KUN</span>
       <div class="right"><div class="pill streak">${pill}</div></div></header>`;
     return `<div class="main" style="min-height:100vh">${top}${body}</div>`;
   };
@@ -305,8 +305,8 @@
     return `<div class="ex"><div class="ex-body"><div style="width:100%;max-width:960px">
       <div class="center" style="margin-bottom:34px">
         <div class="done-glyph" aria-hidden="true">완료</div>
-        <h3 style="margin:0 0 8px;font-size:36px;font-weight:800;letter-spacing:-.035em">Day ${d} tugadi</h3>
-        <p class="muted" style="margin:0;font-size:16px">${words.length} so'z o'rganildi. Streak ${S.streak()} kunga yetdi.</p>
+        <h3 style="margin:0 0 8px;font-size:36px;font-weight:700;letter-spacing:-.02em">${d}-kun tugadi</h3>
+        <p class="muted" style="margin:0;font-size:16px">${words.length} so'z o'rganildi. Seriya ${S.streak()} kunga yetdi.</p>
       </div>
       <div class="strip lg" style="margin-bottom:20px">
         <div><div class="upl s">Aniqlik</div><div class="v"><b>${acc}</b><span>%</span></div></div>
@@ -328,9 +328,9 @@
       </div>
       <div class="row wrap" style="justify-content:center;gap:12px">
         ${weak.length ? `<button class="btn btn-p" data-act="quiz-ids" data-ids="${weak.map((w) => w.id).join(",")}">${weak.length} zaif so'zni mashq qilish</button>`
-          : d < S.DAYS ? `<a class="btn btn-p" href="#/day/${d + 1}">Day ${d + 1} ga o'tish</a>` : ""}
-        <a class="btn btn-sec" href="#/tutor">AI Tutor · tez kunda</a>
-        <a class="btn btn-ghost" href="#/dashboard">Dashboard</a>
+          : d < S.DAYS ? `<a class="btn btn-p" href="#/day/${d + 1}">${d + 1}-kunga o'tish</a>` : ""}
+        <a class="btn btn-sec" href="#/tutor">AI ustoz · tez kunda</a>
+        <a class="btn btn-ghost" href="#/dashboard">Bosh sahifa</a>
       </div></div></div></div>`;
   };
 
@@ -341,10 +341,10 @@
     const due = lists.due;
     const weakDue = due.filter(S.isWeak).length;
     const days = [...new Set(due.map((id) => S.word(id).day))].sort((a, b) => a - b);
-    const range = days.length ? (days.length === 1 ? `Day ${days[0]}` : `Day ${days[0]}–${days[days.length - 1]}`) : "";
+    const range = days.length ? (days.length === 1 ? `${days[0]}-kun` : `${days[0]}–${days[days.length - 1]}-kunlar`) : "";
     const cards = [
-      ["due", "Due today", "interval kelgan so'zlar"], ["weak", "Weak", "2+ marta xato"],
-      ["flag", "Difficult", "o'zim belgilaganlar"], ["forgot", "Forgotten", "mastery tushgan"],
+      ["due", "Bugun", "takrorlash vaqti kelgan"], ["weak", "Zaif", "2+ marta xato"],
+      ["flag", "Belgilangan", "o'zim belgilaganlar"], ["forgot", "Unutilgan", "darajasi tushgan"],
     ];
     const rows = lists[reviewTab];
     const shown = reviewAll ? rows : rows.slice(0, 8);
@@ -394,9 +394,9 @@
   function checkpointInfo() {
     const done = S.daysDone();
     const block = Math.floor(done / 6);
-    if (!block) return { open: false, text: "Day 6 dan keyin ochiladi — 6 kunlik material." };
+    if (!block) return { open: false, text: "6-kundan keyin ochiladi — 6 kunlik material." };
     const a = (block - 1) * 6 + 1, b = block * 6;
-    return { open: true, a, b, text: `Day ${a}–${b} bo'yicha nazorat — 6 kunlik material.` };
+    return { open: true, a, b, text: `${a}–${b}-kunlar bo'yicha nazorat — 6 kunlik material.` };
   }
   V.quiz = () => {
     const learned = S.learnedIds();
@@ -419,7 +419,7 @@
     const body = learned.length < 4 ? `<div class="page"><div class="card pad center" style="max-width:560px;margin:40px auto;padding:40px">
         <div class="done-glyph" aria-hidden="true" style="font-size:44px">연습</div><h3 style="margin:0 0 8px;font-size:22px">Mashq uchun so'z yo'q</h3>
         <p class="muted" style="margin:0 0 20px">Avval kunlik darsda kamida 4 ta so'z o'rganing.</p>
-        <button class="btn btn-p" data-act="learn" data-day="${S.currentDay()}">Day ${S.currentDay()} ni boshlash</button></div></div>`
+        <button class="btn btn-p" data-act="learn" data-day="${S.currentDay()}">${S.currentDay()}-kunni boshlash</button></div></div>`
       : `<div class="page collapse-md" style="padding:36px 48px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:44px">
       <div style="min-width:0">
         <h3 class="page-h">Mashq turini tanlang</h3>
@@ -448,7 +448,7 @@
             <span class="mono" style="font-size:13px;font-weight:500;color:${p >= 85 ? "var(--ok)" : p < 70 ? "var(--bad)" : "var(--ink)"}">${r.ok}/${r.total}</span></div>`; }).join("")
             : `<div class="faint" style="font-size:13px">Hali mashq qilinmagan.</div>`}</div>
         </div>
-        <button class="btn btn-p" style="padding:16px 22px" data-act="quiz-start" ${quizCfg.type === "checkpoint" || pool.length >= 4 || (quizCfg.type === "sent" && sentCount) ? "" : "disabled"}>${esc(X.QUIZ_TYPES[quizCfg.type].name)}'ni boshlash</button>
+        <button class="btn btn-p" style="padding:16px 22px" data-act="quiz-start" ${quizCfg.type === "checkpoint" || pool.length >= 4 || (quizCfg.type === "sent" && sentCount) ? "" : "disabled"}>Mashqni boshlash</button>
         ${pool.length < 4 && quizCfg.type !== "checkpoint" ? `<div class="faint center" style="font-size:12px;margin-top:-6px">Tanlangan manbada so'z yetarli emas</div>` : ""}
       </div></div>`;
     return V.shell("quiz", V.topbar("Mashqlar", `${learned.length} o'rganilgan so'z bazasidan`), body);
@@ -462,7 +462,7 @@
     if (quizCfg.type === "checkpoint") {
       const cp = checkpointInfo();
       const ids = S.WORDS.filter((w) => w.day >= cp.a && w.day <= cp.b).map((w) => w.id);
-      X.startQuiz({ type: "checkpoint", ids, count: 30, timer: quizCfg.timer, instant: quizCfg.instant, title: `Checkpoint · Day ${cp.a}–${cp.b}` });
+      X.startQuiz({ type: "checkpoint", ids, count: 30, timer: quizCfg.timer, instant: quizCfg.instant, title: `Nazorat testi · ${cp.a}–${cp.b}-kunlar` });
       return;
     }
     X.startQuiz({ type: quizCfg.type, ids: quizPool(), count: quizCfg.count, timer: quizCfg.timer, instant: quizCfg.instant });
@@ -505,8 +505,8 @@
             <div style="height:14px;border-radius:8px;background:var(--line);overflow:hidden;display:flex">
               <div style="width:${(mastered / S.TOTAL) * 100}%;background:var(--pdb)"></div><div style="width:${(learning / S.TOTAL) * 100}%;background:var(--p)"></div></div>
             <div class="legend" style="margin-top:12px;gap:20px">
-              <span style="font-size:13px"><i style="background:var(--pdb)"></i>Mastered ${mastered}</span>
-              <span style="font-size:13px"><i style="background:var(--p)"></i>Learning ${learning}</span>
+              <span style="font-size:13px"><i style="background:var(--pdb)"></i>O'zlashtirilgan ${mastered}</span>
+              <span style="font-size:13px"><i style="background:var(--p)"></i>O'rganilmoqda ${learning}</span>
               <span style="font-size:13px"><i style="background:var(--line)"></i>Qolgan ${S.TOTAL - learned}</span></div>
           </div>
         </div>
@@ -528,8 +528,8 @@
             <div class="card-title" style="margin-bottom:16px">Takrorlash samarasi</div>
             <div class="stack" style="gap:14px">
               <div class="row between" style="align-items:baseline"><span class="muted" style="font-size:13px">Birinchi urinishda to'g'ri</span><span style="font-size:20px;font-weight:800">${ft.total ? U.pct(ft.ok, ft.total) + "%" : "—"}</span></div><div class="sep"></div>
-              <div class="row between" style="align-items:baseline"><span class="muted" style="font-size:13px">Interval o'rtacha</span><span style="font-size:20px;font-weight:800">${avgInt} kun</span></div><div class="sep"></div>
-              <div class="row between" style="align-items:baseline"><span class="muted" style="font-size:13px">Mastery'ga yetish</span><span style="font-size:20px;font-weight:800">${avgSeen} ko'rish</span></div><div class="sep"></div>
+              <div class="row between" style="align-items:baseline"><span class="muted" style="font-size:13px">O'rtacha oraliq</span><span style="font-size:20px;font-weight:800">${avgInt} kun</span></div><div class="sep"></div>
+              <div class="row between" style="align-items:baseline"><span class="muted" style="font-size:13px">O'zlashtirishgacha</span><span style="font-size:20px;font-weight:800">${avgSeen} ko'rish</span></div><div class="sep"></div>
               <div class="row between" style="align-items:baseline"><span class="muted" style="font-size:13px">Esdan chiqqan</span><span style="font-size:20px;font-weight:800;color:var(--bad)">${S.forgottenIds().length} so'z</span></div>
             </div>
           </div>
@@ -537,7 +537,7 @@
       </div>
       <div class="stack" style="gap:14px">
         <div class="card-pl" style="padding:22px">
-          <div class="upl" style="font-size:12px;color:var(--on-pl3);margin-bottom:14px">Streak</div>
+          <div class="upl" style="font-size:12px;color:var(--on-pl3);margin-bottom:14px">Seriya</div>
           <div style="font-size:44px;font-weight:800;letter-spacing:-.04em;color:var(--pd);line-height:1;margin-bottom:6px">${streak}</div>
           <div style="font-size:14px;margin-bottom:18px">kun ketma-ket · eng uzun ${S.state.bestStreak}</div>
           <div class="row" style="gap:4px">${weekDays.map((k) => `<div class="grow" title="${U.fmtDayMonth(k)}" style="height:26px;border-radius:5px;background:${S.dayMinutes(k) >= 1 || (S.state.act[k] || {}).learned ? "var(--pdb)" : "rgba(124,63,11,.25)"}"></div>`).join("")}</div>
@@ -547,12 +547,12 @@
           <div style="font-size:32px;font-weight:800;letter-spacing:-.035em;line-height:1;margin-bottom:5px">${U.durText(total)}</div>
           <div class="muted" style="font-size:13px;margin-bottom:18px">jami · kuniga o'rtacha ${days ? Math.round(total / days) : 0} daq</div>
           <div class="sep" style="margin-bottom:16px"></div>
-          <div class="stack" style="gap:9px">${[["Learn", "learn"], ["Review", "review"], ["Quiz", "quiz"], ["AI Tutor", "tutor"]].map(([l, k]) => `<div class="row between"><span class="muted" style="font-size:13px">${l}</span><span class="mono" style="font-size:13px">${U.durText(S.minutesBy(k))}</span></div>`).join("")}</div>
+          <div class="stack" style="gap:9px">${[["O'rganish", "learn"], ["Takrorlash", "review"], ["Mashqlar", "quiz"], ["AI ustoz", "tutor"]].map(([l, k]) => `<div class="row between"><span class="muted" style="font-size:13px">${l}</span><span class="mono" style="font-size:13px">${U.durText(S.minutesBy(k))}</span></div>`).join("")}</div>
         </div>
         <div class="card" style="padding:20px 22px"><div style="font-size:13px;font-weight:700;margin-bottom:10px">Tavsiya</div><p class="muted" style="margin:0;font-size:13px;line-height:1.55">${esc(tip)}</p></div>
       </div></div>`;
     const tabs = `<div class="seg">${[[30, "30 kun"], [7, "7 kun"], [0, "Hammasi"]].map(([v, l]) => `<button class="${progRange === v ? "on" : ""}" data-act="prog-range" data-v="${v}">${l}</button>`).join("")}</div>`;
-    return V.shell("progress", V.topbar("Progress", progRange ? `oxirgi ${progRange} kun` : "butun davr", tabs), body);
+    return V.shell("progress", V.topbar("Natijalar", progRange ? `oxirgi ${progRange} kun` : "butun davr", tabs), body);
   };
   Actions["prog-range"] = (el) => { progRange = Number(el.dataset.v); App.render(); };
 
@@ -589,7 +589,7 @@
     for (let p = Math.max(1, lib.page - 2); p <= Math.min(pages, lib.page + 2); p++) pg.push(p);
     return `<div class="list"><div class="li head" style="gap:18px">
         <span style="min-width:100px">So'z</span><span class="grow">Ma'nosi</span><span style="min-width:44px">Kun</span>
-        <span style="min-width:124px" class="hide-sm">Mastery</span><span style="min-width:72px" class="hide-sm hide-lg">Ko'rishlar</span><span style="min-width:72px;text-align:right">Keyingi</span></div>
+        <span style="min-width:124px" class="hide-sm">O'zlashtirish</span><span style="min-width:72px" class="hide-sm hide-lg">Ko'rishlar</span><span style="min-width:72px;text-align:right">Keyingi</span></div>
       ${slice.length ? slice.map((id) => {
         const w = S.word(id), st = S.ws(id), weak = S.isWeak(id), late = st && st.learned && st.due < U.today();
         return `<button class="li ${weak ? "bad" : ""}" style="gap:18px;padding:12px 20px" data-act="word" data-id="${id}">
@@ -608,7 +608,7 @@
   V.library = () => {
     const { sets } = libRows();
     const learnedDays = [...new Set(S.learnedIds().map((id) => S.word(id).day))].sort((a, b) => a - b);
-    const st = [["all", "Hammasi"], ["mastered", "Mastered"], ["learning", "Learning"], ["weak", "Weak"], ["recent", "Yaqinda o'rganilgan"], ["flag", "Belgilanganlar"], ["unlearned", "Hali o'rganilmagan"]];
+    const st = [["all", "Hammasi"], ["mastered", "O'zlashtirilgan"], ["learning", "O'rganilmoqda"], ["weak", "Zaif"], ["recent", "Yaqinda o'rganilgan"], ["flag", "Belgilanganlar"], ["unlearned", "Hali o'rganilmagan"]];
     const body = `<div class="page collapse-md" style="padding:28px 40px;display:grid;grid-template-columns:220px minmax(0,1fr);gap:32px">
       <div class="stack" style="gap:22px">
         <div><div class="upl" style="margin-bottom:10px">Holat</div>
@@ -616,7 +616,7 @@
         <div><div class="upl" style="margin-bottom:10px">Kun</div>
           <div class="days">${(lib.status === "unlearned" ? Array.from({ length: S.DAYS }, (_, i) => i + 1) : learnedDays).map((d) => `<button class="dsq ${lib.days.includes(d) ? "completed" : "available"}" style="width:28px;height:28px" data-act="lib-day" data-d="${d}">${d}</button>`).join("") || `<span class="faint" style="font-size:12px">—</span>`}</div></div>
         <div><div class="upl" style="margin-bottom:10px">Saralash</div>
-          ${U.dropdown({ change: "lib-sort", value: lib.sort, label: "Saralash", block: true, options: [["mastery-asc", "Mastery: pastdan"], ["mastery-desc", "Mastery: yuqoridan"], ["due", "Keyingi takrorlash"], ["day", "Kun bo'yicha"], ["alpha", "Alifbo (가나다)"]] })}</div>
+          ${U.dropdown({ change: "lib-sort", value: lib.sort, label: "Saralash", block: true, options: [["mastery-asc", "O'zlashtirish: kamidan"], ["mastery-desc", "O'zlashtirish: ko'pidan"], ["due", "Keyingi takrorlash"], ["day", "Kun bo'yicha"], ["alpha", "Alifbo (가나다)"]] })}</div>
       </div>
       <div style="min-width:0">
         <div class="row wrap" style="gap:10px;margin-bottom:18px">
@@ -653,14 +653,14 @@
   Actions.word = (el) => V.wordModal(el.dataset.id);
   V.wordModal = (id) => {
     const w = S.word(id), st = S.ws(id), ex = S.example(id);
-    U.modal(`Day ${w.day} · so'z`, `
+    U.modal(`${w.day}-kun so'zi`, `
       <div class="row" style="align-items:baseline;gap:14px;margin-bottom:4px"><span class="ko" style="font-size:44px;font-weight:700;letter-spacing:-.03em">${esc(w.ko)}</span>
         <button class="audio-dot" data-act="say" data-kind="words" data-id="${esc(id)}" data-text="${esc(w.ko)}" aria-label="Talaffuz">▸</button></div>
       <div class="mono faint" style="font-size:14px;margin-bottom:18px">[ ${esc(U.romanize(w.ko))} ]</div>
       <div class="upl" style="margin-bottom:6px">Ma'nosi</div>
       <div style="font-size:22px;font-weight:700;margin-bottom:18px">${esc(w.uz)}</div>
       ${ex ? `<div class="example"><div class="s" style="font-size:18px">${esc(ex.ko).replace(esc(ex.hl), `<b>${esc(ex.hl)}</b>`)} <button class="audio-dot" style="width:28px;height:28px;font-size:12px;vertical-align:middle" data-act="say" data-kind="sentences" data-id="${esc(id)}" data-text="${esc(ex.ko)}" aria-label="Gapni eshitish">▸</button></div><div class="muted" style="font-size:14px">${esc(ex.uz.replace(/[{}]/g, ""))}</div></div>` : ""}
-      ${st && st.learned ? `<div class="strip" style="margin:16px 0"><div><div class="upl s">Mastery</div><div class="v" style="margin-top:10px">${V.mbar(id)}</div></div>
+      ${st && st.learned ? `<div class="strip" style="margin:16px 0"><div><div class="upl s">O'zlashtirish</div><div class="v" style="margin-top:10px">${V.mbar(id)}</div></div>
         <div><div class="upl s">Ko'rish</div><div class="v"><b>${st.seen}</b><span>${st.ok}✓ ${st.bad}✕</span></div></div>
         <div><div class="upl s">Keyingi</div><div class="v"><b style="font-size:17px">${U.dueLabel(st.due)}</b></div></div></div>`
         : `<p class="faint" style="font-size:13px">Bu so'z hali o'rganilmagan.</p>`}
@@ -690,19 +690,19 @@
     const body = `<div class="page wide collapse-md" style="display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:36px">
       <div style="min-width:0">
         <div class="card-pl row wrap" style="gap:26px;padding:24px 28px;border-radius:16px;margin-bottom:26px">
-          <div><div class="upl" style="font-size:12px;color:var(--on-pl3);margin-bottom:8px">Level ${lv.level}</div>
+          <div><div class="upl" style="font-size:12px;color:var(--on-pl3);margin-bottom:8px">${lv.level}-daraja</div>
             <div style="font-size:34px;font-weight:800;letter-spacing:-.035em;color:var(--on-pl);line-height:1">${U.num(lv.xp)} XP</div></div>
           <div class="grow" style="min-width:200px"><div style="height:10px;border-radius:6px;background:rgba(124,63,11,.16);overflow:hidden;margin-bottom:8px"><div style="height:100%;width:${lv.pct}%;border-radius:6px;background:var(--pdb)"></div></div>
-            <div class="row between" style="font-size:13px"><span>Level ${lv.level + 1} gacha ${U.num(lv.toNext)} XP</span><span>${U.num(lv.next)}</span></div></div>
+            <div class="row between" style="font-size:13px"><span>${lv.level + 1}-darajagacha ${U.num(lv.toNext)} XP</span><span>${U.num(lv.next)}</span></div></div>
         </div>
         <div class="card-title" style="margin-bottom:14px">Ochilgan yutuqlar <span class="faint mono" style="font-size:12px;font-weight:400">${open.length}</span></div>
-        <div class="two-sm" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:26px">${open.length ? open.map(ach).join("") : `<div class="faint" style="grid-column:1/-1;font-size:14px">Birinchi yutuq Day 1 tugagach ochiladi.</div>`}</div>
+        <div class="two-sm" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:26px">${open.length ? open.map(ach).join("") : `<div class="faint" style="grid-column:1/-1;font-size:14px">Birinchi yutuq 1-kun tugagach ochiladi.</div>`}</div>
         <div class="card-title" style="margin-bottom:14px">Yopiq yutuqlar</div>
         <div class="two-sm" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">${closed.map(ach).join("")}</div>
       </div>
       <div class="stack" style="gap:16px">
         <div class="card" style="padding:22px">
-          <div class="row between" style="margin-bottom:16px"><span class="card-title">Leaderboard</span><span class="mono faint" style="font-size:12px">bu hafta${board && board.total ? ` · ${board.total} ishtirokchi` : ""}</span></div>
+          <div class="row between" style="margin-bottom:16px"><span class="card-title">Reyting</span><span class="mono faint" style="font-size:12px">bu hafta${board && board.total ? ` · ${board.total} ishtirokchi` : ""}</span></div>
           <div class="stack" style="gap:11px">${!board ? `<div class="faint" style="font-size:13px">Yuklanmoqda…</div>` : board.rows.length ? board.rows.map((r) => r.me
             ? `<div class="row" style="gap:12px;padding:9px 11px;margin:0 -11px;border-radius:10px;background:var(--pl)"><span class="mono accent" style="font-size:12px;min-width:18px">${r.rank}</span>
                 <span class="avatar" style="width:26px;height:26px;border-radius:8px;background:var(--pdb);color:#fff;font-size:12px">${initial()}</span><span class="grow" style="font-size:13px;font-weight:700;color:var(--on-pl)">Siz</span><span class="mono accent" style="font-size:12px;font-weight:500">${U.num(r.xp)}</span></div>`
@@ -712,7 +712,7 @@
             ${board && board.offline ? `<div class="faint" style="font-size:12px">Serverga ulanib bo'lmadi.</div>` : ""}</div>
         </div>
         <div class="card" style="padding:22px">
-          <div class="card-title" style="margin-bottom:16px">Kunlik challenge</div>
+          <div class="card-title" style="margin-bottom:16px">Kunlik vazifa</div>
           <div class="stack" style="gap:14px">${ch.items.map((i) => `<div><div class="row between" style="margin-bottom:6px"><span style="font-size:13px">${esc(i.label)}</span>
             <span class="mono ${i.cur >= i.goal ? "okc" : "faint"}" style="font-size:12px">${i.cur >= i.goal ? "bajarildi" : `${i.cur}/${i.goal}`}</span></div>
             <div class="prog" style="height:5px"><div style="width:${U.pct(i.cur, i.goal)}%;${i.cur >= i.goal ? "background:var(--ok)" : ""}"></div></div></div>`).join("")}</div>
@@ -737,7 +737,7 @@
         <div class="prof-id">
           <h3 class="page-h">${esc(p.name)}</h3>
           <p class="page-p">${esc(S.user.email)}</p>
-          <p class="prof-meta">${U.fmtDayMonth([S.user.createdAt, p.joined].filter(Boolean).sort()[0])}dan a'zo · Level ${lv.level}</p>
+          <p class="prof-meta">${U.fmtDayMonth([S.user.createdAt, p.joined].filter(Boolean).sort()[0])}dan a'zo · ${lv.level}-daraja</p>
         </div>
         ${S.user.demo ? `<span class="tag">demo hisob</span>` : `<button class="btn btn-sec btn-sm prof-edit" data-act="edit-name">Tahrirlash</button>`}
       </div>
@@ -755,15 +755,15 @@
             ${row(`Eslatmalar${hint({ granted: "ruxsat berilgan", denied: "brauzerda bloklangan", default: "ruxsat so'raladi", install: "bosh ekranga qo'shing", unsupported: "brauzer qo'llamaydi" }[perm])}`, toggle(r.on, "rem-toggle", "on", "Eslatmalar"))}
             ${row(`Bugungi dars <input type="time" class="time-input sm" value="${esc(r.learn)}" data-change="rem-time" data-k="learn" aria-label="Dars vaqti">`, toggle(r.on && r.learnOn !== false, "rem-toggle", "learnOn", "Dars eslatmasi"))}
             ${row(`Takrorlash <input type="time" class="time-input sm" value="${esc(r.review)}" data-change="rem-time" data-k="review" aria-label="Takrorlash vaqti">`, toggle(r.on && r.reviewOn !== false, "rem-toggle", "reviewOn", "Takrorlash eslatmasi"))}
-            ${row(`Streak eslatmasi${hint("21:30")}`, toggle(r.on && r.streak, "rem-toggle", "streak", "Streak eslatmasi"))}
+            ${row(`Seriya eslatmasi${hint("21:30")}`, toggle(r.on && r.streak, "rem-toggle", "streak", "Seriya eslatmasi"))}
             ${r.on && !S.user.demo && perm === "granted" ? row("Sinov bildirishnomasi", `<button class="link" data-act="push-test">yuborish</button>`) : ""}
             ${r.on && ["denied", "install", "unsupported"].includes(perm) ? `<p class="muted set-note" style="margin:10px 0 0">${esc(Push.explain(perm))}</p>` : ""}
           </div>
           <div class="card set-card">
             <div class="card-title">Hisob</div>
-            ${row(`AI Tutor${hint("tez kunda")}`, `<span class="tag">qulflangan</span>`)}
+            ${row(`AI ustoz${hint("tez kunda")}`, `<span class="tag">qulflangan</span>`)}
             ${S.user.demo ? "" : row("Parol", `<button class="link" data-act="change-pass">${S.user.hasPassword ? "o'zgartirish" : "o'rnatish"}</button>`)}
-            ${row("Progressni yuklab olish", `<button class="link" data-act="export-json">JSON</button>`)}
+            ${row("Natijalarni yuklab olish", `<button class="link" data-act="export-json">JSON</button>`)}
             ${S.user.demo ? "" : row("Hisobni o'chirish", `<button class="link" style="color:var(--bad)" data-act="delete-account">o'chirish</button>`)}
           </div>
         </div>
@@ -772,21 +772,21 @@
             <div class="card-title" style="margin-bottom:18px">Statistika</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
               <div><div class="stat-n">${S.learnedIds().length}</div><div class="muted" style="font-size:13px">o'rganilgan so'z</div></div>
-              <div><div class="stat-n">${S.masteredIds().length}</div><div class="muted" style="font-size:13px">mastered</div></div>
-              <div><div class="stat-n">${S.streak()}</div><div class="muted" style="font-size:13px">kunlik streak</div></div>
+              <div><div class="stat-n">${S.masteredIds().length}</div><div class="muted" style="font-size:13px">o'zlashtirilgan</div></div>
+              <div><div class="stat-n">${S.streak()}</div><div class="muted" style="font-size:13px">kunlik seriya</div></div>
               <div><div class="stat-n">${U.durText(S.totalMinutes())}</div><div class="muted" style="font-size:13px">o'qish vaqti</div></div>
             </div>
           </div>
           <div class="card set-card">
             <div class="card-title">Interfeys</div>
-            ${row("Tema", `<div class="seg" style="padding:3px"><button class="${set.theme !== "dark" ? "on" : ""}" data-act="set-theme" data-v="light">Yorug'</button><button class="${set.theme === "dark" ? "on" : ""}" data-act="set-theme" data-v="dark">Tungi</button></div>`)}
+            ${row("Mavzu", `<div class="seg" style="padding:3px"><button class="${set.theme !== "dark" ? "on" : ""}" data-act="set-theme" data-v="light">Yorug'</button><button class="${set.theme === "dark" ? "on" : ""}" data-act="set-theme" data-v="dark">Tungi</button></div>`)}
             ${row("Romanizatsiya ko'rsatish", toggle(set.roman, "set-flag", "roman", "Romanizatsiya"))}
             ${row("Avtomatik audio", toggle(set.autoAudio, "set-flag", "autoAudio", "Avtomatik audio"))}
             ${row("Talaffuz tezligi", `<div class="seg" style="padding:3px">${[[0.82, "Sekin"], [0.92, "Tabiiy"], [1.02, "Tez"]].map(([v, t]) => `<button class="${Math.abs((set.speechRate || 0.92) - v) < 0.01 ? "on" : ""}" data-act="set-speech-rate" data-v="${v}">${t}</button>`).join("")}</div>`)}
             <div class="hide-sm">${row("Klaviatura yorliqlari", `<button class="link mono" data-act="shortcuts">ko'rish</button>`)}</div>
           </div>
           <div class="card set-card">
-            ${row(`<span class="muted">Hisobdan chiqish — progress serverda saqlanib qoladi</span>`, `<button class="link" style="color:var(--bad);font-size:14px" data-act="logout">Chiqish</button>`)}
+            ${row(`<span class="muted">Hisobdan chiqish — natijalar serverda saqlanib qoladi</span>`, `<button class="link" style="color:var(--bad);font-size:14px" data-act="logout">Chiqish</button>`)}
           </div>
         </div>
       </div></div>`;
@@ -850,9 +850,9 @@
   };
   Actions.logout = async () => { await S.logout(); V.resetBoard(); App.go("#/login"); };
   Actions.shortcuts = () => U.modal("Klaviatura yorliqlari", `<div class="stack" style="gap:10px;font-size:14px">
-    ${[["Flash card", "Space — ochish · 1–4 — baholash · → — keyingi · S — audio"], ["Test savollari", "1–4 — javob · ⏎ — keyingi"], ["Listening", "Space — qayta eshitish · 1–4 — javob"],
-      ["Typing", "⏎ — tekshirish"], ["Onboarding", "1–4 — tanlash · ⏎ — davom"], ["AI Tutor", "⏎ — yuborish · Shift+⏎ — yangi qator"], ["Istalgan sessiya", "Esc — chiqish"]]
+    ${[["Kartochka", "Space — ochish · 1–4 — baholash · → — keyingi · S — audio"], ["Test savollari", "1–4 — javob · ⏎ — keyingi"], ["Tinglash", "Space — qayta eshitish · 1–4 — javob"],
+      ["Yozish", "⏎ — tekshirish"], ["Boshlang'ich sozlash", "1–3 — tanlash · ⏎ — davom"], ["AI ustoz", "⏎ — yuborish · Shift+⏎ — yangi qator"], ["Istalgan sessiya", "Esc — chiqish"]]
       .map(([a, b]) => `<div class="row" style="gap:16px;align-items:flex-start"><span style="font-weight:700;min-width:120px">${a}</span><span class="mono muted" style="font-size:12px;line-height:1.6">${b}</span></div>`).join("")}</div>`);
 
-  V.notFound = () => V.shell("", V.topbar("Topilmadi", ""), `<div class="page"><div class="empty" style="padding:60px">Sahifa topilmadi. <a href="#/dashboard">Dashboard</a></div></div>`);
+  V.notFound = () => V.shell("", V.topbar("Topilmadi", ""), `<div class="page"><div class="empty" style="padding:60px">Sahifa topilmadi. <a href="#/dashboard">Bosh sahifa</a></div></div>`);
 })();

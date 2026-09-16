@@ -21,7 +21,7 @@
     33: { blocks: 1, min: 40, name: "Intensiv", desc: "Kuniga ~40 daqiqa, butun kun bir sessiyada" },
   };
   const EX_TYPES = ["mc", "mcr", "type", "listen", "sent"];
-  const TYPE_NAMES = { mc: "Korean → Uzbek", mcr: "Uzbek → Korean", type: "Typing", listen: "Listening", sent: "Sentence completion" };
+  const TYPE_NAMES = { mc: "Koreyscha → o'zbekcha", mcr: "O'zbekcha → koreyscha", type: "Yozish", listen: "Tinglash", sent: "Gapni to'ldirish" };
 
   // ---------- Local storage (UI prefs + offline backup of progress) ----------
   const LS = {
@@ -396,9 +396,9 @@
     for (let b = 0; b < nb; b++) { const n = base + (b < extra ? 1 : 0); blocks.push(words.slice(at, at + n).map((w) => w.id)); at += n; }
     const stages = [];
     blocks.forEach((ids, b) => {
-      stages.push({ kind: "learn", block: b, label: `Learn — ${ids.length} so'z`, min: Math.max(3, Math.round(ids.length * 0.47)) });
-      if (b < blocks.length - 1) stages.push({ kind: "recall", block: b, label: "Active recall", min: Math.max(2, Math.round(ids.length * 0.3)) });
-      else stages.push({ kind: "mixed", block: -1, label: "Mixed quiz", min: 4 });
+      stages.push({ kind: "learn", block: b, label: `O'rganish — ${ids.length} so'z`, min: Math.max(3, Math.round(ids.length * 0.47)) });
+      if (b < blocks.length - 1) stages.push({ kind: "recall", block: b, label: "Faol eslash", min: Math.max(2, Math.round(ids.length * 0.3)) });
+      else stages.push({ kind: "mixed", block: -1, label: "Aralash test", min: 4 });
     });
     return { pace, blocks, stages, words: words.map((w) => w.id), minutes: stages.reduce((s, x) => s + x.min, 0) };
   };
@@ -456,26 +456,26 @@
         : { label: "Bugun takrorlash yo'q", cur: 1, goal: 1 },
     ];
     const done = items.every((i) => i.cur >= i.goal);
-    if (done && !S.state.challengeDone[t]) { S.state.challengeDone[t] = true; S.addXP(120); S.log("Kunlik challenge bajarildi — +120 XP", "ok"); S.save(); }
+    if (done && !S.state.challengeDone[t]) { S.state.challengeDone[t] = true; S.addXP(120); S.log("Kunlik vazifa bajarildi — +120 XP", "ok"); S.save(); }
     return { items, done, reward: 120 };
   };
 
   // ---------- Achievements ----------
   const ACH = [
-    { id: "first", g: "첫", t: "Birinchi qadam", d: "Day 1 tugatildi", ok: () => S.dayState(1).done, p: () => `${S.dayLearned(1)} / ${DAY_WORDS[0].length}` },
-    { id: "s3", g: "삼", t: "3 kunlik streak", d: "3 kun ketma-ket", ok: () => S.state.bestStreak >= 3, p: () => `${S.streak()} / 3` },
-    { id: "s10", g: "십", t: "10 kunlik streak", d: "10 kun ketma-ket", ok: () => S.state.bestStreak >= 10, p: () => `${S.streak()} / 10` },
-    { id: "s30", g: "삼십", t: "30 kunlik streak", d: "30 kun ketma-ket", ok: () => S.state.bestStreak >= 30, p: () => `${S.streak()} / 30` },
+    { id: "first", g: "첫", t: "Birinchi qadam", d: "1-kun tugatildi", ok: () => S.dayState(1).done, p: () => `${S.dayLearned(1)} / ${DAY_WORDS[0].length}` },
+    { id: "s3", g: "삼", t: "3 kunlik seriya", d: "3 kun ketma-ket", ok: () => S.state.bestStreak >= 3, p: () => `${S.streak()} / 3` },
+    { id: "s10", g: "십", t: "10 kunlik seriya", d: "10 kun ketma-ket", ok: () => S.state.bestStreak >= 10, p: () => `${S.streak()} / 10` },
+    { id: "s30", g: "삼십", t: "30 kunlik seriya", d: "30 kun ketma-ket", ok: () => S.state.bestStreak >= 30, p: () => `${S.streak()} / 30` },
     { id: "w100", g: "백", t: "100 so'z", d: "100 ta so'z o'rganildi", ok: () => S.learnedIds().length >= 100, p: () => `${S.learnedIds().length} / 100` },
     { id: "w500", g: "오백", t: "500 so'z", d: "500 ta so'z o'rganildi", ok: () => S.learnedIds().length >= 500, p: () => `${S.learnedIds().length} / 500` },
     { id: "wall", g: "천", t: `${S.TOTAL} so'z`, d: "Barcha so'zlar", ok: () => S.learnedIds().length >= S.TOTAL, p: () => `${S.learnedIds().length} / ${S.TOTAL}` },
-    { id: "m50", g: "숙달", t: "50 mastered", d: "50 so'z mastery'da", ok: () => S.masteredIds().length >= 50, p: () => `${S.masteredIds().length} / 50` },
-    { id: "perfect", g: "완벽", t: "Mukammal quiz", d: "10+ savolda 100%", ok: () => S.state.quizResults.some((r) => r.total >= 10 && r.ok === r.total), p: () => "0 / 1" },
+    { id: "m50", g: "숙달", t: "50 ta o'zlashtirilgan", d: "50 so'z to'liq o'zlashtirildi", ok: () => S.masteredIds().length >= 50, p: () => `${S.masteredIds().length} / 50` },
+    { id: "perfect", g: "완벽", t: "Mukammal test", d: "10+ savolda 100%", ok: () => S.state.quizResults.some((r) => r.total >= 10 && r.ok === r.total), p: () => "0 / 1" },
     { id: "rev10", g: "복습", t: "Takrorlash ustasi", d: "10 ta takrorlash sessiyasi", ok: () => S.state.reviewSessions >= 10, p: () => `${S.state.reviewSessions} / 10` },
     { id: "week", g: "주", t: "Birinchi hafta", d: "7 kun tugatildi", ok: () => S.daysDone() >= 7, p: () => `${S.daysDone()} / 7 kun` },
     { id: "half", g: "반", t: "Yarim yo'l", d: "15 kun tugatildi", ok: () => S.daysDone() >= 15, p: () => `${S.daysDone()} / 15 kun` },
-    { id: "ear", g: "귀", t: "Yaxshi quloq", d: "Listening 90%+ (20+ javob)", ok: () => { const s = S.state.typeStats.listen; return s.ok + s.bad >= 20 && S.typeAccuracy("listen") >= 90; }, p: () => `${S.typeAccuracy("listen") ?? 0}%` },
-    { id: "hand", g: "손", t: "Hangul yozuvchi", d: "Typing'da 50 to'g'ri", ok: () => S.state.typeStats.type.ok >= 50, p: () => `${S.state.typeStats.type.ok} / 50` },
+    { id: "ear", g: "귀", t: "Yaxshi quloq", d: "Tinglash 90%+ (20+ javob)", ok: () => { const s = S.state.typeStats.listen; return s.ok + s.bad >= 20 && S.typeAccuracy("listen") >= 90; }, p: () => `${S.typeAccuracy("listen") ?? 0}%` },
+    { id: "hand", g: "손", t: "Hangul yozuvchi", d: "Yozishda 50 to'g'ri", ok: () => S.state.typeStats.type.ok >= 50, p: () => `${S.state.typeStats.type.ok} / 50` },
     { id: "grad", g: "졸업", t: "Kurs tamom", d: `${DAYS} kun tugatildi`, ok: () => S.daysDone() >= DAYS, p: () => `${S.daysDone()} / ${DAYS} kun` },
   ];
   S.achievements = () => {
@@ -524,9 +524,9 @@
     st.reviewSessions = 9;
     st.tutor = { sessions: 3, lastAt: Date.now() - 86400000 * 2, lastMin: 12, current: null };
     st.log = [
-      { t: Date.now() - 86400000 * 1, text: "Day 4 tugatildi — 33 so'z", kind: "ok" },
+      { t: Date.now() - 86400000 * 1, text: "4-kun tugatildi — 33 so'z", kind: "ok" },
       { t: Date.now() - 86400000 * 1 - 3600000, text: "Takrorlash — 28/31 to'g'ri", kind: "p" },
-      { t: Date.now() - 86400000 * 2, text: "AI Tutor bilan 12 daqiqa suhbat", kind: "pd" },
+      { t: Date.now() - 86400000 * 2, text: "AI ustoz bilan 12 daqiqa suhbat", kind: "pd" },
     ];
     return st;
   };
