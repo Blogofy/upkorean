@@ -58,9 +58,13 @@ export function requireAuth(req, res, next) {
   next();
 }
 
+// Shared showcase account: entered only through the demo button, never with a password.
+export const DEMO_EMAIL = "aziza@mail.uz";
+export const isDemo = (u) => !!u && u.email === DEMO_EMAIL;
+
 export const publicUser = (u) => ({
   id: u.id, email: u.email, name: u.name, createdAt: u.created_at,
-  hasPassword: !!u.pass_hash, google: !!u.google_sub,
+  hasPassword: !!u.pass_hash, google: !!u.google_sub, demo: isDemo(u),
 });
 
 // Fixed-window rate limiter kept in memory (per key).

@@ -718,7 +718,7 @@
         <div class="avatar" style="width:76px;height:76px;border-radius:22px;font-size:30px">${initial()}</div>
         <div class="grow"><h3 class="page-h" style="font-size:26px">${esc(p.name)}</h3>
           <p class="page-p" style="font-size:14px">${esc(S.user.email)} · ${U.fmtDayMonth(S.user.createdAt || p.joined)}dan a'zo · Level ${lv.level}</p></div>
-        <button class="btn btn-sec btn-sm" style="padding:12px 22px;font-size:14px" data-act="edit-name">Tahrirlash</button>
+        ${S.user.demo ? `<span class="tag">demo hisob</span>` : `<button class="btn btn-sec btn-sm" style="padding:12px 22px;font-size:14px" data-act="edit-name">Tahrirlash</button>`}
       </div>
       <div class="collapse-md" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px">
         <div class="stack" style="gap:16px">
@@ -746,9 +746,9 @@
           <div class="card" style="padding:24px">
             <div class="card-title" style="margin-bottom:10px">Hisob</div>
             ${row(`AI Tutor <span class="faint" style="font-size:12px">· tez kunda</span>`, `<span class="tag">qulflangan</span>`, true)}
-            ${S.user.hasPassword ? row("Parol", `<button class="link" data-act="change-pass">o'zgartirish</button>`) : ""}
+            ${S.user.demo ? "" : row("Parol", `<button class="link" data-act="change-pass">${S.user.hasPassword ? "o'zgartirish" : "o'rnatish"}</button>`)}
             ${row("Progressni eksport qilish (JSON)", `<button class="link" data-act="export-json">yuklab olish</button>`)}
-            ${row("Hisobni o'chirish", `<button class="link" style="color:var(--bad)" data-act="delete-account">o'chirish</button>`)}
+            ${S.user.demo ? "" : row("Hisobni o'chirish", `<button class="link" style="color:var(--bad)" data-act="delete-account">o'chirish</button>`)}
           </div>
         </div>
         <div class="stack" style="gap:16px">
@@ -811,16 +811,17 @@
     catch (e) { const b = document.getElementById("edit-err"); b.textContent = e.message; b.hidden = false; }
   };
   Actions["change-pass"] = () => {
-    U.modal("Parolni o'zgartirish", `<form data-form="change-pass" novalidate>
-      <label class="field-label" for="c-cur">Joriy parol</label>
-      <input class="input" id="c-cur" name="current" type="password" autocomplete="current-password" style="margin-bottom:18px" autofocus>
+    const has = S.user.hasPassword;
+    U.modal(has ? "Parolni o'zgartirish" : "Parol o'rnatish", `<form data-form="change-pass" novalidate>
+      ${has ? `<label class="field-label" for="c-cur">Joriy parol</label>
+      <input class="input" id="c-cur" name="current" type="password" autocomplete="current-password" style="margin-bottom:18px" autofocus>` : ""}
       <label class="field-label" for="c-new">Yangi parol</label>
-      <input class="input" id="c-new" name="next" type="password" autocomplete="new-password" placeholder="Kamida 8 belgi" style="margin-bottom:18px">
+      <input class="input" id="c-new" name="next" type="password" autocomplete="new-password" placeholder="Kamida 8 belgi" style="margin-bottom:18px"${has ? "" : " autofocus"}>
       <div class="form-err" id="cp-err" hidden></div>
       <button class="btn btn-p" type="submit">Saqlash</button></form>`);
   };
   Forms["change-pass"] = async (form) => {
-    try { await S.changePassword(form.elements.current.value, form.elements.next.value); U.closeModal(); U.toast("Parol yangilandi"); }
+    try { await S.changePassword(form.elements.current ? form.elements.current.value : "", form.elements.next.value); U.closeModal(); App.render(); U.toast("Parol yangilandi"); }
     catch (e) { const b = document.getElementById("cp-err"); b.textContent = e.message; b.hidden = false; }
   };
   Actions["export-json"] = () => U.download(`upkorean-progress-${U.today()}.json`, JSON.stringify({ exportedAt: new Date().toISOString(), user: S.user, state: S.state }, null, 2), "application/json");

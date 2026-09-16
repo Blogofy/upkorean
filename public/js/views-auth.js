@@ -179,7 +179,11 @@
       window.google.accounts.id.initialize({
         client_id: S.config.google,
         callback: async (resp) => {
-          try { await S.googleLogin(resp.credential); afterSignIn(); } catch (e) { U.toast(e.message); }
+          try {
+            const r = await S.googleLogin(resp.credential);
+            afterSignIn();
+            if (r.passwordCleared) U.toast("Xavfsizlik uchun eski parol o'chirildi — profilda yangisini o'rnating", 7000);
+          } catch (e) { U.toast(e.message); }
         },
       });
       window.google.accounts.id.renderButton(box, { theme: "outline", size: "large", text: "continue_with", shape: "rectangular", width: Math.min(400, box.clientWidth || 400) });

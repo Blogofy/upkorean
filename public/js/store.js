@@ -167,14 +167,13 @@
   const signedIn = async ({ user }) => { S.user = user; LS.set("uk:user", user); await S.loadProgress(); };
   S.register = async (name, email, password) => signedIn(await api("POST", "/auth/register", { name, email, password }));
   S.login = async (email, password) => signedIn(await api("POST", "/auth/login", { email, password }));
-  S.googleLogin = async (credential) => signedIn(await api("POST", "/auth/google", { credential }));
+  S.googleLogin = async (credential) => { const r = await api("POST", "/auth/google", { credential }); await signedIn(r); return r; };
   S.forgot = (email) => api("POST", "/auth/forgot", { email });
   S.resetPassword = async (token, password) => signedIn(await api("POST", "/auth/reset", { token, password }));
   S.demo = async () => {
     const r = await api("POST", "/auth/demo", {});
     S.user = r.user;
-    if (r.fresh) { LS.del(cacheKey()); S.state = S.buildDemoState(); S.save(); await S.flush(); }
-    else await S.loadProgress();
+    LS.del(cacheKey()); S.state = S.buildDemoState(); S.save(); await S.flush();
   };
   S.logout = async () => {
     await S.flush().catch(() => {});
@@ -186,7 +185,10 @@
     const { user } = await api("PATCH", "/account", { name });
     S.user = user; S.state.profile.name = user.name; S.save();
   };
-  S.changePassword = (current, next) => api("POST", "/account/password", { current, next });
+  S.changePassword = async (current, next) => {
+    const { user } = await api("POST", "/account/password", { current, next });
+    S.user = user; LS.set("uk:user", user);
+  };
   S.deleteAccount = async (password) => {
     await api("DELETE", "/account", { password });
     LS.del(cacheKey()); LS.del("uk:last"); LS.del("uk:user");

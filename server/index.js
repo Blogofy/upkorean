@@ -6,16 +6,18 @@ import express from "express";
 import { q } from "./db.js";
 import {
   hashPassword, verifyPassword, startSession, endSession, currentUser, requireAuth,
-  publicUser, rateLimit, randomToken, sha256,
+  publicUser, rateLimit, randomToken, sha256, DEMO_EMAIL, isDemo,
 } from "./auth.js";
 import { tutorEnabled } from "./tutor.js";
 
 const PORT = Number(process.env.PORT) || 3000;
 const APP_URL = (process.env.APP_URL || `http://localhost:${PORT}`).replace(/\/$/, "");
 const PROD = process.env.NODE_ENV === "production";
+// Development conveniences are opt-in (`npm run dev`), so a server started without NODE_ENV is still safe.
+const DEV = !PROD && process.argv.includes("--dev");
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const TUTOR_COMING_SOON = true;
-const DEMO = process.env.DEMO ? process.env.DEMO === "1" : !PROD;
+const DEMO = process.env.DEMO ? process.env.DEMO === "1" : DEV;
 const AUDIO_DIR = path.resolve("audio");
 // Narrator clips: audio/words/<id>.mp3 = word, audio/sentences/<id>.mp3 = example sentence.
 const CLIP_DIR = AUDIO_DIR;
@@ -62,6 +64,9 @@ const str = (v) => (typeof v === "string" ? v : "");
 function validName(name) { name = str(name).trim(); return name.length >= 1 && name.length <= 60 ? name : null; }
 function validEmail(email) { email = str(email).trim().toLowerCase(); return EMAIL_RE.test(email) && email.length <= 200 ? email : null; }
 function validPassword(pw) { pw = str(pw); return pw.length >= 8 && pw.length <= 200 ? pw : null; }
+// A browser on this machine talking to the server directly — not through a reverse proxy.
+const isLocalRequest = (req) => ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.socket.remoteAddress) && !req.headers["x-forwarded-for"];
+const noDemo = (req, res, next) => (isDemo(req.user) ? res.status(403).json({ error: "Demo hisobda bu amal o'chirilgan" }) : next());
 
 // ---------- Config ----------
 api.get("/config", (req, res) => {
@@ -75,7 +80,7 @@ api.post("/auth/register", authLimit, (req, res) => {
   if (!name) return res.status(400).json({ error: "Ismingizni kiriting", field: "name" });
   if (!email) return res.status(400).json({ error: "Email manzil noto'g'ri", field: "email" });
   if (!pw) return res.status(400).json({ error: "Parol kamida 8 belgidan iborat bo'lsin", field: "password" });
-  if (q.userByEmail.get(email)) return res.status(409).json({ error: "Bu email bilan hisob allaqachon mavjud", field: "email" });
+  if (email === DEMO_EMAIL || q.userByEmail.get(email)) return res.status(409).json({ error: "Bu email bilan hisob allaqachon mavjud", field: "email" });
   const { lastInsertRowid } = q.insertUser.run(email, name, hashPassword(pw), null);
   const user = q.userById.get(lastInsertRowid);
   startSession(req, res, user.id);
@@ -85,7 +90,7 @@ api.post("/auth/register", authLimit, (req, res) => {
 api.post("/auth/login", authLimit, (req, res) => {
   const email = validEmail(req.body.email);
   const user = email && q.userByEmail.get(email);
-  if (!user || !verifyPassword(str(req.body.password), user.pass_hash)) {
+  if (!user || isDemo(user) || !verifyPassword(str(req.body.password), user.pass_hash)) {
     return res.status(401).json({ error: "Email yoki parol noto'g'ri" });
   }
   startSession(req, res, user.id);
@@ -118,28 +123,45 @@ api.post("/auth/google", authLimit, async (req, res) => {
     return res.status(401).json({ error: "Google tokeni tasdiqlanmadi" });
   }
   const email = info.email.toLowerCase();
-  let user = q.userByGoogle.get(info.sub) || q.userByEmail.get(email);
+  if (email === DEMO_EMAIL) return res.status(401).json({ error: "Google tokeni tasdiqlanmadi" });
+  let user = q.userByGoogle.get(info.sub);
+  let passwordCleared = false;
   if (!user) {
-    const { lastInsertRowid } = q.insertUser.run(email, (info.given_name || info.name || email.split("@")[0]).slice(0, 60), null, info.sub);
-    user = q.userById.get(lastInsertRowid);
-  } else if (!user.google_sub) {
-    q.setGoogle.run(info.sub, user.id);
+    user = q.userByEmail.get(email);
+    if (user && user.google_sub) {
+      return res.status(409).json({ error: "Bu email boshqa Google hisobiga ulangan" });
+    }
+    if (user) {
+      // Google has verified this address; our sign-up never did. Whoever registered it with a password may not
+      // own the mailbox, so the verified owner takes over: the old password, sessions and reset links stop working.
+      if (user.pass_hash) {
+        q.setPassword.run(null, user.id);
+        q.deleteUserSessions.run(user.id);
+        q.deleteResets.run(user.id);
+        passwordCleared = true;
+      }
+      q.setGoogle.run(info.sub, user.id);
+    } else {
+      const { lastInsertRowid } = q.insertUser.run(email, (info.given_name || info.name || email.split("@")[0]).slice(0, 60), null, info.sub);
+      user = q.userById.get(lastInsertRowid);
+    }
   }
   startSession(req, res, user.id);
-  res.json({ user: publicUser(q.userById.get(user.id)) });
+  res.json({ user: publicUser(q.userById.get(user.id)), passwordCleared });
 });
 
 api.post("/auth/forgot", authLimit, (req, res) => {
   const email = validEmail(req.body.email);
   const user = email && q.userByEmail.get(email);
   const out = { ok: true };
-  if (user) {
+  if (user && !isDemo(user)) {
     const token = randomToken();
     q.insertReset.run(sha256(token), user.id, Date.now() + 30 * 60000);
     const link = `${APP_URL}/#/reset/${token}`;
     // Plug an email provider in here for production. Until then the link is printed to the server log.
     console.log(`[password reset] ${email}: ${link}`);
-    if (!PROD) out.devLink = link;
+    // Returning the link skips the mailbox check, so only a developer's own browser may get it.
+    if (DEV && isLocalRequest(req)) out.devLink = link;
   }
   res.json(out);
 });
@@ -158,25 +180,26 @@ api.post("/auth/reset", authLimit, (req, res) => {
 
 api.post("/auth/demo", authLimit, (req, res) => {
   if (!DEMO) return res.status(404).json({ error: "Demo o'chirilgan" });
-  const email = "aziza@mail.uz";
-  let user = q.userByEmail.get(email);
+  let user = q.userByEmail.get(DEMO_EMAIL);
   if (!user) {
-    const { lastInsertRowid } = q.insertUser.run(email, "Aziza Karimova", hashPassword("demo1234"), null);
+    const { lastInsertRowid } = q.insertUser.run(DEMO_EMAIL, "Aziza Karimova", null, null);
     user = q.userById.get(lastInsertRowid);
   }
+  // Every visitor starts from the sample progress instead of whatever the previous visitor left behind.
+  q.deleteProgress.run(user.id);
   startSession(req, res, user.id);
-  res.json({ user: publicUser(user), fresh: !q.getProgress.get(user.id) });
+  res.json({ user: publicUser(user) });
 });
 
 // ---------- Account ----------
-api.patch("/account", requireAuth, (req, res) => {
+api.patch("/account", requireAuth, noDemo, (req, res) => {
   const name = validName(req.body.name);
   if (!name) return res.status(400).json({ error: "Ismingizni kiriting", field: "name" });
   q.setName.run(name, req.user.id);
   res.json({ user: publicUser(q.userById.get(req.user.id)) });
 });
 
-api.post("/account/password", requireAuth, authLimit, (req, res) => {
+api.post("/account/password", requireAuth, noDemo, authLimit, (req, res) => {
   const next = validPassword(req.body.next);
   if (!next) return res.status(400).json({ error: "Yangi parol kamida 8 belgidan iborat bo'lsin", field: "next" });
   if (req.user.pass_hash && !verifyPassword(str(req.body.current), req.user.pass_hash)) {
@@ -185,10 +208,10 @@ api.post("/account/password", requireAuth, authLimit, (req, res) => {
   q.setPassword.run(hashPassword(next), req.user.id);
   q.deleteUserSessions.run(req.user.id);
   startSession(req, res, req.user.id);
-  res.json({ ok: true });
+  res.json({ ok: true, user: publicUser(q.userById.get(req.user.id)) });
 });
 
-api.delete("/account", requireAuth, (req, res) => {
+api.delete("/account", requireAuth, noDemo, (req, res) => {
   if (req.user.pass_hash && !verifyPassword(str(req.body.password), req.user.pass_hash)) {
     return res.status(401).json({ error: "Parol noto'g'ri", field: "password" });
   }
@@ -215,7 +238,8 @@ api.put("/progress", requireAuth, (req, res) => {
   if (json.length > 2_500_000) return res.status(413).json({ error: "Ma'lumot hajmi juda katta" });
   const wk = weekKey();
   let weekXp = 0;
-  for (const [k, a] of Object.entries(state.act || {})) if (k >= wk && a && Number.isFinite(a.xp)) weekXp += a.xp;
+  // The demo account's sample XP is not a real learner's, so it never enters the leaderboard.
+  if (!isDemo(req.user)) for (const [k, a] of Object.entries(state.act || {})) if (k >= wk && a && Number.isFinite(a.xp)) weekXp += a.xp;
   const now = Date.now();
   q.putProgress.run(req.user.id, json, Math.max(0, Math.round(Number(state.xp) || 0)), wk, Math.round(weekXp), now);
   res.json({ ok: true, updatedAt: now });
@@ -249,6 +273,12 @@ app.use("/api", api);
 app.use(express.static(path.resolve("public"), { extensions: ["html"] }));
 
 q.purgeSessions.run(Date.now());
+const demoUser = q.userByEmail.get(DEMO_EMAIL);
+if (demoUser) {
+  // Older versions gave the demo account a published password; it is entered only through the demo button now.
+  if (demoUser.pass_hash) q.setPassword.run(null, demoUser.id);
+  if (!DEMO) q.deleteUserSessions.run(demoUser.id);
+}
 setInterval(() => q.purgeSessions.run(Date.now()), 3600000).unref();
 
 app.listen(PORT, () => {

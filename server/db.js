@@ -60,6 +60,7 @@ export const q = {
   purgeSessions: db.prepare("DELETE FROM sessions WHERE expires_at <= ?"),
 
   getProgress: db.prepare("SELECT state, updated_at FROM progress WHERE user_id = ?"),
+  deleteProgress: db.prepare("DELETE FROM progress WHERE user_id = ?"),
   putProgress: db.prepare(`INSERT INTO progress (user_id, state, xp, week_key, week_xp, updated_at) VALUES (?, ?, ?, ?, ?, ?)
     ON CONFLICT(user_id) DO UPDATE SET state = excluded.state, xp = excluded.xp, week_key = excluded.week_key,
     week_xp = excluded.week_xp, updated_at = excluded.updated_at`),

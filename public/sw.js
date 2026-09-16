@@ -1,4 +1,4 @@
-const VERSION = "upkorean-v1";
+const VERSION = "upkorean-v2";
 const SHELL = [
   "/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/css/styles.css",
   "/js/vocab.js", "/js/examples.js", "/js/util.js", "/js/store.js", "/js/exercise.js",

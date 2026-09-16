@@ -7,7 +7,7 @@
   "main": "server/index.js",
   "scripts": {
     "start": "node --no-warnings=ExperimentalWarning server/index.js",
-    "dev": "node --no-warnings=ExperimentalWarning --watch server/index.js",
+    "dev": "node --no-warnings=ExperimentalWarning --watch server/index.js --dev",
     "check:content": "node scripts/validate-content.js"
   },
   "engines": {
