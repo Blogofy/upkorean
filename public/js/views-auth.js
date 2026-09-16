@@ -85,7 +85,7 @@
         ${errBox("reg-err")}
         <button class="btn btn-p btn-block" type="submit" style="padding:15px;font-size:16px">Davom etish</button>
         ${googleBlock()}
-        <p style="margin:22px 0 0;font-size:12px;color:var(--ink3);line-height:1.55">Ro'yxatdan o'tish orqali foydalanish shartlari va maxfiylik siyosatiga rozilik bildirasiz.</p>
+        <p style="margin:22px 0 0;font-size:12px;color:var(--ink3);line-height:1.55">Ro'yxatdan o'tish orqali <a class="link" href="/privacy" target="_blank" rel="noopener">maxfiylik siyosatiga</a> rozilik bildirasiz.</p>
       </form></div></div>`;
 
   V.reset = (token) => `<div class="auth">${artLogin()}
