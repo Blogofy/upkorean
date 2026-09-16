@@ -1,0 +1,94 @@
+# UpKorean serverda (upkorean.uz)
+
+Sxema: brauzer → **aaPanel Apache** (80/443, SSL) → **Node** `127.0.0.1:3000` (systemd `upkorean`) → SQLite `/opt/upkorean/data/`.
+Server: `109.205.177.244`, Ubuntu 24.04. Unda boshqa saytlar ham bor (apixy.uz, giu, qorovul), shuning uchun Apache va firewall'ga faqat quyidagilar qo'shiladi.
+
+| Fayl | Serverdagi joyi |
+|---|---|
+| `deploy/upkorean.service` | `/etc/systemd/system/upkorean.service` |
+| `deploy/apache-upkorean.uz.conf` | `/www/server/panel/vhost/apache/upkorean.uz.conf` |
+| `.env` (repoda yo'q) | `/opt/upkorean/.env` |
+
+`upkorean.uz` ni aaPanel'da sayt sifatida **qo'shmang**: vhost qo'lda yozilgan, panel o'zinikini yaratsa ikkalasi to'qnashadi.
+
+## DNS (ahost → DNS-менеджер)
+
+| Nom | Turi | Qiymat |
+|---|---|---|
+| `@` | A | `109.205.177.244` |
+| `www` | CNAME | `upkorean.uz` |
+| `@` | TXT | `v=spf1 -all` |
+| `_dmarc` | TXT | `v=DMARC1; p=reject;` |
+
+`mail`, `ftp`, `MX`, `default._domainkey` o'chiriladi: ular ahost hostingi pochtasiniki edi.
+Sayt xatlarni Gmail SMTP orqali yuboradi. SPF `-all` va DMARC `reject` esa `@upkorean.uz` nomidan soxta xat yuborishni to'sadi.
+
+## Yangilash (kompyuterdan)
+
+```sh
+git archive --format=tar HEAD | ssh root@109.205.177.244 "sh /opt/upkorean/deploy/update.sh"
+```
+
+Faqat commit qilingan kod ketadi. `.env`, `data/` va `node_modules/` serverda saqlanib qoladi.
+
+## Birinchi o'rnatish (bir marta)
+
+```sh
+adduser --system --group --home /opt/upkorean --no-create-home upkorean
+mkdir -p /opt/upkorean/deploy /www/wwwroot/upkorean.uz
+# kompyuterdan: git archive --format=tar HEAD | ssh root@109.205.177.244 "tar -x -C /opt/upkorean"
+cp /opt/upkorean/deploy/upkorean.service /etc/systemd/system/
+cp /opt/upkorean/deploy/apache-upkorean.uz.conf /www/server/panel/vhost/apache/upkorean.uz.conf
+```
+
+`/opt/upkorean/.env` (`chmod 600`, egasi `upkorean`):
+
+```ini
+PORT=3000
+APP_URL=https://upkorean.uz
+NODE_ENV=production
+TRUST_PROXY=1
+# Keyin kerak bo'lsa: GOOGLE_CLIENT_ID, SMTP_*, MAIL_FROM, ANTHROPIC_API_KEY (.env.example ga qarang)
+```
+
+```sh
+systemctl daemon-reload && systemctl enable upkorean
+/etc/init.d/httpd reload
+# so'ng kompyuterdan "Yangilash" buyrug'i: npm ci qiladi va ilovani ishga tushiradi
+```
+
+3000-port firewall'da ochilmaydi: ilovaga faqat Apache orqali kiriladi.
+
+## SSL
+
+DNS ishlay boshlagach (`nslookup upkorean.uz 8.8.8.8` → `109.205.177.244`):
+
+```sh
+apt install -y certbot
+certbot certonly --webroot -w /www/wwwroot/upkorean.uz -d upkorean.uz -d www.upkorean.uz \
+  --deploy-hook "/etc/init.d/httpd reload" -m <email> --agree-tos -n
+/etc/init.d/httpd reload
+```
+
+Sertifikat paydo bo'lishi bilan vhost o'zi HTTPS'ga o'tadi, HTTP va `www` esa `https://upkorean.uz` ga yo'naltiriladi.
+Sertifikat avtomatik yangilanadi (`systemctl list-timers | grep certbot`).
+HTTPS shart: push-eslatmalar, service worker va `Secure` cookie faqat HTTPS'da ishlaydi.
+
+Google sign-in yoqilsa: Google Cloud Console → OAuth client → **Authorized JavaScript origins** → `https://upkorean.uz`.
+
+## Tekshirish va loglar
+
+```sh
+systemctl status upkorean
+journalctl -u upkorean -n 50 --no-pager
+curl -sI -H "Host: upkorean.uz" http://127.0.0.1/ | head -3
+tail /www/wwwlogs/upkorean.uz-error_log
+```
+
+## Zaxira
+
+Ilova har 24 soatda `/opt/upkorean/data/backups/` ga nusxa oladi. Uni boshqa diskka ham ko'chirib turing:
+
+```sh
+scp -r root@109.205.177.244:/opt/upkorean/data/backups ./server-backups
+```

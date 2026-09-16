@@ -1,0 +1,18 @@
+# /etc/systemd/system/upkorean.service — keeps the app running and restarts it after crashes and reboots.
+[Unit]
+Description=UpKorean
+After=network.target
+
+[Service]
+Type=simple
+User=upkorean
+Group=upkorean
+WorkingDirectory=/opt/upkorean
+# .env in WorkingDirectory is loaded by server/env.js
+ExecStart=/usr/bin/node --no-warnings=ExperimentalWarning server/index.js
+Environment=NODE_ENV=production
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
