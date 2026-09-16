@@ -1,0 +1,4 @@
+# The app runs on Linux and is deployed with `git archive`: keep LF line endings on every machine.
+* text=auto eol=lf
+*.png binary
+*.mp3 binary
