@@ -1,0 +1,13 @@
+{
+  "name": "UpKorean — TOPIK II",
+  "short_name": "UpKorean",
+  "description": "TOPIK II uchun 30 kunlik koreys tili lug‘at platformasi",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7F4EF",
+  "theme_color": "#D88B3F",
+  "lang": "uz",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

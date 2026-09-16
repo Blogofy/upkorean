@@ -1,0 +1,446 @@
+// Data model, persistence (localStorage), spaced repetition and derived statistics.
+(function () {
+  const U = window.U;
+
+  // ---------- Static course data ----------
+  const WORDS = [];
+  window.UK_VOCAB.forEach((list, di) => list.forEach(([ko, uz], i) => WORDS.push({ id: `${di + 1}-${i}`, day: di + 1, i, ko, uz })));
+  const BY_ID = Object.fromEntries(WORDS.map((w) => [w.id, w]));
+  const DAYS = window.UK_VOCAB.length;
+  const DAY_WORDS = Array.from({ length: DAYS }, (_, d) => WORDS.filter((w) => w.day === d + 1));
+  // One book sentence per word, keyed by word id so repeated words (e.g. 위험하다 on Day 6 and 25) keep their own sentence.
+  const EXAMPLES = Object.fromEntries((window.UK_EXAMPLES || []).map((e) => [e.id, e]));
+
+  // Review ladder: a new word comes back after 1, 3, 7, 16, 35 days (cumulative).
+  const INTERVALS = [1, 2, 4, 9, 19, 40];
+  const MASTER_STEP = 4;
+  const LEVELS = [0, 500, 1200, 2000, 3500, 5500, 8000, 11000, 15000, 20000, 26000];
+  const PACES = {
+    11: { blocks: 3, min: 12, name: "Yengil", desc: "Kuniga ~12 daqiqa, kun 3 sessiyaga bo'linadi" },
+    17: { blocks: 2, min: 22, name: "Muvozanatli", desc: "Kuniga ~22 daqiqa — eng ko'p tanlanadigan temp" },
+    33: { blocks: 1, min: 40, name: "Intensiv", desc: "Kuniga ~40 daqiqa, butun kun bir sessiyada" },
+  };
+  const LEVEL_NAMES = { beg: "Boshlovchi", mid: "O'rta daraja", adv: "Yuqori daraja" };
+  const LEVEL_TAGS = { beg: "TOPIK I", mid: "TOPIK II · o'rta", adv: "TOPIK 5–6" };
+  const GOALS = {
+    exam: { ko: "시험", name: "TOPIK imtihoni", desc: "Yozma recall va sentence completion ko'proq" },
+    talk: { ko: "대화", name: "Suhbat va ish", desc: "Listening va AI tutor bilan dialog ko'proq" },
+    abroad: { ko: "유학", name: "O'qish / ish uchun ketish", desc: "Akademik va rasmiy so'zlarga urg'u" },
+    hobby: { ko: "취미", name: "Qiziqish uchun", desc: "Yengil temp, kundalik so'zlar" },
+  };
+  const EX_TYPES = ["mc", "mcr", "type", "listen", "sent"];
+  const TYPE_NAMES = { mc: "Korean → Uzbek", mcr: "Uzbek → Korean", type: "Typing", listen: "Listening", sent: "Sentence completion" };
+
+  // ---------- Local storage (UI prefs + offline backup of progress) ----------
+  const LS = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { console.warn("local save failed", e); } },
+    del(k) { try { localStorage.removeItem(k); } catch { /* ignore */ } },
+  };
+
+  function freshState(profile) {
+    return {
+      v: 1,
+      profile: Object.assign({
+        name: "", email: "", joined: U.today(), level: "mid", goal: "exam", pace: 17, onboarded: false,
+        reminders: { on: true, learn: "09:00", review: "20:30", streak: true, social: false },
+      }, profile),
+      settings: { theme: LS.get("uk:theme", "light"), roman: true, autoAudio: true, speechRate: 0.92, apiKey: "" },
+      words: {}, days: {}, act: {}, log: [], xp: 0, bestStreak: 0,
+      typeStats: Object.fromEntries(EX_TYPES.map((t) => [t, { ok: 0, bad: 0 }])),
+      firstTry: { ok: 0, total: 0 },
+      quizResults: [], reviewSessions: 0,
+      tutor: { sessions: 0, lastAt: null, lastMin: 0, current: null },
+      achievements: {}, challengeDone: {}, dueStart: null,
+    };
+  }
+
+  const S = { WORDS, BY_ID, DAYS, DAY_WORDS, EXAMPLES, INTERVALS, MASTER_STEP, PACES, LEVEL_NAMES, LEVEL_TAGS, GOALS, EX_TYPES, TYPE_NAMES, TOTAL: WORDS.length, state: null, user: null, config: {}, syncError: false, offline: !navigator.onLine };
+
+  // ---------- Server API ----------
+  async function api(method, path, body) {
+    let res;
+    try {
+      res = await fetch("/api" + path, {
+        method, credentials: "same-origin",
+        headers: body !== undefined ? { "Content-Type": "application/json" } : {},
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      });
+    } catch {
+      const e = new Error("Serverga ulanib bo'lmadi. Internetni tekshiring."); e.status = 0; throw e;
+    }
+    let data = {};
+    try { data = await res.json(); } catch { /* empty body */ }
+    if (!res.ok) { const e = new Error(data.error || "Serverda xatolik"); e.status = res.status; e.field = data.field; e.data = data; throw e; }
+    return data;
+  }
+  S.api = api;
+
+  function normalize(st) {
+    const f = freshState({});
+    for (const k of Object.keys(f)) if (st[k] === undefined) st[k] = f[k];
+    for (const t of EX_TYPES) if (!st.typeStats[t]) st.typeStats[t] = { ok: 0, bad: 0 };
+    st.settings = Object.assign(f.settings, st.settings);
+    st.profile = Object.assign(f.profile, st.profile);
+    return st;
+  }
+  const cacheKey = () => `uk:cache:${S.user.id}`;
+
+  // Load progress from the server; fall back to / prefer the local backup if it is newer (e.g. a save failed offline).
+  S.loadProgress = async () => {
+    const cache = LS.get(cacheKey(), null);
+    let state = null, updatedAt = null;
+    try {
+      ({ state, updatedAt } = await api("GET", "/progress"));
+      S.offline = false;
+    } catch (e) {
+      if (e.status !== 0 || !cache || !cache.state) throw e;
+      S.offline = true;
+    }
+    let st = state, push = false;
+    if (cache && cache.state && (!updatedAt || cache.at > updatedAt)) { st = cache.state; push = true; }
+    if (!st) { st = freshState({ joined: S.user.createdAt || U.today() }); push = true; }
+    S.state = normalize(st);
+    S.state.profile.name = S.user.name;
+    S.state.profile.email = S.user.email;
+    if (S.state.settings.theme) S.applyTheme(S.state.settings.theme);
+    if (push) S.save();
+  };
+
+  let saveTimer = null, dirty = false, inflight = null;
+  S.save = () => {
+    if (!S.state || !S.user) return;
+    dirty = true;
+    LS.set(cacheKey(), { at: Date.now(), state: S.state });
+    LS.set("uk:last", { name: S.state.profile.name.split(" ")[0], day: S.currentDay(), streak: S.streak() });
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(S.flush, 700);
+  };
+  S.flush = async () => {
+    clearTimeout(saveTimer);
+    if (!dirty || !S.user || !S.state) return;
+    if (inflight) { await inflight; if (!dirty) return; }
+    dirty = false;
+    inflight = api("PUT", "/progress", { state: S.state })
+      .then(() => { S.syncError = false; })
+      .catch((e) => {
+        dirty = true; S.syncError = true;
+        if (e.status === 401) { U.toast("Sessiya tugadi — qaytadan kiring"); S.user = null; location.hash = "#/login"; return; }
+        saveTimer = setTimeout(S.flush, 8000);
+      })
+      .finally(() => { inflight = null; });
+    return inflight;
+  };
+  // Best effort when the tab is closed.
+  window.addEventListener("pagehide", () => {
+    if (!dirty || !S.user) return;
+    const body = JSON.stringify({ state: S.state });
+    if (body.length < 60000) fetch("/api/progress", { method: "PUT", keepalive: true, credentials: "same-origin", headers: { "Content-Type": "application/json" }, body });
+  });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") S.flush(); });
+
+  // ---------- Accounts ----------
+  S.boot = async () => {
+    try {
+      S.config = await api("GET", "/config");
+      LS.set("uk:config", S.config);
+    } catch { S.config = LS.get("uk:config", {}); S.offline = true; }
+    try {
+      const { user } = await api("GET", "/auth/me");
+      S.user = user;
+      LS.set("uk:user", user);
+      await S.loadProgress();
+    } catch (e) {
+      if (e.status === 0) {
+        const cachedUser = LS.get("uk:user", null);
+        if (!cachedUser) throw e;
+        S.user = cachedUser;
+        S.offline = true;
+        await S.loadProgress();
+      } else {
+        S.user = null; S.state = null;
+        if (e.status === 401) LS.del("uk:user");
+        else throw e;
+      }
+    }
+  };
+  const signedIn = async ({ user }) => { S.user = user; LS.set("uk:user", user); await S.loadProgress(); };
+  S.register = async (name, email, password) => signedIn(await api("POST", "/auth/register", { name, email, password }));
+  S.login = async (email, password) => signedIn(await api("POST", "/auth/login", { email, password }));
+  S.googleLogin = async (credential) => signedIn(await api("POST", "/auth/google", { credential }));
+  S.forgot = (email) => api("POST", "/auth/forgot", { email });
+  S.resetPassword = async (token, password) => signedIn(await api("POST", "/auth/reset", { token, password }));
+  S.demo = async () => {
+    const r = await api("POST", "/auth/demo", {});
+    S.user = r.user;
+    if (r.fresh) { LS.del(cacheKey()); S.state = S.buildDemoState(); S.save(); await S.flush(); }
+    else await S.loadProgress();
+  };
+  S.logout = async () => {
+    await S.flush().catch(() => {});
+    try { await api("POST", "/auth/logout", {}); } catch { /* already signed out */ }
+    LS.del("uk:user");
+    S.user = null; S.state = null;
+  };
+  S.updateName = async (name) => {
+    const { user } = await api("PATCH", "/account", { name });
+    S.user = user; S.state.profile.name = user.name; S.save();
+  };
+  S.changePassword = (current, next) => api("POST", "/account/password", { current, next });
+  S.deleteAccount = async (password) => {
+    await api("DELETE", "/account", { password });
+    LS.del(cacheKey()); LS.del("uk:last"); LS.del("uk:user");
+    S.user = null; S.state = null;
+  };
+  S.leaderboard = () => api("GET", "/leaderboard");
+  S.tutor = (payload) => api("POST", "/tutor", payload);
+  S.lastUserPreview = () => LS.get("uk:last", null);
+
+  S.applyTheme = (t) => document.documentElement.setAttribute("data-theme", t === "dark" ? "dark" : "light");
+  S.setTheme = (t) => {
+    LS.set("uk:theme", t);
+    S.applyTheme(t);
+    if (S.state) { S.state.settings.theme = t; S.save(); }
+  };
+
+  // ---------- Words & spaced repetition ----------
+  S.ws = (id) => S.state.words[id] || null;
+  const touch = (id) => (S.state.words[id] = S.state.words[id] || { s: 0, due: null, learned: null, seen: 0, ok: 0, bad: 0, lapses: 0, flag: false, forgot: false, last: null });
+  S.word = (id) => BY_ID[id];
+  S.example = (id) => EXAMPLES[id] || null;
+  S.clozeExample = (id) => (EXAMPLES[id] && EXAMPLES[id].cloze ? EXAMPLES[id] : null);
+  S.mastery = (id) => { const w = S.ws(id); return w && w.learned ? Math.min(5, w.s) : 0; };
+  S.isLearned = (id) => { const w = S.ws(id); return !!(w && w.learned); };
+  S.isMastered = (id) => { const w = S.ws(id); return !!(w && w.learned && w.s >= MASTER_STEP); };
+  S.isWeak = (id) => { const w = S.ws(id); return !!(w && w.learned && w.bad >= 2 && w.s < 3); };
+
+  function setStep(w, s) {
+    const prev = w.s;
+    w.s = U.clamp(s, 0, 5);
+    if (prev >= 3 && w.s <= 1 && w.learned) { w.forgot = true; w.lapses++; }
+    if (w.s >= 3) w.forgot = false;
+    w.due = U.addDays(U.today(), INTERVALS[w.s]);
+  }
+  const gradeStep = (w, g) => {
+    const first = !w || !w.learned;
+    const s = w ? w.s : 0;
+    if (g === 1) return 0;
+    if (g === 2) return first ? 0 : Math.max(0, s);
+    if (g === 3) return first ? 1 : s + 1;
+    return first ? 2 : s + 2;
+  };
+  S.previewInterval = (id, g) => INTERVALS[U.clamp(gradeStep(S.ws(id), g), 0, 5)];
+
+  // Flash-card self assessment: 1 Bilmadim · 2 Qiyin · 3 Bildim · 4 Oson
+  S.grade = (id, g) => {
+    const w = touch(id);
+    const first = !w.learned;
+    const step = gradeStep(w, g);
+    if (first) { w.learned = U.today(); act().learned++; }
+    w.seen++; w.last = U.today();
+    if (g === 1) w.bad++; else if (g >= 3) w.ok++;
+    setStep(w, step);
+    S.addXP(first ? 4 : 2);
+    return INTERVALS[w.s];
+  };
+
+  // Exercise answer. mode: "learn" (same-day recall), "review" (spaced repetition), "quiz" (free practice)
+  S.answer = (id, correct, type, mode) => {
+    const w = touch(id);
+    if (!w.learned) { w.learned = U.today(); act().learned++; }
+    w.seen++; w.last = U.today();
+    if (S.state.typeStats[type]) S.state.typeStats[type][correct ? "ok" : "bad"]++;
+    if (correct) {
+      w.ok++;
+      if (mode === "review" && (!w.due || w.due <= U.today())) setStep(w, w.s + 1);
+      S.addXP(3);
+    } else {
+      w.bad++;
+      if (mode === "quiz") setStep(w, w.s - 1); else setStep(w, 0);
+      w.due = U.addDays(U.today(), 1); // wrong words come back tomorrow
+    }
+    if (mode === "review") act().reviewed++;
+  };
+  S.flag = (id, on) => { const w = touch(id); w.flag = on === undefined ? !w.flag : on; S.save(); return w.flag; };
+
+  // ---------- Activity, XP, log ----------
+  function act(date) {
+    const k = date || U.today();
+    const a = (S.state.act[k] = S.state.act[k] || { learned: 0, reviewed: 0, xp: 0, min: { learn: 0, review: 0, quiz: 0, tutor: 0 } });
+    return a;
+  }
+  S.act = act;
+  S.addXP = (n) => { S.state.xp += n; act().xp += n; };
+  S.addMinutes = (cat, min) => { if (min > 0) act().min[cat] = (act().min[cat] || 0) + min; };
+  S.log = (text, kind = "p") => { S.state.log.unshift({ t: Date.now(), text, kind }); S.state.log = S.state.log.slice(0, 30); };
+  const actMinutes = (a) => (a ? Object.values(a.min).reduce((s, v) => s + v, 0) : 0);
+  const isActive = (a) => !!a && (a.learned > 0 || a.reviewed > 0 || actMinutes(a) >= 1);
+
+  S.streak = () => {
+    let d = U.today();
+    if (!isActive(S.state.act[d])) d = U.addDays(d, -1);
+    let n = 0;
+    while (isActive(S.state.act[d])) { n++; d = U.addDays(d, -1); }
+    if (n > (S.state.bestStreak || 0)) S.state.bestStreak = n;
+    return n;
+  };
+  S.levelInfo = () => {
+    const xp = S.state.xp;
+    let lv = 1;
+    while (lv < LEVELS.length && xp >= LEVELS[lv]) lv++;
+    const next = LEVELS[lv] || LEVELS[LEVELS.length - 1] + 6000;
+    return { level: lv, xp, next, toNext: next - xp, pct: U.clamp(U.pct(xp, next), 0, 100) };
+  };
+  S.totalMinutes = (fromKey) => Object.entries(S.state.act).filter(([k]) => !fromKey || k >= fromKey).reduce((s, [, a]) => s + actMinutes(a), 0);
+  S.minutesBy = (cat) => Object.values(S.state.act).reduce((s, a) => s + (a.min[cat] || 0), 0);
+  S.activeDays = () => Object.keys(S.state.act).filter((k) => isActive(S.state.act[k])).length;
+  S.dayMinutes = (key) => actMinutes(S.state.act[key]);
+
+  // ---------- Course structure ----------
+  S.dayPlan = (d) => {
+    const ds = S.state.days[d];
+    const pace = (ds && ds.pace) || S.state.profile.pace;
+    const words = DAY_WORDS[d - 1];
+    const nb = (PACES[pace] || PACES[17]).blocks;
+    const base = Math.floor(words.length / nb), extra = words.length % nb;
+    const blocks = []; let at = 0;
+    for (let b = 0; b < nb; b++) { const n = base + (b < extra ? 1 : 0); blocks.push(words.slice(at, at + n).map((w) => w.id)); at += n; }
+    const stages = [];
+    blocks.forEach((ids, b) => {
+      stages.push({ kind: "learn", block: b, label: `Learn — ${ids.length} so'z`, min: Math.max(3, Math.round(ids.length * 0.47)) });
+      if (b < blocks.length - 1) stages.push({ kind: "recall", block: b, label: "Active recall", min: Math.max(2, Math.round(ids.length * 0.3)) });
+      else stages.push({ kind: "mixed", block: -1, label: "Mixed quiz", min: 4 });
+    });
+    return { pace, blocks, stages, words: words.map((w) => w.id), minutes: stages.reduce((s, x) => s + x.min, 0) };
+  };
+  S.dayState = (d) => S.state.days[d] || { stage: 0, done: false };
+  S.currentDay = () => { for (let d = 1; d <= DAYS; d++) if (!S.dayState(d).done) return d; return DAYS; };
+  S.courseDone = () => S.dayState(DAYS).done && Array.from({ length: DAYS }, (_, i) => S.dayState(i + 1).done).every(Boolean);
+  S.dayLearned = (d) => DAY_WORDS[d - 1].filter((w) => S.isLearned(w.id)).length;
+  S.dayStatus = (d) => {
+    const ds = S.dayState(d);
+    if (ds.done) return DAY_WORDS[d - 1].every((w) => S.isMastered(w.id)) ? "mastered" : "completed";
+    const cur = S.currentDay();
+    if (d === cur || ds.stage > 0) return "progress";
+    if (d <= cur + 2) return "available";
+    return "locked";
+  };
+  S.daysDone = () => Array.from({ length: DAYS }, (_, i) => i + 1).filter((d) => S.dayState(d).done).length;
+  S.dayTitle = (d) => {
+    const picks = DAY_WORDS[d - 1].map((w) => w.uz.split("/")[0].trim()).filter((u) => !/\s/.test(u)).slice(0, 3);
+    const t = picks.join(", ");
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  };
+
+  // ---------- Selectors ----------
+  S.learnedIds = () => Object.keys(S.state.words).filter((id) => S.isLearned(id) && BY_ID[id]);
+  S.dueIds = () => S.learnedIds().filter((id) => S.ws(id).due && S.ws(id).due <= U.today()).sort((a, b) => S.ws(a).due.localeCompare(S.ws(b).due));
+  S.weakIds = () => S.learnedIds().filter(S.isWeak).sort((a, b) => S.ws(b).bad - S.ws(a).bad);
+  S.flaggedIds = () => S.learnedIds().filter((id) => S.ws(id).flag);
+  S.forgottenIds = () => S.learnedIds().filter((id) => S.ws(id).forgot);
+  S.masteredIds = () => S.learnedIds().filter(S.isMastered);
+  S.accuracy = () => {
+    let ok = 0, all = 0;
+    for (const t of EX_TYPES) { ok += S.state.typeStats[t].ok; all += S.state.typeStats[t].ok + S.state.typeStats[t].bad; }
+    return all ? U.pct(ok, all) : null;
+  };
+  S.typeAccuracy = (t) => { const s = S.state.typeStats[t]; const all = s.ok + s.bad; return all ? U.pct(s.ok, all) : null; };
+
+  S.weekRhythm = () => {
+    const start = U.weekStart(U.today());
+    return U.WEEK_SHORT.map((lbl, i) => {
+      const key = U.addDays(start, i);
+      return { lbl, key, min: S.dayMinutes(key), words: (S.state.act[key] || {}).learned || 0, today: key === U.today(), future: key > U.today() };
+    });
+  };
+
+  // Daily challenge (resets every day); AI is excluded while that feature is locked.
+  S.challenge = () => {
+    const t = U.today();
+    if (!S.state.dueStart || S.state.dueStart.date !== t) { S.state.dueStart = { date: t, n: S.dueIds().length }; }
+    const a = act();
+    const dayTotal = DAY_WORDS[S.currentDay() - 1].length;
+    const items = [
+      { label: `${dayTotal} so'z o'rganish`, cur: Math.min(a.learned, dayTotal), goal: dayTotal },
+      S.state.dueStart.n > 0
+        ? { label: `${S.state.dueStart.n} so'zni takrorlash`, cur: Math.min(a.reviewed, S.state.dueStart.n), goal: S.state.dueStart.n }
+        : { label: "Bugun takrorlash yo'q", cur: 1, goal: 1 },
+    ];
+    const done = items.every((i) => i.cur >= i.goal);
+    if (done && !S.state.challengeDone[t]) { S.state.challengeDone[t] = true; S.addXP(120); S.log("Kunlik challenge bajarildi — +120 XP", "ok"); S.save(); }
+    return { items, done, reward: 120 };
+  };
+
+  // ---------- Achievements ----------
+  const ACH = [
+    { id: "first", g: "첫", t: "Birinchi qadam", d: "Day 1 tugatildi", ok: () => S.dayState(1).done, p: () => `${S.dayLearned(1)} / ${DAY_WORDS[0].length}` },
+    { id: "s3", g: "삼", t: "3 kunlik streak", d: "3 kun ketma-ket", ok: () => S.state.bestStreak >= 3, p: () => `${S.streak()} / 3` },
+    { id: "s10", g: "십", t: "10 kunlik streak", d: "10 kun ketma-ket", ok: () => S.state.bestStreak >= 10, p: () => `${S.streak()} / 10` },
+    { id: "s30", g: "삼십", t: "30 kunlik streak", d: "30 kun ketma-ket", ok: () => S.state.bestStreak >= 30, p: () => `${S.streak()} / 30` },
+    { id: "w100", g: "백", t: "100 so'z", d: "100 ta so'z o'rganildi", ok: () => S.learnedIds().length >= 100, p: () => `${S.learnedIds().length} / 100` },
+    { id: "w500", g: "오백", t: "500 so'z", d: "500 ta so'z o'rganildi", ok: () => S.learnedIds().length >= 500, p: () => `${S.learnedIds().length} / 500` },
+    { id: "wall", g: "천", t: `${S.TOTAL} so'z`, d: "Barcha so'zlar", ok: () => S.learnedIds().length >= S.TOTAL, p: () => `${S.learnedIds().length} / ${S.TOTAL}` },
+    { id: "m50", g: "숙달", t: "50 mastered", d: "50 so'z mastery'da", ok: () => S.masteredIds().length >= 50, p: () => `${S.masteredIds().length} / 50` },
+    { id: "perfect", g: "완벽", t: "Mukammal quiz", d: "10+ savolda 100%", ok: () => S.state.quizResults.some((r) => r.total >= 10 && r.ok === r.total), p: () => "0 / 1" },
+    { id: "rev10", g: "복습", t: "Takrorlash ustasi", d: "10 ta takrorlash sessiyasi", ok: () => S.state.reviewSessions >= 10, p: () => `${S.state.reviewSessions} / 10` },
+    { id: "week", g: "주", t: "Birinchi hafta", d: "7 kun tugatildi", ok: () => S.daysDone() >= 7, p: () => `${S.daysDone()} / 7 kun` },
+    { id: "half", g: "반", t: "Yarim yo'l", d: "15 kun tugatildi", ok: () => S.daysDone() >= 15, p: () => `${S.daysDone()} / 15 kun` },
+    { id: "ear", g: "귀", t: "Yaxshi quloq", d: "Listening 90%+ (20+ javob)", ok: () => { const s = S.state.typeStats.listen; return s.ok + s.bad >= 20 && S.typeAccuracy("listen") >= 90; }, p: () => `${S.typeAccuracy("listen") ?? 0}%` },
+    { id: "hand", g: "손", t: "Hangul yozuvchi", d: "Typing'da 50 to'g'ri", ok: () => S.state.typeStats.type.ok >= 50, p: () => `${S.state.typeStats.type.ok} / 50` },
+    { id: "grad", g: "졸업", t: "Kurs tamom", d: `${DAYS} kun tugatildi`, ok: () => S.daysDone() >= DAYS, p: () => `${S.daysDone()} / ${DAYS} kun` },
+  ];
+  S.achievements = () => {
+    let changed = false;
+    const list = ACH.map((a) => {
+      const done = !!S.state.achievements[a.id] || a.ok();
+      if (done && !S.state.achievements[a.id]) { S.state.achievements[a.id] = U.today(); changed = true; S.log(`Yutuq ochildi — ${a.t}`, "pd"); }
+      return { ...a, done, when: S.state.achievements[a.id], prog: done ? null : a.p() };
+    });
+    if (changed) S.save();
+    return list;
+  };
+
+  // ---------- Demo data (mirrors the design's sample user) ----------
+  S.buildDemoState = () => {
+    const st = freshState({ name: S.user.name, email: S.user.email, joined: U.addDays(U.today(), -12), onboarded: true });
+    const t = U.today();
+    for (let i = 12; i >= 1; i--) {
+      const k = U.addDays(t, -i);
+      st.act[k] = { learned: 0, reviewed: 8 + ((i * 7) % 17), xp: 90 + ((i * 13) % 60), min: { learn: 6 + (i % 5) * 3, review: 7 + (i % 4) * 2, quiz: 3 + (i % 3) * 2, tutor: i % 4 === 0 ? 12 : 0 } };
+    }
+    const weak = { "1-18": 3, "2-20": 2, "3-0": 2, "4-25": 2, "1-21": 2, "2-2": 2, "3-19": 3, "4-9": 2, "2-16": 2 };
+    for (let d = 1; d <= 4; d++) {
+      const learnedOn = U.addDays(t, -(5 - d));
+      st.act[learnedOn].learned = DAY_WORDS[d - 1].length;
+      DAY_WORDS[d - 1].forEach((w, i) => {
+        const r = (i * 37 + d * 11) % 100;
+        let s = d === 1 ? (r < 80 ? 4 + (r % 2) : 3) : d === 2 ? (r < 62 ? 4 : 3) : d === 3 ? (r < 30 ? 4 : 2 + (r % 2)) : (r < 22 ? 4 : 1 + (r % 3));
+        const bad = weak[w.id] || (r % 9 === 0 ? 1 : 0);
+        if (weak[w.id]) s = Math.min(s, bad >= 3 ? 1 : 2);
+        const dueOff = (i % 5 === 0 || weak[w.id]) ? (i % 2 ? -1 : 0) : 1 + (r % 6);
+        st.words[w.id] = { s, due: U.addDays(t, dueOff), learned: learnedOn, seen: s + 1 + bad, ok: s + 1, bad, lapses: 0, flag: r % 10 === 3, forgot: s <= 1 && r % 4 === 0, last: U.addDays(t, -((i % 4) + 1)) };
+      });
+      const dw = DAY_WORDS[d - 1].length;
+      st.days[d] = { stage: 4, pace: 17, done: true, doneAt: learnedOn, ok: Math.round(dw * 1.3 * (0.84 + d * 0.02)), bad: Math.round(dw * 1.3 * (0.16 - d * 0.02)), min: 22 + d, xp: 180 };
+    }
+    st.days[5] = { stage: 0, pace: 17, done: false };
+    st.xp = 2840; st.bestStreak = 12;
+    st.typeStats = { mc: { ok: 182, bad: 18 }, mcr: { ok: 164, bad: 36 }, type: { ok: 91, bad: 29 }, listen: { ok: 78, bad: 42 }, sent: { ok: 44, bad: 6 } };
+    st.firstTry = { ok: 261, total: 300 };
+    st.quizResults = [
+      { type: "listen", ok: 13, total: 20, at: Date.now() - 86400000 * 1 },
+      { type: "type", ok: 12, total: 15, at: Date.now() - 86400000 * 2 },
+      { type: "mixed", ok: 20, total: 20, at: Date.now() - 86400000 * 3 },
+    ];
+    st.reviewSessions = 9;
+    st.tutor = { sessions: 3, lastAt: Date.now() - 86400000 * 2, lastMin: 12, current: null };
+    st.log = [
+      { t: Date.now() - 86400000 * 1, text: "Day 4 tugatildi — 33 so'z", kind: "ok" },
+      { t: Date.now() - 86400000 * 1 - 3600000, text: "Takrorlash — 28/31 to'g'ri", kind: "p" },
+      { t: Date.now() - 86400000 * 2, text: "AI Tutor bilan 12 daqiqa suhbat", kind: "pd" },
+    ];
+    return st;
+  };
+
+  window.S = S;
+})();

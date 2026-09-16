@@ -1,0 +1,20 @@
+{
+  "name": "upkorean",
+  "version": "1.0.0",
+  "private": true,
+  "description": "UpKorean — 30 kunlik TOPIK II vocabulary platformasi",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node --no-warnings=ExperimentalWarning server/index.js",
+    "dev": "node --no-warnings=ExperimentalWarning --watch server/index.js",
+    "check:content": "node scripts/validate-content.js"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.125.0",
+    "express": "^5.2.1"
+  }
+}
