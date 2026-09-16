@@ -509,20 +509,32 @@
     const w = S.word(it.id);
     const r = S.roots(it.id) || {};
     const ex = S.example(it.id);
-    const parts = r.parts && r.parts.length > 1
-      ? `<div class="parts">${r.parts.map((p, i) => `${i ? `<span class="plus" aria-hidden="true">+</span>` : ""}<div class="part${p.h ? "" : " plain"}">
+    const pieces = (r.parts || []).filter((p) => !p.space);
+    const parts = pieces.length > 1 || (pieces[0] && pieces[0].h)
+      ? `<div class="parts">${pieces.map((p, i) => `${i ? `<span class="plus" aria-hidden="true">+</span>` : ""}<div class="part${p.h ? "" : " plain"}">
           <div class="pk"><span class="ko">${esc(p.k)}</span>${p.h ? `<span class="ph">${esc(p.h)}</span>` : ""}</div>
           <div class="pu">${esc(p.uz)}</div></div>`).join("")}</div>`
       : "";
     const idea = r.idea ? `<div class="idea">${parts ? "→ " : ""}${esc(r.idea)}</div>` : "";
     const known = (id) => S.isLearned(id) ? ` <span class="okc">✓</span>` : "";
-    const links = S.rootLinks(it.id).flatMap((l) => l.ids.map((id) => {
-      const o = S.word(id);
-      return `<li><span class="ko b">${esc(o.ko)}</span> — ${esc(o.uz)}${known(id)}<span class="via">${esc(l.k)} ${esc(l.h)}</span></li>`;
-    }));
-    const family = (r.family || []).map(([ko, uz]) => `<li><span class="ko b">${esc(ko)}</span> — ${esc(uz)}</li>`);
+    // Course words sharing a hanja — already learned ones first, at most two per hanja — then the entry's own family.
+    const shown = new Set([S.word(it.id).ko]);
+    const links = [];
+    for (const l of S.rootLinks(it.id)) {
+      const ids = l.ids.slice().sort((a, b) => Number(S.isLearned(b)) - Number(S.isLearned(a)));
+      let fromThis = 0;
+      for (const id of ids) {
+        const o = S.word(id);
+        if (links.length >= 3 || fromThis >= 2) break;
+        if (shown.has(o.ko)) continue;
+        shown.add(o.ko);
+        fromThis++;
+        links.push(`<li><span class="ko b">${esc(o.ko)}</span> — ${esc(o.uz)}${known(id)}<span class="via">${esc(l.k)} ${esc(l.h)}</span></li>`);
+      }
+    }
+    const family = (r.family || []).filter(([ko]) => !shown.has(ko)).map(([ko, uz]) => `<li><span class="ko b">${esc(ko)}</span> — ${esc(uz)}</li>`);
     const related = links.length + family.length
-      ? `<div class="isec"><div class="upl">Bog'liq so'zlar</div><ul class="rel">${links.concat(family).slice(0, 4).join("")}</ul></div>` : "";
+      ? `<div class="isec"><div class="upl">Bog'liq so'zlar</div><ul class="rel">${links.concat(family).slice(0, 5).join("")}</ul></div>` : "";
     return `<div class="intro">
       <div class="ex-cap center" style="margin-bottom:18px">YANGI SO'Z · ${it.pos + 1} / ${it.size}</div>
       <div class="fc intro-card">
