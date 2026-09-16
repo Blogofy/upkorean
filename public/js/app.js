@@ -72,7 +72,7 @@
       else if (r.name === "register") html = V.register();
       else if (r.name === "reset" && r.args[0]) html = V.reset(r.args[0]);
       else if (r.name === "onboarding") {
-        const step = Math.max(1, Math.min(3, Number(r.args[0]) || 1));
+        const step = Math.max(1, Math.min(V.OB_STEPS, Number(r.args[0]) || 1));
         html = V.onboarding(step);
       } else if (r.name === "dashboard") html = V.dashboard();
       else if (r.name === "course") html = V.course();
@@ -130,7 +130,48 @@
   };
   Forms["ex-type"] = (form) => X.submitTyping(form.elements.v.value);
 
+  // Dropdowns (U.dropdown)
+  Actions["dd-toggle"] = (el) => {
+    const dd = el.closest(".dd");
+    const open = !dd.classList.contains("open");
+    U.closeDropdowns(dd);
+    dd.classList.toggle("open", open);
+    dd.querySelector(".dd-menu").hidden = !open;
+    el.setAttribute("aria-expanded", String(open));
+    if (open) (dd.querySelector(".dd-opt.on") || dd.querySelector(".dd-opt")).focus();
+  };
+  Actions["dd-pick"] = (el) => {
+    const dd = el.closest(".dd");
+    U.closeDropdowns();
+    // Some handlers redraw only part of the page, so the dropdown shows the new choice itself.
+    dd.querySelector(".dd-val").textContent = el.firstElementChild.textContent;
+    dd.querySelectorAll(".dd-opt").forEach((o) => {
+      const on = o === el;
+      o.classList.toggle("on", on);
+      o.setAttribute("aria-selected", String(on));
+      const check = o.querySelector(".dd-check");
+      if (on && !check) o.insertAdjacentHTML("beforeend", `<span class="dd-check" aria-hidden="true">✓</span>`);
+      if (!on && check) check.remove();
+    });
+    dd.querySelector(".dd-btn").focus();
+    const fn = Changes[dd.dataset.dd];
+    if (fn) fn({ value: el.dataset.v, dataset: {} });
+  };
+  function dropdownKey(event, dd) {
+    const opts = [...dd.querySelectorAll(".dd-opt")];
+    const i = opts.indexOf(document.activeElement);
+    if (event.key === "Escape") { U.closeDropdowns(); dd.querySelector(".dd-btn").focus(); }
+    else if (event.key === "ArrowDown") opts[Math.min(opts.length - 1, i + 1)].focus();
+    else if (event.key === "ArrowUp") opts[Math.max(0, i - 1)].focus();
+    else if (event.key === "Home") opts[0].focus();
+    else if (event.key === "End") opts[opts.length - 1].focus();
+    else if (event.key === "Tab") { U.closeDropdowns(); return; }
+    else return;
+    event.preventDefault();
+  }
+
   document.addEventListener("click", (event) => {
+    if (!event.target.closest(".dd")) U.closeDropdowns();
     const el = event.target.closest("[data-act]");
     if (!el || el.disabled) return;
     const fn = Actions[el.dataset.act];
@@ -164,11 +205,13 @@
   });
 
   document.addEventListener("keydown", (event) => {
+    const dd = event.target.closest && event.target.closest(".dd.open");
+    if (dd) { dropdownKey(event, dd); return; }
     if (event.key === "Escape" && U.modalOpen()) { U.closeModal(); return; }
     const r = route();
     if (r.name === "session") X.onKey(event);
     else if (r.name === "tutor" && r.args[0] === "chat") T.onKey(event);
-    else if (r.name === "onboarding") V.onboardingKey(event, Math.max(1, Math.min(3, Number(r.args[0]) || 1)));
+    else if (r.name === "onboarding") V.onboardingKey(event, Math.max(1, Math.min(V.OB_STEPS, Number(r.args[0]) || 1)));
   });
 
   // A new deploy activates its service worker while this page still runs the old scripts. Switch to the new

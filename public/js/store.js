@@ -20,14 +20,6 @@
     17: { blocks: 2, min: 22, name: "Muvozanatli", desc: "Kuniga ~22 daqiqa — eng ko'p tanlanadigan temp" },
     33: { blocks: 1, min: 40, name: "Intensiv", desc: "Kuniga ~40 daqiqa, butun kun bir sessiyada" },
   };
-  const LEVEL_NAMES = { beg: "Boshlovchi", mid: "O'rta daraja", adv: "Yuqori daraja" };
-  const LEVEL_TAGS = { beg: "TOPIK I", mid: "TOPIK II · o'rta", adv: "TOPIK 5–6" };
-  const GOALS = {
-    exam: { ko: "시험", name: "TOPIK imtihoni", desc: "Yozma recall va sentence completion ko'proq" },
-    talk: { ko: "대화", name: "Suhbat va ish", desc: "Listening va AI tutor bilan dialog ko'proq" },
-    abroad: { ko: "유학", name: "O'qish / ish uchun ketish", desc: "Akademik va rasmiy so'zlarga urg'u" },
-    hobby: { ko: "취미", name: "Qiziqish uchun", desc: "Yengil temp, kundalik so'zlar" },
-  };
   const EX_TYPES = ["mc", "mcr", "type", "listen", "sent"];
   const TYPE_NAMES = { mc: "Korean → Uzbek", mcr: "Uzbek → Korean", type: "Typing", listen: "Listening", sent: "Sentence completion" };
 
@@ -42,7 +34,7 @@
     return {
       v: 1,
       profile: Object.assign({
-        name: "", email: "", joined: U.today(), level: "mid", goal: "exam", pace: 17, onboarded: false,
+        name: "", email: "", joined: U.today(), pace: 17, onboarded: false,
         reminders: { on: true, learn: "09:00", review: "20:30", streak: true, social: false },
       }, profile),
       settings: { theme: LS.get("uk:theme", "light"), roman: true, autoAudio: true, speechRate: 0.92, apiKey: "" },
@@ -55,7 +47,7 @@
     };
   }
 
-  const S = { WORDS, BY_ID, DAYS, DAY_WORDS, EXAMPLES, INTERVALS, MASTER_STEP, PACES, LEVEL_NAMES, LEVEL_TAGS, GOALS, EX_TYPES, TYPE_NAMES, TOTAL: WORDS.length, state: null, user: null, config: {}, syncError: false, offline: !navigator.onLine };
+  const S = { WORDS, BY_ID, DAYS, DAY_WORDS, EXAMPLES, INTERVALS, MASTER_STEP, PACES, EX_TYPES, TYPE_NAMES, TOTAL: WORDS.length, state: null, user: null, config: {}, syncError: false, offline: !navigator.onLine };
 
   // ---------- Server API ----------
   async function api(method, path, body) {

@@ -1,4 +1,4 @@
-// Exercise engine: learning stages (flash cards + recall), review sessions, practice quizzes and the placement test.
+// Exercise engine: learning stages (flash cards + recall), review sessions and practice quizzes.
 (function () {
   const U = window.U, S = window.S, esc = U.esc;
   const X = { session: null };
@@ -16,19 +16,8 @@
   };
 
   // ---------- Item building ----------
-  function typeWeights() {
-    const p = S.state.profile;
-    const w = {
-      exam: { mc: 3, mcr: 2, type: 3, listen: 1, sent: 3 },
-      talk: { mc: 3, mcr: 2, type: 1, listen: 4, sent: 1 },
-      abroad: { mc: 3, mcr: 2, type: 2, listen: 2, sent: 2 },
-      hobby: { mc: 4, mcr: 2, type: 1, listen: 2, sent: 1 },
-    }[p.goal] || { mc: 3, mcr: 2, type: 2, listen: 2, sent: 2 };
-    const r = { ...w };
-    if (p.level === "beg") r.type = r.type / 2;
-    if (p.level === "adv") { r.mc = r.mc / 2; r.type += 1; }
-    return r;
-  }
+  // How often each exercise type is picked in mixed practice.
+  const typeWeights = () => ({ mc: 3, mcr: 2, type: 2, listen: 2, sent: 2 });
   const canUse = (type, id) => {
     if (type === "listen") return U.canListen();
     if (type === "sent") return !!S.clozeExample(id);
@@ -128,15 +117,6 @@
     App.go("#/session");
   };
 
-  X.startPlacement = () => {
-    const ids = [];
-    [[1, 10, 3], [11, 20, 4], [21, S.DAYS, 3]].forEach(([a, b, n]) => {
-      const pool = S.WORDS.filter((w) => w.day >= a && w.day <= b).map((w) => w.id);
-      ids.push(...U.sample(pool, n));
-    });
-    X.session = newSession("placement", ids.map((id) => makeItem("mc", id)), { cat: null });
-    App.go("#/session");
-  };
 
   // ---------- Flow ----------
   const cur = () => X.session && X.session.items[X.session.idx];
@@ -153,7 +133,7 @@
     s.correct = correct;
     s[correct ? "ok" : "bad"]++;
     s.results.push({ id: it.id, type: it.type, correct });
-    if (s.kind !== "placement") S.answer(it.id, correct, it.type, modeOf(s));
+    S.answer(it.id, correct, it.type, modeOf(s));
     if (s.kind === "review") { S.state.firstTry.total++; if (correct) S.state.firstTry.ok++; }
     S.save();
     if (!s.instant) { X.next(); return; }
@@ -234,14 +214,14 @@
   X.exit = (force) => {
     const s = X.session;
     if (!s) { App.go("#/dashboard"); return; }
-    if (!force && s.idx > 0 && !s.finished && s.kind !== "placement") {
+    if (!force && s.idx > 0 && !s.finished) {
       U.modal("Sessiyadan chiqasizmi?", `<p class="muted" style="margin:0 0 20px;line-height:1.55">${s.kind === "learn" ? "Bu bosqich keyingi safar boshidan boshlanadi. Baholangan so'zlar va javoblar saqlanadi." : "Berilgan javoblar saqlanadi, qolgan savollar bekor qilinadi."}</p>
         <div class="row"><button class="btn btn-p" data-act="modal-close">Davom etish</button><button class="btn btn-ghost" data-act="ex-exit-force">Chiqish</button></div>`);
       return;
     }
     stopTimer();
     if (!s.finished) { trackTime(); saveMinutes(s); }
-    const back = s.kind === "learn" ? `#/day/${s.day}` : s.kind === "review" ? "#/review" : s.kind === "placement" ? "#/onboarding/1" : "#/quiz";
+    const back = s.kind === "learn" ? `#/day/${s.day}` : s.kind === "review" ? "#/review" : "#/quiz";
     X.session = null;
     App.go(back);
   };
@@ -357,9 +337,8 @@
     let lbl;
     if (s.kind === "learn") lbl = it && it.type === "card" ? `DAY ${s.day} · LEARN · BLOK ${s.stage.block + 1}` : `DAY ${s.day} · ${s.stage.kind === "mixed" ? "MIXED QUIZ" : it ? TYPE_LABEL[it.type] : "ACTIVE RECALL"}`;
     else if (s.kind === "review") lbl = `TAKRORLASH · ${it ? TYPE_LABEL[it.type] : ""}`;
-    else if (s.kind === "placement") lbl = "DARAJA TESTI";
     else lbl = `MASHQ · ${esc(s.title).toUpperCase()}`;
-    const badges = it && it.type !== "card" && s.kind !== "placement"
+    const badges = it && it.type !== "card"
       ? `${s.ok ? `<span class="badge-ok">${s.ok} ✓</span>` : ""}${s.bad ? `<span class="badge-bad">${s.bad} ✕</span>` : ""}` : "";
     return `<div class="ex-top">
       <button class="exit" data-act="ex-exit">✕ Chiqish</button>
@@ -567,17 +546,6 @@
   }
 
   function summaryView(s) {
-    if (s.kind === "placement") {
-      const lvl = s.ok >= 8 ? "adv" : s.ok >= 4 ? "mid" : "beg";
-      return `<div style="width:100%;max-width:620px;text-align:center">
-        <div class="done-glyph">결과</div>
-        <h3 style="margin:0 0 8px;font-size:32px;font-weight:800;letter-spacing:-.035em">${s.ok} / ${s.items.length} to'g'ri</h3>
-        <p class="muted" style="margin:0 0 28px;font-size:16px;line-height:1.5">Tavsiya etilgan daraja: <b style="color:var(--ink)">${S.LEVEL_NAMES[lvl]}</b> (${S.LEVEL_TAGS[lvl]})</p>
-        <div class="row" style="justify-content:center;gap:12px">
-          <button class="btn btn-p" data-act="placement-apply" data-level="${lvl}" data-primary>Shu darajani tanlash</button>
-          <button class="btn btn-ghost" data-act="ex-exit">Orqaga</button>
-        </div></div>`;
-    }
     const total = s.items.length;
     const wrong = [...new Set(s.results.filter((r) => r.correct === false).map((r) => r.id))];
     const t = U.dur(s.activeMs / 60000 < 1 ? 1 : s.activeMs / 60000);

@@ -187,6 +187,29 @@
     return bg;
   };
   U.closeModal = () => { const m = document.getElementById("modal"); if (m) m.remove(); };
+
+  // ---------- Dropdown (styled replacement for <select>) ----------
+  // U.dropdown({ change: "lib-sort", value, options: [[value, label], ...], label: "Saralash", block: true })
+  // Picking an option calls Changes[change]({ value }), the same handler a native select's change event would use.
+  const CHEVRON = `<svg class="dd-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  U.dropdown = ({ change, value, options, label, block = false }) => {
+    const current = options.find(([v]) => String(v) === String(value)) || options[0];
+    return `<div class="dd${block ? " block" : ""}" data-dd="${U.esc(change)}">
+      <button type="button" class="dd-btn" data-act="dd-toggle" aria-haspopup="listbox" aria-expanded="false" aria-label="${U.esc(label)}"><span class="dd-val">${U.esc(current[1])}</span>${CHEVRON}</button>
+      <div class="dd-menu" role="listbox" aria-label="${U.esc(label)}" hidden>${options.map(([v, l]) => {
+        const on = v === current[0];
+        return `<button type="button" class="dd-opt${on ? " on" : ""}" role="option" aria-selected="${on}" data-act="dd-pick" data-v="${U.esc(v)}"><span>${U.esc(l)}</span>${on ? `<span class="dd-check" aria-hidden="true">✓</span>` : ""}</button>`;
+      }).join("")}</div>
+    </div>`;
+  };
+  U.closeDropdowns = (except) => {
+    document.querySelectorAll(".dd.open").forEach((dd) => {
+      if (dd === except) return;
+      dd.classList.remove("open");
+      dd.querySelector(".dd-menu").hidden = true;
+      dd.querySelector(".dd-btn").setAttribute("aria-expanded", "false");
+    });
+  };
   U.modalOpen = () => !!document.getElementById("modal");
 
   U.download = (filename, text, type = "text/plain") => {

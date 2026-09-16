@@ -121,7 +121,7 @@
     try {
       if (!S.config.tutor || c.forceOffline) throw Object.assign(new Error("offline"), { offline: true });
       const history = c.messages.map((m) => ({ role: m.role, text: m.role === "tutor" ? `${m.ko}\n(${m.uz})` : m.text }));
-      reply = await S.tutor({ mode: c.mode, level: S.state.profile.level, words: c.words.map(({ ko, uz }) => ({ ko, uz })), history });
+      reply = await S.tutor({ mode: c.mode, level: "mid", words: c.words.map(({ ko, uz }) => ({ ko, uz })), history });
     } catch (e) {
       if (e.offline || (e.data && e.data.offline)) { c.forceOffline = true; reply = offlineReply(c, userText == null ? null : userText); }
       else { T.ui.sending = false; T.ui.error = e.message; App.render(); return; }
@@ -245,7 +245,7 @@
           <a class="iconbtn" href="#/tutor" aria-label="Orqaga">←</a>
           <div class="avatar ko" style="font-size:15px;font-weight:700">선</div>
           <div class="grow"><div style="font-size:15px;font-weight:700">선생님 · AI Tutor${c.forceOffline ? ` <span class="tag" style="margin-left:6px">offline</span>` : ""}</div>
-            <div class="muted" style="font-size:12px">${esc(topicLabel(c))} · ${MODES[c.mode].name} · ${S.LEVEL_TAGS[S.state.profile.level]}</div></div>
+            <div class="muted" style="font-size:12px">${esc(topicLabel(c))} · ${MODES[c.mode].name} · TOPIK II</div></div>
           <button class="chip" data-act="chat-new">Yangi suhbat</button>
         </div>
         <div class="chat-log" id="chat-log" aria-live="polite">

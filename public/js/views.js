@@ -49,7 +49,7 @@
             <a href="#/profile" class="me grow" style="color:inherit">
               <div class="avatar">${initial()}</div>
               <div class="grow"><div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${firstName()}</div>
-                <div class="faint" style="font-size:11px">${S.LEVEL_TAGS[S.state.profile.level].split(" ·")[0]}</div></div>
+                <div class="faint" style="font-size:11px">TOPIK II</div></div>
             </a>
             <button class="iconbtn" data-act="theme-toggle" title="Tema" aria-label="Temani almashtirish">◐</button>
           </div>
@@ -597,9 +597,7 @@
         <div><div class="upl" style="margin-bottom:10px">Kun</div>
           <div class="days">${(lib.status === "unlearned" ? Array.from({ length: S.DAYS }, (_, i) => i + 1) : learnedDays).map((d) => `<button class="dsq ${lib.days.includes(d) ? "completed" : "available"}" style="width:28px;height:28px" data-act="lib-day" data-d="${d}">${d}</button>`).join("") || `<span class="faint" style="font-size:12px">—</span>`}</div></div>
         <div><div class="upl" style="margin-bottom:10px">Saralash</div>
-          <select class="input" style="padding:10px 12px;font-size:13px" data-change="lib-sort" aria-label="Saralash">
-            ${[["mastery-asc", "Mastery ↑"], ["mastery-desc", "Mastery ↓"], ["due", "Keyingi takrorlash"], ["day", "Kun bo'yicha"], ["alpha", "Alifbo (가나다)"]].map(([k, l]) => `<option value="${k}" ${lib.sort === k ? "selected" : ""}>${l}</option>`).join("")}
-          </select></div>
+          ${U.dropdown({ change: "lib-sort", value: lib.sort, label: "Saralash", block: true, options: [["mastery-asc", "Mastery: pastdan"], ["mastery-desc", "Mastery: yuqoridan"], ["due", "Keyingi takrorlash"], ["day", "Kun bo'yicha"], ["alpha", "Alifbo (가나다)"]] })}</div>
       </div>
       <div style="min-width:0">
         <div class="row wrap" style="gap:10px;margin-bottom:18px">
@@ -673,7 +671,7 @@
     const body = `<div class="page wide collapse-md" style="display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:36px">
       <div style="min-width:0">
         <div class="card-pl row wrap" style="gap:26px;padding:24px 28px;border-radius:16px;margin-bottom:26px">
-          <div><div class="upl" style="font-size:12px;color:var(--on-pl3);margin-bottom:8px">Level ${lv.level} · ${S.state.profile.level === "adv" ? "고급" : S.state.profile.level === "beg" ? "초급" : "중급"}</div>
+          <div><div class="upl" style="font-size:12px;color:var(--on-pl3);margin-bottom:8px">Level ${lv.level}</div>
             <div style="font-size:34px;font-weight:800;letter-spacing:-.035em;color:var(--on-pl);line-height:1">${U.num(lv.xp)} XP</div></div>
           <div class="grow" style="min-width:200px"><div style="height:10px;border-radius:6px;background:rgba(124,63,11,.16);overflow:hidden;margin-bottom:8px"><div style="height:100%;width:${lv.pct}%;border-radius:6px;background:var(--pdb)"></div></div>
             <div class="row between" style="font-size:13px"><span>Level ${lv.level + 1} gacha ${U.num(lv.toNext)} XP</span><span>${U.num(lv.next)}</span></div></div>
@@ -709,48 +707,44 @@
   // ---------- Profile & settings (G4) ----------
   V.profile = () => {
     const p = S.state.profile, set = S.state.settings, r = p.reminders, lv = S.levelInfo();
-    const pace = S.PACES[p.pace] || S.PACES[17];
     const startKey = Object.values(S.state.days).length ? (Object.values(S.state.days).map((d) => d.doneAt).filter(Boolean).sort()[0] || p.joined) : p.joined;
     const endKey = U.addDays(startKey, S.DAYS);
-    const row = (label, right, first) => `<div class="row between" style="padding:12px 0;${first ? "" : "border-top:1px solid var(--line)"}"><span>${label}</span>${right}</div>`;
-    const body = `<div class="page" style="padding:36px 48px">
-      <div class="row wrap" style="gap:22px;margin-bottom:34px">
-        <div class="avatar" style="width:76px;height:76px;border-radius:22px;font-size:30px">${initial()}</div>
-        <div class="grow"><h3 class="page-h" style="font-size:26px">${esc(p.name)}</h3>
-          <p class="page-p" style="font-size:14px">${esc(S.user.email)} · ${U.fmtDayMonth(S.user.createdAt || p.joined)}dan a'zo · Level ${lv.level}</p></div>
-        ${S.user.demo ? `<span class="tag">demo hisob</span>` : `<button class="btn btn-sec btn-sm" style="padding:12px 22px;font-size:14px" data-act="edit-name">Tahrirlash</button>`}
+    const row = (label, right) => `<div class="set-row"><div class="set-l">${label}</div><div class="set-r">${right}</div></div>`;
+    const hint = (text) => ` <span class="faint" style="font-size:12px">· ${text}</span>`;
+    const perm = Push.permission();
+    const body = `<div class="page prof">
+      <div class="prof-head">
+        <div class="avatar prof-av">${initial()}</div>
+        <div class="prof-id">
+          <h3 class="page-h">${esc(p.name)}</h3>
+          <p class="page-p">${esc(S.user.email)}</p>
+          <p class="prof-meta">${U.fmtDayMonth(S.user.createdAt || p.joined)}dan a'zo · Level ${lv.level}</p>
+        </div>
+        ${S.user.demo ? `<span class="tag">demo hisob</span>` : `<button class="btn btn-sec btn-sm prof-edit" data-act="edit-name">Tahrirlash</button>`}
       </div>
       <div class="collapse-md" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px">
         <div class="stack" style="gap:16px">
-          <div class="card" style="padding:24px">
-            <div class="card-title" style="margin-bottom:18px">Learning goal</div>
-            <button class="row" style="gap:14px;padding:14px 16px;border-radius:11px;background:var(--pl);margin-bottom:10px;width:100%" data-act="pick-goal">
-              <span class="ko accent" style="font-size:19px;font-weight:700">${S.GOALS[p.goal].ko}</span>
-              <span class="grow" style="font-size:14px;font-weight:700;color:var(--on-pl)">${S.GOALS[p.goal].name}</span>
-              <span class="mono accent" style="font-size:12px">o'zgartirish</span></button>
-            <div class="row between" style="padding:13px 0;border-top:1px solid var(--line)"><span class="muted">Daraja</span>
-              <select class="input" style="width:auto;padding:6px 10px;font-size:14px;font-weight:600;background:var(--sf)" data-change="set-level" aria-label="Daraja">
-                ${Object.entries(S.LEVEL_TAGS).map(([k, t]) => `<option value="${k}" ${p.level === k ? "selected" : ""}>${t}</option>`).join("")}</select></div>
-            <div class="row between" style="padding:13px 0;border-top:1px solid var(--line)"><span class="muted">Kunlik target</span>
-              <select class="input" style="width:auto;padding:6px 10px;font-size:14px;font-weight:600;background:var(--sf)" data-change="set-pace" aria-label="Kunlik target">
-                ${[11, 17, 33].map((n) => `<option value="${n}" ${p.pace === n ? "selected" : ""}>${n} so'z · ~${S.PACES[n].min} daq</option>`).join("")}</select></div>
-            <div class="row between" style="padding:13px 0 0;border-top:1px solid var(--line)"><span class="muted">Tugash sanasi</span><span style="font-weight:600">${U.fmtDayMonth(endKey)}</span></div>
+          <div class="card set-card">
+            <div class="card-title">O'qish rejasi</div>
+            ${row("Kurs", `<span class="set-v">TOPIK II · ${S.TOTAL} so'z</span>`)}
+            ${row("Kunlik temp", U.dropdown({ change: "set-pace", value: p.pace, label: "Kunlik temp", options: [11, 17, 33].map((n) => [n, `${n} so'z · ~${S.PACES[n].min} daq`]) }))}
+            ${row("Tugash sanasi", `<span class="set-v">${U.fmtDayMonth(endKey)}</span>`)}
           </div>
-          <div class="card" style="padding:24px">
-            <div class="card-title" style="margin-bottom:10px">Bildirishnomalar</div>
-            ${S.user.demo ? `<p class="muted" style="font-size:13px;margin:0 0 6px">Demo hisobda eslatmalar yuborilmaydi.</p>` : ""}
-            ${row(`Eslatmalar <span class="faint" style="font-size:12px">· ${{ granted: "ruxsat berilgan", denied: "brauzerda bloklangan", default: "ruxsat so'raladi", install: "bosh ekranga qo'shing", unsupported: "brauzer qo'llamaydi" }[Push.permission()]}</span>`, toggle(r.on, "rem-toggle", "on", "Eslatmalar"), true)}
-            ${row(`Bugungi dars · <input type="time" class="time-input" style="width:auto;padding:4px 8px" value="${esc(r.learn)}" data-change="rem-time" data-k="learn" aria-label="Dars vaqti">`, toggle(r.on && r.learnOn !== false, "rem-toggle", "learnOn", "Dars eslatmasi"))}
-            ${row(`Takrorlash · <input type="time" class="time-input" style="width:auto;padding:4px 8px" value="${esc(r.review)}" data-change="rem-time" data-k="review" aria-label="Takrorlash vaqti">`, toggle(r.on && r.reviewOn !== false, "rem-toggle", "reviewOn", "Takrorlash eslatmasi"))}
-            ${row("Streak eslatmasi <span class=\"faint\" style=\"font-size:12px\">· 21:30</span>", toggle(r.on && r.streak, "rem-toggle", "streak", "Streak eslatmasi"))}
-            ${r.on && !S.user.demo && Push.permission() === "granted" ? row("Sinov bildirishnomasi", `<button class="link" data-act="push-test">yuborish</button>`) : ""}
-            ${r.on && ["denied", "install", "unsupported"].includes(Push.permission()) ? `<p class="muted" style="font-size:13px;line-height:1.5;margin:10px 0 0">${esc(Push.explain(Push.permission()))}</p>` : ""}
+          <div class="card set-card">
+            <div class="card-title">Bildirishnomalar</div>
+            ${S.user.demo ? `<p class="muted set-note">Demo hisobda eslatmalar yuborilmaydi.</p>` : ""}
+            ${row(`Eslatmalar${hint({ granted: "ruxsat berilgan", denied: "brauzerda bloklangan", default: "ruxsat so'raladi", install: "bosh ekranga qo'shing", unsupported: "brauzer qo'llamaydi" }[perm])}`, toggle(r.on, "rem-toggle", "on", "Eslatmalar"))}
+            ${row(`Bugungi dars <input type="time" class="time-input sm" value="${esc(r.learn)}" data-change="rem-time" data-k="learn" aria-label="Dars vaqti">`, toggle(r.on && r.learnOn !== false, "rem-toggle", "learnOn", "Dars eslatmasi"))}
+            ${row(`Takrorlash <input type="time" class="time-input sm" value="${esc(r.review)}" data-change="rem-time" data-k="review" aria-label="Takrorlash vaqti">`, toggle(r.on && r.reviewOn !== false, "rem-toggle", "reviewOn", "Takrorlash eslatmasi"))}
+            ${row(`Streak eslatmasi${hint("21:30")}`, toggle(r.on && r.streak, "rem-toggle", "streak", "Streak eslatmasi"))}
+            ${r.on && !S.user.demo && perm === "granted" ? row("Sinov bildirishnomasi", `<button class="link" data-act="push-test">yuborish</button>`) : ""}
+            ${r.on && ["denied", "install", "unsupported"].includes(perm) ? `<p class="muted set-note" style="margin:10px 0 0">${esc(Push.explain(perm))}</p>` : ""}
           </div>
-          <div class="card" style="padding:24px">
-            <div class="card-title" style="margin-bottom:10px">Hisob</div>
-            ${row(`AI Tutor <span class="faint" style="font-size:12px">· tez kunda</span>`, `<span class="tag">qulflangan</span>`, true)}
+          <div class="card set-card">
+            <div class="card-title">Hisob</div>
+            ${row(`AI Tutor${hint("tez kunda")}`, `<span class="tag">qulflangan</span>`)}
             ${S.user.demo ? "" : row("Parol", `<button class="link" data-act="change-pass">${S.user.hasPassword ? "o'zgartirish" : "o'rnatish"}</button>`)}
-            ${row("Progressni eksport qilish (JSON)", `<button class="link" data-act="export-json">yuklab olish</button>`)}
+            ${row("Progressni yuklab olish", `<button class="link" data-act="export-json">JSON</button>`)}
             ${S.user.demo ? "" : row("Hisobni o'chirish", `<button class="link" style="color:var(--bad)" data-act="delete-account">o'chirish</button>`)}
           </div>
         </div>
@@ -758,24 +752,22 @@
           <div class="card" style="padding:24px">
             <div class="card-title" style="margin-bottom:18px">Statistika</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-              <div><div style="font-size:26px;font-weight:800;letter-spacing:-.03em">${S.learnedIds().length}</div><div class="muted" style="font-size:13px">o'rganilgan so'z</div></div>
-              <div><div style="font-size:26px;font-weight:800;letter-spacing:-.03em">${S.masteredIds().length}</div><div class="muted" style="font-size:13px">mastered</div></div>
-              <div><div style="font-size:26px;font-weight:800;letter-spacing:-.03em">${S.streak()}</div><div class="muted" style="font-size:13px">kunlik streak</div></div>
-              <div><div style="font-size:26px;font-weight:800;letter-spacing:-.03em">${U.durText(S.totalMinutes())}</div><div class="muted" style="font-size:13px">o'qish vaqti</div></div>
+              <div><div class="stat-n">${S.learnedIds().length}</div><div class="muted" style="font-size:13px">o'rganilgan so'z</div></div>
+              <div><div class="stat-n">${S.masteredIds().length}</div><div class="muted" style="font-size:13px">mastered</div></div>
+              <div><div class="stat-n">${S.streak()}</div><div class="muted" style="font-size:13px">kunlik streak</div></div>
+              <div><div class="stat-n">${U.durText(S.totalMinutes())}</div><div class="muted" style="font-size:13px">o'qish vaqti</div></div>
             </div>
           </div>
-          <div class="card" style="padding:24px">
-            <div class="card-title" style="margin-bottom:10px">Interfeys</div>
-            ${row("Tema", `<div class="seg" style="padding:3px"><button class="${set.theme !== "dark" ? "on" : ""}" data-act="set-theme" data-v="light">Light</button><button class="${set.theme === "dark" ? "on" : ""}" data-act="set-theme" data-v="dark">Dark</button></div>`, true)}
-            ${row("Interfeys tili", `<span style="font-weight:600">O'zbek</span>`)}
-            ${row("Romanization ko'rsatish", toggle(set.roman, "set-flag", "roman", "Romanization"))}
+          <div class="card set-card">
+            <div class="card-title">Interfeys</div>
+            ${row("Tema", `<div class="seg" style="padding:3px"><button class="${set.theme !== "dark" ? "on" : ""}" data-act="set-theme" data-v="light">Yorug'</button><button class="${set.theme === "dark" ? "on" : ""}" data-act="set-theme" data-v="dark">Tungi</button></div>`)}
+            ${row("Romanizatsiya ko'rsatish", toggle(set.roman, "set-flag", "roman", "Romanizatsiya"))}
             ${row("Avtomatik audio", toggle(set.autoAudio, "set-flag", "autoAudio", "Avtomatik audio"))}
-            ${row("Talaffuz tezligi", `<div class="seg" style="padding:3px">${[[0.82,"Sekin"],[0.92,"Tabiiy"],[1.02,"Tez"]].map(([v,t]) => `<button class="${Math.abs((set.speechRate || .92) - v) < .01 ? "on" : ""}" data-act="set-speech-rate" data-v="${v}">${t}</button>`).join("")}</div>`)}
-            ${row("Klaviatura yorliqlari", `<button class="link mono" data-act="shortcuts">ko'rish</button>`)}
+            ${row("Talaffuz tezligi", `<div class="seg" style="padding:3px">${[[0.82, "Sekin"], [0.92, "Tabiiy"], [1.02, "Tez"]].map(([v, t]) => `<button class="${Math.abs((set.speechRate || 0.92) - v) < 0.01 ? "on" : ""}" data-act="set-speech-rate" data-v="${v}">${t}</button>`).join("")}</div>`)}
+            <div class="hide-sm">${row("Klaviatura yorliqlari", `<button class="link mono" data-act="shortcuts">ko'rish</button>`)}</div>
           </div>
-          <div class="card row" style="gap:16px;padding:20px 24px">
-            <span class="grow muted">Hisobingizdan chiqish — progress serverda saqlanib qoladi</span>
-            <button class="link" style="color:var(--bad);font-size:14px" data-act="logout">Chiqish</button>
+          <div class="card set-card">
+            ${row(`<span class="muted">Hisobdan chiqish — progress serverda saqlanib qoladi</span>`, `<button class="link" style="color:var(--bad);font-size:14px" data-act="logout">Chiqish</button>`)}
           </div>
         </div>
       </div></div>`;
@@ -784,8 +776,7 @@
 
   Actions["set-theme"] = (el) => { S.setTheme(el.dataset.v); App.render(); };
   Actions["set-flag"] = (el) => { const k = el.dataset.k; S.state.settings[k] = !S.state.settings[k]; S.save(); App.render(); };
-  Changes["set-level"] = (el) => { S.state.profile.level = el.value; S.save(); U.toast("Daraja yangilandi"); };
-  Changes["set-pace"] = (el) => { S.state.profile.pace = Number(el.value); S.save(); App.render(); U.toast("Yangi temp keyingi boshlanmagan kunlarga qo'llanadi"); };
+  Changes["set-pace"] = (el) => { S.state.profile.pace = Number(el.value); S.save(); App.render(); U.toast("Yangi temp hali boshlanmagan kunlarga qo'llanadi"); };
   Changes["rem-time"] = (el) => { S.state.profile.reminders[el.dataset.k] = el.value; S.save(); };
   Actions["set-speech-rate"] = (el) => { S.state.settings.speechRate = Number(el.dataset.v); S.save(); App.render(); U.playClip("sentences", "1-0"); };
   Actions["rem-toggle"] = async (el) => {
@@ -801,11 +792,6 @@
     try { await Push.test(); U.toast("Yuborildi — bir necha soniyada bildirishnoma keladi"); }
     catch (e) { U.toast(e.message); }
   };
-  Actions["pick-goal"] = () => {
-    U.modal("Maqsadni o'zgartirish", `<div class="stack" style="gap:10px">${Object.entries(S.GOALS).map(([k, g]) => `<button class="ocard ${S.state.profile.goal === k ? "on" : ""}" data-act="set-goal" data-k="${k}">
-      <span class="glyph">${g.ko}</span><div class="t">${g.name}</div><div class="d">${g.desc}</div></button>`).join("")}</div>`);
-  };
-  Actions["set-goal"] = (el) => { S.state.profile.goal = el.dataset.k; S.save(); U.closeModal(); App.render(); };
   Actions["edit-name"] = () => {
     U.modal("Profilni tahrirlash", `<form data-form="edit-name" novalidate>
       <label class="field-label" for="e-name">Ism</label>

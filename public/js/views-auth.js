@@ -200,9 +200,10 @@
   };
 
   // ---------- Onboarding ----------
+  const OB_STEPS = 2;
   const obTop = (step) => `<div class="ob-top">
       <div class="brand"><div class="mark"></div><span class="name">UpKorean</span></div>
-      <div class="ob-steps">${[1, 2, 3].map((i) => `<i class="${i <= step ? "on" : ""}"></i>`).join("")}<span class="mono faint" style="font-size:11px;margin-left:8px">${step} / 3</span></div>
+      <div class="ob-steps">${Array.from({ length: OB_STEPS }, (_, i) => `<i class="${i < step ? "on" : ""}"></i>`).join("")}<span class="mono faint" style="font-size:11px;margin-left:8px">${step} / ${OB_STEPS}</span></div>
       <button class="link" style="color:var(--ink3)" data-act="ob-skip">Keyinroq</button>
     </div>`;
 
@@ -210,38 +211,22 @@
     const p = S.state.profile;
     let body;
     if (step === 1) {
-      const opts = [["beg", "가나", "Boshlovchi", "Hangul o'qiyman, so'z boyligim kam", "TOPIK I"], ["mid", "중급", "O'rta daraja", "Kundalik suhbat tushunarli, TOPIK II ga tayyorlanaman", "TOPIK II"], ["adv", "고급", "Yuqori daraja", "Gazeta va akademik matnlarni o'qiyman", "TOPIK 5–6"]];
-      body = `<div style="width:100%;max-width:760px">
-        <div class="eyebrow">QADAM 1 · DARAJA</div>
-        <h2>Koreys tilini qanchalik bilasiz?</h2>
-        <p class="lead">Bu birinchi kun qaysi so'zlardan boshlanishini va mashqlar qiyinligini belgilaydi.</p>
-        <div class="stack" style="gap:10px;margin-bottom:38px" role="radiogroup">
-          ${opts.map(([v, g, t, d, tag]) => `<button class="opt ${p.level === v ? "on" : ""}" role="radio" aria-checked="${p.level === v}" data-act="ob-set" data-k="level" data-v="${v}">
-            <span class="glyph">${g}</span><span class="grow"><span class="t">${t}</span><span class="d">${d}</span></span>
-            <span class="end">${tag}${p.level === v ? `<span class="check">✓</span>` : ""}</span></button>`).join("")}
-        </div>
-        <div class="row wrap" style="gap:16px">
-          <button class="btn btn-p" style="padding:15px 30px" data-act="ob-go" data-step="2">Davom etish</button>
-          <button class="link" style="font-size:14px;color:var(--ink2)" data-act="placement">2 daqiqalik test topshiraman</button>
-          <span class="kbd-hint hide-sm" style="margin-left:auto;font-size:11px">1 2 3 · tanlash &nbsp; ⏎ · davom</span>
-        </div></div>`;
-    } else if (step === 2) {
       const pace = S.PACES[p.pace] || S.PACES[17];
       const end = U.addDays(U.today(), S.DAYS);
       body = `<div class="collapse-md" style="width:100%;max-width:880px;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:56px;align-items:center">
         <div>
-          <div class="eyebrow">QADAM 2 · KUNLIK TEMP</div>
+          <div class="eyebrow">QADAM 1 · KUNLIK TEMP</div>
           <h2>Kuniga qancha so'z?</h2>
-          <p class="lead" style="max-width:520px">Bir kunning 33 so'zini bo'lib o'rganish mumkin. Keyin istalgan vaqtda o'zgartirasiz.</p>
+          <p class="lead" style="max-width:520px">${S.DAYS} kunda ${S.TOTAL} ta TOPIK II so'zi. Bir kunning so'zlarini bo'lib o'rganish mumkin — keyin profilda istalgan vaqtda o'zgartirasiz.</p>
           <div class="stack" style="gap:10px" role="radiogroup">
             ${[11, 17, 33].map((n) => { const x = S.PACES[n]; const on = p.pace === n; return `<button class="opt ${on ? "on" : ""}" style="padding:18px 22px;gap:18px" role="radio" aria-checked="${on}" data-act="ob-set" data-k="pace" data-v="${n}">
               <span style="font-size:26px;font-weight:800;letter-spacing:-.03em;min-width:44px;color:${on ? "var(--pd)" : "var(--ink3)"}">${n}</span>
               <span class="grow"><span class="t" style="font-size:15px">${x.name} · ${x.blocks} blok</span><span class="d" style="font-size:13px">${x.desc}</span></span>
               ${on ? `<span class="check">✓</span>` : ""}</button>`; }).join("")}
           </div>
-          <div class="row" style="gap:16px;margin-top:30px">
-            <button class="btn btn-p" style="padding:15px 30px" data-act="ob-go" data-step="3">Davom etish</button>
-            <button class="btn btn-ghost" data-act="ob-go" data-step="1">Orqaga</button>
+          <div class="row wrap" style="gap:16px;margin-top:30px">
+            <button class="btn btn-p" style="padding:15px 30px" data-act="ob-go" data-step="2">Davom etish</button>
+            <span class="kbd-hint hide-sm" style="margin-left:auto;font-size:11px">1 2 3 · tanlash &nbsp; ⏎ · davom</span>
           </div>
         </div>
         <div class="plan">
@@ -255,33 +240,32 @@
         </div></div>`;
     } else {
       const r = p.reminders;
-      body = `<div style="width:100%;max-width:820px">
-        <div class="eyebrow">QADAM 3 · MAQSAD</div>
-        <h2>Nima uchun o'rganasiz?</h2>
-        <p class="lead">Maqsad mashqlar tanloviga ta'sir qiladi — imtihon uchun yozma recall, suhbat uchun listening ko'proq bo'ladi.</p>
-        <div class="two-sm" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:32px" role="radiogroup">
-          ${Object.entries(S.GOALS).map(([k, g]) => { const on = p.goal === k; return `<button class="ocard ${on ? "on" : ""}" role="radio" aria-checked="${on}" data-act="ob-set" data-k="goal" data-v="${k}">
-            <div class="row between"><span class="glyph">${g.ko}</span>${on ? `<span class="check">✓</span>` : ""}</div>
-            <div class="t">${g.name}</div><div class="d">${g.desc}</div></button>`; }).join("")}
+      const timeRow = (k, title, desc) => `<div class="ob-rem-row ${r.on ? "" : "off"}">
+          <div class="grow"><div class="t">${title}</div><div class="d">${desc}</div></div>
+          <input type="time" class="time-input" value="${esc(r[k])}" data-change="rem-time" data-k="${k}" aria-label="${title} vaqti" ${r.on ? "" : "disabled"}>
+        </div>`;
+      body = `<div style="width:100%;max-width:640px">
+        <div class="eyebrow">QADAM 2 · ESLATMA</div>
+        <h2>Qachon eslatib turaylik?</h2>
+        <p class="lead">Har kuni shu vaqtda telefon yoki kompyuteringizga bildirishnoma keladi — sayt yopiq bo'lsa ham. Profilda istalgan vaqtda o'zgartirasiz.</p>
+        <div class="card ob-rem">
+          <div class="ob-rem-row">
+            <div class="grow"><div class="t">Kunlik eslatmalar</div><div class="d">Dars, takrorlash va streak haqida</div></div>
+            <button class="toggle lg ${r.on ? "on" : ""}" data-act="rem-toggle" data-k="on" role="switch" aria-checked="${r.on}" aria-label="Eslatmalar"></button>
+          </div>
+          ${timeRow("learn", "Bugungi dars", "Yangi so'zlarni o'rganish vaqti")}
+          ${timeRow("review", "Takrorlash", "Kechki takrorlash vaqti")}
         </div>
-        <div class="card row wrap" style="gap:20px;padding:18px 22px;margin-bottom:30px">
-          <div class="grow"><div style="font-size:15px;font-weight:700;margin-bottom:2px">Kunlik eslatma</div>
-            <div class="muted" style="font-size:13px">Dars va takrorlash vaqtida telefon yoki kompyuteringizga bildirishnoma keladi — sayt yopiq bo'lsa ham</div></div>
-          <input type="time" class="time-input" value="${esc(r.learn)}" data-change="rem-time" data-k="learn" aria-label="Dars vaqti">
-          <input type="time" class="time-input" value="${esc(r.review)}" data-change="rem-time" data-k="review" aria-label="Takrorlash vaqti">
-          <button class="toggle lg ${r.on ? "on" : ""}" data-act="rem-toggle" data-k="on" role="switch" aria-checked="${r.on}" aria-label="Eslatmalar"></button>
-        </div>
-        <div class="row" style="gap:16px">
+        <div class="row wrap" style="gap:16px;margin-top:30px">
           <button class="btn btn-p" style="padding:15px 30px" data-act="ob-finish">Day 1 ni boshlash</button>
-          <button class="btn btn-ghost" data-act="ob-go" data-step="2">Orqaga</button>
+          <button class="btn btn-ghost" data-act="ob-go" data-step="1">Orqaga</button>
         </div></div>`;
     }
     return `<div class="ob">${obTop(step)}<div class="ob-body">${body}</div></div>`;
   };
 
   Actions["ob-set"] = (el) => {
-    const p = S.state.profile;
-    p[el.dataset.k] = el.dataset.k === "pace" ? Number(el.dataset.v) : el.dataset.v;
+    S.state.profile[el.dataset.k] = el.dataset.k === "pace" ? Number(el.dataset.v) : el.dataset.v;
     S.save(); App.render();
   };
   Actions["ob-go"] = (el) => App.go(`#/onboarding/${el.dataset.step}`);
@@ -291,16 +275,12 @@
     if (S.state.profile.reminders.on) await App.enableReminders();
     X.startLearn(1);
   };
-  Actions.placement = () => X.startPlacement();
-  Actions["placement-apply"] = (el) => { S.state.profile.level = el.dataset.level; S.save(); X.session = null; App.go("#/onboarding/1"); };
 
+  V.OB_STEPS = OB_STEPS;
   V.onboardingKey = (e, step) => {
     if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
     const n = parseInt(e.key, 10);
-    const p = S.state.profile;
-    if (step === 1 && n >= 1 && n <= 3) { p.level = ["beg", "mid", "adv"][n - 1]; S.save(); App.render(); }
-    if (step === 2 && n >= 1 && n <= 3) { p.pace = [11, 17, 33][n - 1]; S.save(); App.render(); }
-    if (step === 3 && n >= 1 && n <= 4) { p.goal = Object.keys(S.GOALS)[n - 1]; S.save(); App.render(); }
-    if (e.key === "Enter") { if (step < 3) App.go(`#/onboarding/${step + 1}`); else Actions["ob-finish"](); }
+    if (step === 1 && n >= 1 && n <= 3) { S.state.profile.pace = [11, 17, 33][n - 1]; S.save(); App.render(); }
+    if (e.key === "Enter") { if (step < OB_STEPS) App.go(`#/onboarding/${step + 1}`); else Actions["ob-finish"](); }
   };
 })();
