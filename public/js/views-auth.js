@@ -266,7 +266,7 @@
         </div>
         <div class="card row wrap" style="gap:20px;padding:18px 22px;margin-bottom:30px">
           <div class="grow"><div style="font-size:15px;font-weight:700;margin-bottom:2px">Kunlik eslatma</div>
-            <div class="muted" style="font-size:13px">Dars va takrorlash vaqtida bildirishnoma yuboramiz (sahifa ochiq bo'lganda)</div></div>
+            <div class="muted" style="font-size:13px">Dars va takrorlash vaqtida telefon yoki kompyuteringizga bildirishnoma keladi — sayt yopiq bo'lsa ham</div></div>
           <input type="time" class="time-input" value="${esc(r.learn)}" data-change="rem-time" data-k="learn" aria-label="Dars vaqti">
           <input type="time" class="time-input" value="${esc(r.review)}" data-change="rem-time" data-k="review" aria-label="Takrorlash vaqti">
           <button class="toggle lg ${r.on ? "on" : ""}" data-act="rem-toggle" data-k="on" role="switch" aria-checked="${r.on}" aria-label="Eslatmalar"></button>
@@ -288,7 +288,7 @@
   Actions["ob-skip"] = () => { S.state.profile.onboarded = true; S.save(); App.go("#/dashboard"); };
   Actions["ob-finish"] = async () => {
     S.state.profile.onboarded = true; S.save();
-    if (S.state.profile.reminders.on) await App.askNotify();
+    if (S.state.profile.reminders.on) await App.enableReminders();
     X.startLearn(1);
   };
   Actions.placement = () => X.startPlacement();

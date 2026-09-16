@@ -12,6 +12,11 @@ import {
 } from "./auth.js";
 import { tutorEnabled } from "./tutor.js";
 import { mailEnabled, sendResetEmail } from "./mail.js";
+import { tzOf, localTime, leaderboardXp } from "./progress.js";
+import { PUSH_PUBLIC_KEY, PUSH_CONTACT, sendToUser, reminderTimes, runReminders } from "./push.js";
+import "../public/js/sync.js"; // defines globalThis.UKSync, shared with the browser
+
+const { UKSync } = globalThis;
 
 const PORT = Number(process.env.PORT) || 3000;
 const APP_URL = (process.env.APP_URL || `http://localhost:${PORT}`).replace(/\/$/, "");
@@ -108,7 +113,7 @@ const noDemo = (req, res, next) => (isDemo(req.user) ? res.status(403).json({ er
 // ---------- Config ----------
 api.get("/config", (req, res) => {
   res.setHeader("Cache-Control", "no-store");
-  res.json({ google: GOOGLE_CLIENT_ID || null, tutor: false, tutorComingSoon: TUTOR_COMING_SOON, demo: DEMO, clips: HAS_CLIPS, mail: mailEnabled() });
+  res.json({ google: GOOGLE_CLIENT_ID || null, tutor: false, tutorComingSoon: TUTOR_COMING_SOON, demo: DEMO, clips: HAS_CLIPS, mail: mailEnabled(), push: PUSH_PUBLIC_KEY });
 });
 
 // ---------- Auth ----------
@@ -274,59 +279,106 @@ api.delete("/account", requireAuth, noDemo, (req, res) => {
 });
 
 // ---------- Progress ----------
-const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-const mondayOf = (d = new Date()) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7));
-const weekKey = (d) => dayKey(mondayOf(d));
+// Each save names the server version it started from (baseAt). If another device saved in between, the
+// server answers 409 with its current progress so the browser can merge both and try again.
+const progressConflict = (res, row) => res.status(409).json({
+  error: "Progress boshqa qurilmada o'zgargan",
+  conflict: true,
+  state: row ? JSON.parse(row.state) : null,
+  updatedAt: row ? row.updated_at : null,
+  rev: row ? row.rev : null,
+});
 
-// Progress is computed in the browser, so the server cannot prove the XP is real. It can make faking it
-// pointless for the leaderboard: no day counts for more than a very busy day of study, and the weekly
-// total grows no faster than a fast learner earns it (it catches up within a minute or two after a bonus).
-const DAY_XP_CAP = 5000;
-const XP_PER_MIN = 150;
-
-function leaderboardXp(state, prev, now) {
-  const monday = mondayOf(new Date(now));
-  const wk = dayKey(monday);
-  const sunday = dayKey(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6));
-  let claimed = 0;
-  for (const [k, a] of Object.entries(state.act || {})) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || k < wk || k > sunday || !a || !Number.isFinite(a.xp)) continue;
-    claimed += Math.min(Math.max(a.xp, 0), DAY_XP_CAP);
+function storeProgress(req, res, state, row) {
+  if (!state || typeof state !== "object" || Array.isArray(state)) return res.status(400).json({ error: "Noto'g'ri ma'lumot" });
+  const json = JSON.stringify(state);
+  if (json.length > 2_500_000) return res.status(413).json({ error: "Ma'lumot hajmi juda katta" });
+  // Strictly increasing, so two saves within one millisecond still get different versions.
+  const now = Math.max(Date.now(), row ? row.updated_at + 1 : 0);
+  const tz = tzOf(req.body.tz);
+  const week = leaderboardXp(state, row, now, tz);
+  // The demo account's sample XP is not a real learner's, so it never enters the leaderboard.
+  if (isDemo(req.user)) week.xp = 0;
+  const rev = typeof req.body.rev === "string" ? req.body.rev.slice(0, 40) : null;
+  q.putProgress.run(req.user.id, json, Math.max(0, Math.round(Number(state.xp) || 0)), week.week, week.xp, now, rev);
+  if (!isDemo(req.user)) {
+    const t = reminderTimes(state);
+    q.putReminders.run(req.user.id, tz, t.learn, t.review, t.streak);
   }
-  const sameWeek = prev && prev.week_key === wk;
-  const base = sameWeek ? prev.week_xp : 0;
-  const since = sameWeek ? prev.updated_at : monday.getTime();
-  const allowed = base + (XP_PER_MIN * Math.max(0, now - since)) / 60000;
-  return { wk, xp: Math.round(Math.min(claimed, allowed)) };
+  res.json({ ok: true, updatedAt: now, rev });
 }
 
 api.get("/progress", requireAuth, (req, res) => {
   const row = q.getProgress.get(req.user.id);
-  res.json({ state: row ? JSON.parse(row.state) : null, updatedAt: row ? row.updated_at : null });
+  res.json({ state: row ? JSON.parse(row.state) : null, updatedAt: row ? row.updated_at : null, rev: row ? row.rev : null });
 });
 
+// Whole progress. Without baseAt (older app versions) it simply overwrites.
 api.put("/progress", requireAuth, (req, res) => {
-  const state = req.body && req.body.state;
-  if (!state || typeof state !== "object" || Array.isArray(state)) return res.status(400).json({ error: "Noto'g'ri ma'lumot" });
-  const json = JSON.stringify(state);
-  if (json.length > 2_500_000) return res.status(413).json({ error: "Ma'lumot hajmi juda katta" });
-  const now = Date.now();
-  const week = leaderboardXp(state, q.getWeek.get(req.user.id), now);
-  // The demo account's sample XP is not a real learner's, so it never enters the leaderboard.
-  if (isDemo(req.user)) week.xp = 0;
-  q.putProgress.run(req.user.id, json, Math.max(0, Math.round(Number(state.xp) || 0)), week.wk, week.xp, now);
-  res.json({ ok: true, updatedAt: now });
+  const row = q.getProgress.get(req.user.id);
+  if ("baseAt" in req.body && (row ? row.updated_at : null) !== req.body.baseAt) return progressConflict(res, row);
+  storeProgress(req, res, req.body.state, row);
+});
+
+// Only what changed since baseAt: { baseAt, changes: [{ p: ["words", "1-3"], v: {...} }, ...] }.
+api.patch("/progress", requireAuth, (req, res) => {
+  const row = q.getProgress.get(req.user.id);
+  if (!row || row.updated_at !== req.body.baseAt) return progressConflict(res, row);
+  const state = JSON.parse(row.state);
+  if (!UKSync.applyChanges(state, req.body.changes)) return res.status(400).json({ error: "Noto'g'ri ma'lumot" });
+  storeProgress(req, res, state, row);
 });
 
 // ---------- Leaderboard (this week's XP) ----------
 api.get("/leaderboard", requireAuth, (req, res) => {
-  const rows = q.leaderboard.all(weekKey());
+  const rows = q.leaderboard.all(localTime(Date.now(), tzOf(req.query.tz)).week);
   const shortName = (n) => { const [a, b] = String(n).trim().split(/\s+/); return b ? `${a} ${b[0]}.` : a; };
   const list = rows.map((r, i) => ({ rank: i + 1, name: shortName(r.name), xp: r.week_xp, me: r.id === req.user.id }));
   const top = list.slice(0, 5);
   const mine = list.find((r) => r.me);
   if (mine && mine.rank > 5) top.push(mine);
   res.json({ rows: top, total: list.length });
+});
+
+// ---------- Push reminders ----------
+// The server sends requests to the subscription endpoint, so only real browser push services are accepted.
+const PUSH_HOSTS = [".googleapis.com", ".push.apple.com", ".mozilla.com", ".notify.windows.com"];
+function validSubscription(s) {
+  if (!s || typeof s.endpoint !== "string" || s.endpoint.length > 1000 || !s.keys) return null;
+  let url;
+  try { url = new URL(s.endpoint); } catch { return null; }
+  if (url.protocol !== "https:" || !PUSH_HOSTS.some((h) => url.hostname.endsWith(h))) return null;
+  const { p256dh, auth } = s.keys;
+  if (typeof p256dh !== "string" || typeof auth !== "string" || p256dh.length > 200 || auth.length > 100) return null;
+  return { endpoint: s.endpoint, p256dh, auth };
+}
+
+api.post("/push/subscribe", requireAuth, noDemo, (req, res) => {
+  const sub = validSubscription(req.body.subscription);
+  if (!sub) return res.status(400).json({ error: "Bildirishnoma obunasi noto'g'ri" });
+  q.putSub.run(sub.endpoint, req.user.id, sub.p256dh, sub.auth, Date.now());
+  // Reminder times normally arrive with the progress; store them now too, in case no save follows soon.
+  const row = q.getProgress.get(req.user.id);
+  const t = reminderTimes(row ? JSON.parse(row.state) : null);
+  q.putReminders.run(req.user.id, tzOf(req.body.tz), t.learn, t.review, t.streak);
+  res.json({ ok: true });
+});
+
+api.post("/push/unsubscribe", requireAuth, (req, res) => {
+  q.deleteUserSub.run(str(req.body.endpoint), req.user.id);
+  res.json({ ok: true });
+});
+
+const pushTestLimit = rateLimit({ windowMs: 10 * 60000, max: 5, key: (req) => `p${req.user.id}` });
+api.post("/push/test", requireAuth, noDemo, pushTestLimit, async (req, res) => {
+  const delivered = await sendToUser(req.user.id, {
+    title: "UpKorean eslatmalari ishlayapti",
+    body: "Belgilangan vaqtda shu yerda xabar olasiz.",
+    url: "/#/profile",
+    tag: "test",
+  });
+  if (!delivered) return res.status(404).json({ error: "Bu hisobda faol bildirishnoma obunasi topilmadi" });
+  res.json({ ok: true, delivered });
 });
 
 // ---------- AI tutor ----------
@@ -384,6 +436,7 @@ setInterval(() => {
   q.purgeResets.run(Date.now());
   backupIfDue();
 }, 3600000).unref();
+setInterval(() => runReminders().catch((err) => console.error("[push] reminders failed:", err)), 60000).unref();
 
 app.listen(PORT, () => {
   console.log(`UpKorean → ${APP_URL}`);
@@ -392,6 +445,8 @@ app.listen(PORT, () => {
   console.log(`  Email:    ${mailEnabled() ? "yoqilgan (SMTP)" : "o'chirilgan — parol tiklash havolalari server logiga yoziladi (SMTP_HOST yo'q)"}`);
   console.log(`  Audio:    diktor bo'laklari ${WORD_CLIPS}/1000 so'z, ${SENTENCE_CLIPS}/1000 gap`);
   console.log(`  Backup:   ${BACKUP_HOURS ? `har ${BACKUP_HOURS} soatda, oxirgi ${BACKUP_KEEP} tasi → ${BACKUP_DIR}` : "o'chirilgan (BACKUP_HOURS=0)"}`);
+  console.log(`  Eslatma:  Web Push yoqilgan (aloqa: ${PUSH_CONTACT})`);
+  if (PROD && PUSH_CONTACT === "mailto:admin@example.com") console.log("  Eslatma: .env ga VAPID_SUBJECT=mailto:siz@domen.uz qo'ying — Apple push xizmati haqiqiy manzilni talab qiladi.");
   if (DEMO) console.log("  Demo hisob: yoqilgan");
   if (PROD && !process.env.TRUST_PROXY) console.log("  Eslatma: server proksi (nginx, Cloudflare) ortida bo'lsa, TRUST_PROXY=1 qo'ying.");
 });

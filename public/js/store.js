@@ -84,58 +84,146 @@
     st.profile = Object.assign(f.profile, st.profile);
     return st;
   }
-  const cacheKey = () => `uk:cache:${S.user.id}`;
 
-  // Load progress from the server; fall back to / prefer the local backup if it is newer (e.g. a save failed offline).
+  // ---------- Progress sync ----------
+  // base   — progress exactly as the server stores it at version baseAt; saves send only the difference.
+  // dirty  — S.state has changes the server has not confirmed yet (also kept in localStorage).
+  // A save names its baseAt. If another device saved first, the server answers 409 with its progress, and the
+  // two are merged (sync.js) before trying again. Each save carries a random rev, so a device can recognise
+  // its own save when the answer was lost and never merges the same work twice.
+  const cacheKey = () => `uk:cache:${S.user.id}`;
+  const baseKey = () => `uk:base:${S.user.id}`;
+  const sendingKey = () => `uk:sending:${S.user.id}`;
+  const clone = (v) => JSON.parse(JSON.stringify(v));
+  const tzOffset = () => new Date().getTimezoneOffset();
+  const newRev = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`);
+
+  let base = null, baseAt = null, dirty = false, saveTimer = null, inflight = null, lost = null, conflicts = 0;
+  const setBase = (state, at) => { base = state; baseAt = at; LS.set(baseKey(), { at, state }); };
+  const keepLocal = () => LS.set(cacheKey(), { v: 2, dirty, state: S.state });
+  const forgetLocal = () => { LS.del(cacheKey()); LS.del(baseKey()); LS.del(sendingKey()); base = null; baseAt = null; dirty = false; };
+  // Swap in merged progress without replacing the S.state object other modules hold on to.
+  function replaceState(next) {
+    next = normalize(next);
+    for (const k of Object.keys(S.state)) if (!(k in next)) delete S.state[k];
+    Object.assign(S.state, next);
+  }
+  const MERGED = "Boshqa qurilmadagi progress bilan birlashtirildi";
+
+  // Load progress from the server and reconcile it with this device's unsynced copy, if any.
   S.loadProgress = async () => {
     const cache = LS.get(cacheKey(), null);
-    let state = null, updatedAt = null;
+    const saved = LS.get(baseKey(), null);
+    const sentRev = LS.get(sendingKey(), null);
+    lost = null; conflicts = 0;
+    let remote;
     try {
-      ({ state, updatedAt } = await api("GET", "/progress"));
+      remote = await api("GET", "/progress");
       S.offline = false;
     } catch (e) {
       if (e.status !== 0 || !cache || !cache.state) throw e;
+      // Offline: continue from this device's copy; it syncs when the connection returns.
       S.offline = true;
+      S.state = normalize(cache.state);
+      base = saved ? saved.state : null; baseAt = saved ? saved.at : null;
+      dirty = cache.v === 2 ? !!cache.dirty : true;
+      return finishLoad();
     }
-    let st = state, push = false;
-    if (cache && cache.state && (!updatedAt || cache.at > updatedAt)) { st = cache.state; push = true; }
-    if (!st) { st = freshState({ joined: S.user.createdAt || U.today() }); push = true; }
-    S.state = normalize(st);
+    // Old app versions stored { at, state } and compared clocks; treat a newer copy as unsynced.
+    const unsynced = !!(cache && cache.state && (cache.v === 2 ? cache.dirty : !remote.updatedAt || cache.at > remote.updatedAt));
+    let st = remote.state, merged = false;
+    if (unsynced) {
+      if (!remote.state) st = cache.state;
+      // The server still holds what this device last knew, or this device's own last save: nothing to merge.
+      else if ((saved && saved.at === remote.updatedAt) || (sentRev && sentRev === remote.rev)) st = cache.state;
+      else { st = UKSync.mergeStates(cache.v === 2 && saved ? saved.state : null, cache.state, remote.state); merged = true; }
+    }
+    setBase(remote.state, remote.updatedAt);
+    // A copy: base must keep the server's version while S.state changes.
+    S.state = normalize(st ? clone(st) : freshState({ joined: S.user.createdAt || U.today() }));
+    dirty = unsynced || !remote.state;
+    finishLoad();
+    if (merged) U.toast(MERGED);
+  };
+  function finishLoad() {
     S.state.profile.name = S.user.name;
     S.state.profile.email = S.user.email;
     if (S.state.settings.theme) S.applyTheme(S.state.settings.theme);
-    if (push) S.save();
-  };
+    if (dirty) S.save(); else keepLocal();
+  }
 
-  let saveTimer = null, dirty = false, inflight = null;
   S.save = () => {
     if (!S.state || !S.user) return;
     dirty = true;
-    LS.set(cacheKey(), { at: Date.now(), state: S.state });
+    keepLocal();
     LS.set("uk:last", { name: S.state.profile.name.split(" ")[0], day: S.currentDay(), streak: S.streak() });
     clearTimeout(saveTimer);
     saveTimer = setTimeout(S.flush, 700);
   };
+
   S.flush = async () => {
     clearTimeout(saveTimer);
+    while (inflight) await inflight;
     if (!dirty || !S.user || !S.state) return;
-    if (inflight) { await inflight; if (!dirty) return; }
     dirty = false;
-    inflight = api("PUT", "/progress", { state: S.state })
-      .then(() => { S.syncError = false; })
-      .catch((e) => {
-        dirty = true; S.syncError = true;
-        if (e.status === 401) { U.toast("Sessiya tugadi — qaytadan kiring"); S.user = null; location.hash = "#/login"; return; }
-        saveTimer = setTimeout(S.flush, 8000);
-      })
-      .finally(() => { inflight = null; });
+    inflight = pushProgress().finally(() => { inflight = null; });
     return inflight;
   };
-  // Best effort when the tab is closed.
+
+  async function pushProgress() {
+    const snap = clone(S.state);
+    const rev = newRev();
+    const body = { baseAt, rev, tz: tzOffset() };
+    let method = "PUT";
+    if (base) {
+      body.changes = UKSync.diffState(base, snap);
+      if (!body.changes.length) { keepLocal(); return; }
+      method = "PATCH";
+    } else body.state = snap;
+    LS.set(sendingKey(), rev);
+    try {
+      const r = await api(method, "/progress", body);
+      setBase(snap, r.updatedAt);
+      lost = null; conflicts = 0; S.syncError = false;
+      keepLocal();
+      if (dirty) saveTimer = setTimeout(S.flush, 700);
+    } catch (e) {
+      dirty = true;
+      if (e.status === 401) { U.toast("Sessiya tugadi — qaytadan kiring"); S.user = null; location.hash = "#/login"; return; }
+      if (e.status === 409 && e.data && e.data.conflict) {
+        const d = e.data;
+        if (lost && d.rev && d.rev === lost.rev) {
+          // An earlier save of ours did arrive; only its answer was lost. The server holds that snapshot.
+          setBase(lost.snap, d.updatedAt);
+        } else {
+          replaceState(UKSync.mergeStates(base, S.state, d.state));
+          setBase(d.state, d.updatedAt);
+          U.toast(MERGED);
+          if (window.App && !/^#\/(session|tutor|onboarding)/.test(location.hash)) window.App.render();
+        }
+        lost = null;
+        keepLocal();
+        // Retry right away; if devices keep colliding, slow down.
+        if (++conflicts <= 3) { saveTimer = setTimeout(S.flush, 0); return; }
+      } else if (e.status === 0) {
+        lost = { rev, snap }; // the save may still have reached the server
+      }
+      S.syncError = true;
+      saveTimer = setTimeout(S.flush, 8000);
+    }
+  }
+
+  // Best effort when the tab closes: send the (usually small) difference. Browsers cap keepalive requests at
+  // ~64 KB; anything larger stays in localStorage and syncs on the next visit.
   window.addEventListener("pagehide", () => {
-    if (!dirty || !S.user) return;
-    const body = JSON.stringify({ state: S.state });
-    if (body.length < 60000) fetch("/api/progress", { method: "PUT", keepalive: true, credentials: "same-origin", headers: { "Content-Type": "application/json" }, body });
+    if (!dirty || !S.user || !S.state || !base || inflight) return;
+    const changes = UKSync.diffState(base, S.state);
+    if (!changes.length) return;
+    const rev = newRev();
+    const body = JSON.stringify({ baseAt, rev, tz: tzOffset(), changes });
+    if (body.length > 60000) return;
+    LS.set(sendingKey(), rev);
+    fetch("/api/progress", { method: "PATCH", keepalive: true, credentials: "same-origin", headers: { "Content-Type": "application/json" }, body });
   });
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") S.flush(); });
 
@@ -173,14 +261,17 @@
   S.demo = async () => {
     const r = await api("POST", "/auth/demo", {});
     S.user = r.user;
-    LS.del(cacheKey()); S.state = S.buildDemoState(); S.save(); await S.flush();
+    // The server just cleared the demo progress, so any copy a previous visitor left here is stale.
+    forgetLocal(); S.state = S.buildDemoState(); S.save(); await S.flush();
   };
   S.logout = async () => {
     await S.flush().catch(() => {});
+    // This browser should stop receiving the account's reminders once someone else may use it.
+    if (window.Push) await window.Push.disconnect().catch(() => {});
     try { await api("POST", "/auth/logout", {}); } catch { /* already signed out */ }
     // The local backup only matters for progress the server has not received yet; on a shared computer
     // it would otherwise stay readable after signing out.
-    if (!dirty) LS.del(cacheKey());
+    if (!dirty) forgetLocal();
     LS.del("uk:user");
     S.user = null; S.state = null;
   };
@@ -194,10 +285,11 @@
   };
   S.deleteAccount = async (password) => {
     await api("DELETE", "/account", { password });
-    LS.del(cacheKey()); LS.del("uk:last"); LS.del("uk:user");
+    if (window.Push) await window.Push.forgetDevice().catch(() => {});
+    forgetLocal(); LS.del("uk:last"); LS.del("uk:user");
     S.user = null; S.state = null;
   };
-  S.leaderboard = () => api("GET", "/leaderboard");
+  S.leaderboard = () => api("GET", `/leaderboard?tz=${tzOffset()}`);
   S.tutor = (payload) => api("POST", "/tutor", payload);
   S.lastUserPreview = () => LS.get("uk:last", null);
 

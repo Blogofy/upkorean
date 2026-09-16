@@ -1,8 +1,8 @@
 // The server fills in the build fingerprint of public/ below, so each deploy gets a fresh shell cache.
 const VERSION = "upkorean-__BUILD__";
 const SHELL = [
-  "/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/css/styles.css",
-  "/js/vocab.js", "/js/examples.js", "/js/util.js", "/js/store.js", "/js/exercise.js",
+  "/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/icon-192.png", "/badge-72.png", "/css/styles.css",
+  "/js/vocab.js", "/js/examples.js", "/js/util.js", "/js/sync.js", "/js/store.js", "/js/push.js", "/js/exercise.js",
   "/js/views-auth.js", "/js/tutor.js", "/js/views.js", "/js/app.js"
 ];
 
@@ -34,4 +34,30 @@ self.addEventListener("fetch", (event) => {
   // account's session and range requests) always go to the network and use normal HTTP caching.
   if (!SHELL.includes(url.pathname)) return;
   event.respondWith(caches.match(req).then((cached) => cached || fetch(req)));
+});
+
+// ---------- Reminders (Web Push) ----------
+self.addEventListener("push", (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch { data = { body: event.data ? event.data.text() : "" }; }
+  event.waitUntil(self.registration.showNotification(data.title || "UpKorean", {
+    body: data.body || "",
+    icon: "/icon-192.png",
+    badge: "/badge-72.png",
+    tag: data.tag || "upkorean", // a newer reminder of the same kind replaces the old one
+    lang: "uz",
+    data: { url: data.url || "/" },
+  }));
+});
+
+// Open the app on the reminder's page: reuse an open tab (the page switches routes itself) or open a new one.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = new URL((event.notification.data && event.notification.data.url) || "/", self.location.origin).href;
+  event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+    const win = windows.find((w) => new URL(w.url).origin === self.location.origin);
+    if (!win) return self.clients.openWindow(url);
+    win.postMessage({ type: "open", url });
+    return win.focus();
+  }));
 });

@@ -37,9 +37,16 @@
       else location.hash = hash;
     },
 
-    async askNotify() {
-      if (!("Notification" in window) || Notification.permission !== "default") return;
-      try { await Notification.requestPermission(); } catch { /* unsupported or blocked */ }
+    // Turns on push reminders for this browser and tells the learner if that is not possible here.
+    async enableReminders() {
+      if (S.user && S.user.demo) { U.toast("Demo hisobda eslatmalar yuborilmaydi"); return; }
+      try {
+        const result = await window.Push.enable();
+        if (result === "on") U.toast("Eslatmalar yoqildi");
+        else U.toast(window.Push.explain(result), 7000);
+      } catch (error) {
+        U.toast(`Eslatmalarni yoqib bo'lmadi: ${error.message}`, 6000);
+      }
     },
 
     render() {
@@ -171,6 +178,14 @@
   if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
     navigator.serviceWorker.addEventListener("controllerchange", () => { updateReady = true; });
   }
+  // A reminder was clicked while the app is open: go to its page unless the learner is mid-task.
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.addEventListener("message", (event) => {
+      if (!event.data || event.data.type !== "open") return;
+      const hash = new URL(event.data.url, location.origin).hash;
+      if (hash && S.user && !MID_TASK.includes(route().name)) App.go(hash);
+    });
+  }
 
   window.addEventListener("hashchange", () => {
     if (updateReady && !MID_TASK.includes(route().name)) {
@@ -196,6 +211,7 @@
     .then(() => {
       if (!location.hash || location.hash === "#/") App.go(home());
       else App.render();
+      window.Push.refresh();
     })
     .catch((error) => {
       root.innerHTML = `<div class="boot boot-error"><div class="brand"><span class="mark"></span><span class="name">UpKorean</span></div><p>${U.esc(error.message || "Ilovani yuklab bo‘lmadi")}</p><button class="btn btn-p" data-act="reload">Qayta urinish</button></div>`;

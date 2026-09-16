@@ -738,10 +738,13 @@
           </div>
           <div class="card" style="padding:24px">
             <div class="card-title" style="margin-bottom:10px">Bildirishnomalar</div>
-            ${row(`Eslatmalar${("Notification" in window) ? ` <span class="faint" style="font-size:12px">· ${Notification.permission === "granted" ? "ruxsat berilgan" : Notification.permission === "denied" ? "brauzerda bloklangan" : "ruxsat so'raladi"}</span>` : ""}`, toggle(r.on, "rem-toggle", "on", "Eslatmalar"), true)}
+            ${S.user.demo ? `<p class="muted" style="font-size:13px;margin:0 0 6px">Demo hisobda eslatmalar yuborilmaydi.</p>` : ""}
+            ${row(`Eslatmalar <span class="faint" style="font-size:12px">· ${{ granted: "ruxsat berilgan", denied: "brauzerda bloklangan", default: "ruxsat so'raladi", install: "bosh ekranga qo'shing", unsupported: "brauzer qo'llamaydi" }[Push.permission()]}</span>`, toggle(r.on, "rem-toggle", "on", "Eslatmalar"), true)}
             ${row(`Bugungi dars · <input type="time" class="time-input" style="width:auto;padding:4px 8px" value="${esc(r.learn)}" data-change="rem-time" data-k="learn" aria-label="Dars vaqti">`, toggle(r.on && r.learnOn !== false, "rem-toggle", "learnOn", "Dars eslatmasi"))}
             ${row(`Takrorlash · <input type="time" class="time-input" style="width:auto;padding:4px 8px" value="${esc(r.review)}" data-change="rem-time" data-k="review" aria-label="Takrorlash vaqti">`, toggle(r.on && r.reviewOn !== false, "rem-toggle", "reviewOn", "Takrorlash eslatmasi"))}
             ${row("Streak eslatmasi <span class=\"faint\" style=\"font-size:12px\">· 21:30</span>", toggle(r.on && r.streak, "rem-toggle", "streak", "Streak eslatmasi"))}
+            ${r.on && !S.user.demo && Push.permission() === "granted" ? row("Sinov bildirishnomasi", `<button class="link" data-act="push-test">yuborish</button>`) : ""}
+            ${r.on && ["denied", "install", "unsupported"].includes(Push.permission()) ? `<p class="muted" style="font-size:13px;line-height:1.5;margin:10px 0 0">${esc(Push.explain(Push.permission()))}</p>` : ""}
           </div>
           <div class="card" style="padding:24px">
             <div class="card-title" style="margin-bottom:10px">Hisob</div>
@@ -791,8 +794,12 @@
     else if (!r.on) { r.on = true; r[k] = true; }
     else r[k] = r[k] === false ? true : !r[k];
     S.save();
-    if (r.on) await App.askNotify();
+    if (r.on) await App.enableReminders();
     App.render();
+  };
+  Actions["push-test"] = async () => {
+    try { await Push.test(); U.toast("Yuborildi — bir necha soniyada bildirishnoma keladi"); }
+    catch (e) { U.toast(e.message); }
   };
   Actions["pick-goal"] = () => {
     U.modal("Maqsadni o'zgartirish", `<div class="stack" style="gap:10px">${Object.entries(S.GOALS).map(([k, g]) => `<button class="ocard ${S.state.profile.goal === k ? "on" : ""}" data-act="set-goal" data-k="${k}">
