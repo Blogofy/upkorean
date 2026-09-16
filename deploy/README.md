@@ -31,14 +31,19 @@ git archive --format=tar HEAD | ssh root@109.205.177.244 "sh /opt/upkorean/deplo
 
 Faqat commit qilingan kod ketadi. `.env`, `data/` va `node_modules/` serverda saqlanib qoladi.
 
-## Birinchi o'rnatish (bir marta)
+## Birinchi o'rnatish (bajarilgan, 2026-09-16)
 
 ```sh
 adduser --system --group --home /opt/upkorean --no-create-home upkorean
-mkdir -p /opt/upkorean/deploy /www/wwwroot/upkorean.uz
-# kompyuterdan: git archive --format=tar HEAD | ssh root@109.205.177.244 "tar -x -C /opt/upkorean"
+mkdir -p /opt/upkorean /www/wwwroot/upkorean.uz/.well-known/acme-challenge
+tar -x -C /opt/upkorean -f upkorean.tar          # git archive --format=tar -o upkorean.tar HEAD
+# /opt/upkorean/.env — pastda
+chown -R upkorean:upkorean /opt/upkorean
 cp /opt/upkorean/deploy/upkorean.service /etc/systemd/system/
+cd /opt/upkorean && sudo -u upkorean npm ci --omit=dev
+systemctl daemon-reload && systemctl enable --now upkorean
 cp /opt/upkorean/deploy/apache-upkorean.uz.conf /www/server/panel/vhost/apache/upkorean.uz.conf
+/www/server/apache/bin/httpd -t && /etc/init.d/httpd reload
 ```
 
 `/opt/upkorean/.env` (`chmod 600`, egasi `upkorean`):
@@ -48,16 +53,12 @@ PORT=3000
 APP_URL=https://upkorean.uz
 NODE_ENV=production
 TRUST_PROXY=1
-# Keyin kerak bo'lsa: GOOGLE_CLIENT_ID, SMTP_*, MAIL_FROM, ANTHROPIC_API_KEY (.env.example ga qarang)
-```
-
-```sh
-systemctl daemon-reload && systemctl enable upkorean
-/etc/init.d/httpd reload
-# so'ng kompyuterdan "Yangilash" buyrug'i: npm ci qiladi va ilovani ishga tushiradi
+# Keyin kerak bo'lsa: GOOGLE_CLIENT_ID, SMTP_*, MAIL_FROM, ANTHROPIC_API_KEY (.env.example ga qarang).
+# O'zgartirgach: systemctl restart upkorean
 ```
 
 3000-port firewall'da ochilmaydi: ilovaga faqat Apache orqali kiriladi.
+Vhost fayli o'zgarsa, uni qayta nusxalab `httpd -t && /etc/init.d/httpd reload` qiling.
 
 ## SSL
 
