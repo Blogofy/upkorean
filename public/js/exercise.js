@@ -59,6 +59,18 @@
   // Guided flow for one learning block: words in groups of about five. Each group is met on intro cards, matched
   // with their meanings, then recalled from Uzbek (or by ear). Wrong answers come back a few questions later.
   const GROUP = 5;
+  // Column orders for the matching game: no word sits in the row of its own meaning, and the Korean column is not
+  // simply the order the cards were shown in.
+  function matchOrders(group) {
+    const koOrder = group.length > 2 ? shuffleUnlike(group, (o) => o.some((id, i) => id !== group[i])) : U.shuffle(group);
+    const uzOrder = shuffleUnlike(group, (o) => o.every((id, i) => id !== koOrder[i]));
+    return { koOrder, uzOrder };
+  }
+  function shuffleUnlike(list, ok) {
+    let order = U.shuffle(list);
+    for (let tries = 0; tries < 100 && list.length > 1 && !ok(order); tries++) order = U.shuffle(list);
+    return order;
+  }
   function guidedItems(ids) {
     const n = Math.ceil(ids.length / GROUP);
     const items = [];
@@ -68,7 +80,8 @@
       const group = ids.slice(at, at + size);
       at += size;
       group.forEach((id, i) => items.push({ type: "intro", id, group: g, pos: i, size }));
-      items.push({ type: "match", id: group[0], ids: group, group: g, koOrder: U.shuffle(group), uzOrder: U.shuffle(group) });
+      const { koOrder, uzOrder } = matchOrders(group);
+      items.push({ type: "match", id: group[0], ids: group, group: g, koOrder, uzOrder });
       const wts = { mcr: 3, listen: U.canListen() ? 2 : 0 };
       U.shuffle(group).forEach((id) => items.push(makeItem(U.weighted(wts) || "mcr", id)));
     }
