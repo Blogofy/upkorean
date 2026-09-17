@@ -250,7 +250,7 @@
   const signedIn = async ({ user }) => { S.user = user; LS.set("uk:user", user); await S.loadProgress(); };
   S.register = async (name, email, password) => signedIn(await api("POST", "/auth/register", { name, email, password }));
   S.login = async (email, password) => signedIn(await api("POST", "/auth/login", { email, password }));
-  S.googleLogin = async (credential) => { const r = await api("POST", "/auth/google", { credential }); await signedIn(r); return r; };
+  S.googleLogin = async (accessToken) => { const r = await api("POST", "/auth/google", { accessToken }); await signedIn(r); return r; };
   S.forgot = (email) => api("POST", "/auth/forgot", { email });
   S.resetPassword = async (token, password) => signedIn(await api("POST", "/auth/reset", { token, password }));
   S.demo = async () => {

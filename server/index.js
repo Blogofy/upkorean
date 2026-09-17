@@ -155,21 +155,38 @@ api.get("/auth/me", (req, res) => {
   res.json({ user: publicUser(user) });
 });
 
+// Who a Google token belongs to, or null. The sign-in button sends an OAuth access token; an ID token
+// ("credential") is still accepted from pages loaded before the switch.
+async function googleIdentity({ credential, accessToken }) {
+  const getJson = async (url, headers) => {
+    const r = await fetch(url, { headers });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error_description || "invalid token");
+    return data;
+  };
+  try {
+    if (accessToken) {
+      const t = await getJson(`https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(accessToken)}`);
+      // The token must have been issued to this app, or any site's Google token could sign in here.
+      if (t.aud !== GOOGLE_CLIENT_ID || t.azp !== GOOGLE_CLIENT_ID || !(Number(t.exp) * 1000 > Date.now())) return null;
+      const who = await getJson("https://openidconnect.googleapis.com/v1/userinfo", { Authorization: `Bearer ${accessToken}` }).catch(() => ({}));
+      return { sub: t.sub, email: t.email, email_verified: t.email_verified, given_name: who.given_name, name: who.name };
+    }
+    const info = await getJson(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
+    const issOk = info.iss === "accounts.google.com" || info.iss === "https://accounts.google.com";
+    if (info.aud !== GOOGLE_CLIENT_ID || !issOk || !(Number(info.exp) * 1000 > Date.now())) return null;
+    return info;
+  } catch {
+    return null;
+  }
+}
+
 api.post("/auth/google", authLimit, async (req, res) => {
   if (!GOOGLE_CLIENT_ID) return res.status(400).json({ error: "Google orqali kirish sozlanmagan" });
-  const credential = str(req.body.credential);
-  if (!credential) return res.status(400).json({ error: "Google tokeni yo'q" });
-  let info;
-  try {
-    const r = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
-    info = await r.json();
-    if (!r.ok) throw new Error(info.error_description || "invalid token");
-  } catch {
-    return res.status(401).json({ error: "Google tokeni tasdiqlanmadi" });
-  }
-  const issOk = info.iss === "accounts.google.com" || info.iss === "https://accounts.google.com";
-  const notExpired = Number(info.exp) * 1000 > Date.now();
-  if (info.aud !== GOOGLE_CLIENT_ID || !issOk || !notExpired || String(info.email_verified) !== "true" || !validEmail(info.email)) {
+  const credential = str(req.body.credential), accessToken = str(req.body.accessToken);
+  if (!credential && !accessToken) return res.status(400).json({ error: "Google tokeni yo'q" });
+  const info = await googleIdentity({ credential, accessToken });
+  if (!info || !info.sub || String(info.email_verified) !== "true" || !validEmail(info.email)) {
     return res.status(401).json({ error: "Google tokeni tasdiqlanmadi" });
   }
   const email = info.email.toLowerCase();

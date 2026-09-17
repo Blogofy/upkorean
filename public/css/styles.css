@@ -321,7 +321,9 @@ button.wtile:hover { border-color: var(--pl2); }
 .auth-box .form-err { margin: 0; }
 .auth-box .strength { margin: 10px 0 0; }
 .auth h2 { margin: 0 0 4px; font-family: var(--display); font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; }
-.gsi-slot { display: flex; justify-content: center; min-height: 44px; }
+.btn-google { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 50px; border: 1px solid var(--line); border-radius: 12px; background: var(--sf); font-size: 15px; font-weight: 600; color: var(--ink); transition: border-color .15s; }
+.btn-google:hover { border-color: var(--pl2); }
+.btn-google svg { flex: none; }
 .auth-submit { margin-top: 4px; padding: 15px; font-size: 16px; }
 .auth-links { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-top: 8px; font-size: 13px; }
 .auth-links a { font-weight: 700; color: var(--pd); }
