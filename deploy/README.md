@@ -29,6 +29,12 @@ Sayt xatlarni Gmail SMTP orqali yuboradi. SPF `-all` va DMARC `reject` esa `@upk
 git archive --format=tar HEAD | ssh root@109.205.177.244 "sh /opt/upkorean/deploy/update.sh"
 ```
 
+Windows PowerShell'da bu buyruq ishlamaydi: PowerShell `|` orqali o'tgan tar arxivini buzadi (`tar: Malformed extended header`). U yerda quvurni `cmd` ga bering:
+
+```powershell
+cmd /c "git archive --format=tar HEAD | ssh root@109.205.177.244 sh /opt/upkorean/deploy/update.sh"
+```
+
 Faqat commit qilingan kod ketadi. `.env`, `data/` va `node_modules/` serverda saqlanib qoladi.
 
 ## Birinchi o'rnatish (bajarilgan, 2026-09-16)
