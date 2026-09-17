@@ -290,15 +290,17 @@
   // Theme preference: "system" (follow the device), "light" or "dark".
   const darkQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
   let themePref = "system";
+  let forcedLight = false; // sign-in pages are always light, whatever the preference
   S.themePref = () => themePref;
   S.savedTheme = () => LS.get("uk:theme", "system");
   S.applyTheme = (t) => {
     themePref = t === "dark" || t === "light" ? t : "system";
-    const dark = themePref === "dark" || (themePref === "system" && !!darkQuery && darkQuery.matches);
+    const dark = !forcedLight && (themePref === "dark" || (themePref === "system" && !!darkQuery && darkQuery.matches));
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute("content", dark ? "#0C1110" : "#F4F7F6");
   };
+  S.forceLight = (on) => { if (forcedLight !== on) { forcedLight = on; S.applyTheme(themePref); } };
   if (darkQuery && darkQuery.addEventListener) darkQuery.addEventListener("change", () => { if (themePref === "system") S.applyTheme("system"); });
   S.setTheme = (t) => {
     LS.set("uk:theme", t);

@@ -66,6 +66,8 @@
         App.go("#/onboarding/1");
         return;
       }
+      // Nobody is signed in on these pages yet, so there is no theme setting to honour: they stay light.
+      S.forceLight(isPublic);
 
       let html = null;
       if (r.name === "login") html = V.login();
@@ -252,6 +254,7 @@
   window.addEventListener("offline", () => { S.offline = true; if (S.user) { U.toast("Offline rejim"); App.render(); } });
 
   S.applyTheme(S.savedTheme());
+  if (["login", "register", "reset"].includes(route().name)) S.forceLight(true);
   if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
   S.boot()
     .then(() => {

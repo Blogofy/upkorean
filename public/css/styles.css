@@ -312,7 +312,6 @@ button.wtile:hover { border-color: var(--pl2); }
 /* Sign-in, sign-up and password reset: one narrow column on the page background, a faint 한 behind it. */
 .auth { position: relative; overflow: hidden; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; padding: 40px 16px 64px; background: var(--bg); }
 .auth-wm { position: absolute; right: -60px; bottom: -150px; font-family: var(--ko); font-size: clamp(360px, 50vw, 640px); font-weight: 900; line-height: 1; color: rgba(27,111,101,.06); user-select: none; pointer-events: none; }
-:root[data-theme="dark"] .auth-wm { color: rgba(77,195,179,.035); }
 .auth .brand { position: relative; color: var(--ink); }
 .auth .brand .mark { width: 28px; height: 28px; }
 .auth .brand .name { font-size: 18px; }

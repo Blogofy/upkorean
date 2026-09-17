@@ -147,8 +147,7 @@
           } catch (e) { U.toast(e.message); }
         },
       });
-      const dark = document.documentElement.getAttribute("data-theme") === "dark";
-      window.google.accounts.id.renderButton(box, { theme: dark ? "filled_black" : "outline", size: "large", text: "continue_with", shape: "rectangular", logo_alignment: "left", width: Math.min(400, box.clientWidth || 400) });
+      window.google.accounts.id.renderButton(box, { theme: "outline", size: "large", text: "continue_with", shape: "rectangular", logo_alignment: "left", width: Math.min(400, box.clientWidth || 400) });
     };
     if (window.google && window.google.accounts) return render();
     gsiLoading = gsiLoading || new Promise((res, rej) => {
