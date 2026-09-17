@@ -12,7 +12,7 @@
       <div class="brand"><div class="mark"></div><span class="name">UpKorean</span></div>
       <div>
         <div class="hangul" style="font-size:104px">한국어<br>단어</div>
-        <div style="height:1px;background:rgba(124,63,11,.18);margin:36px 0 26px;max-width:420px"></div>
+        <div style="height:1px;background:var(--on-pl-line);margin:36px 0 26px;max-width:420px"></div>
         <p>${S.DAYS} kunlik TOPIK II lug'at kursi. Har kuni 33 so'z — o'rganish, faol eslash va oraliqli takrorlash bilan mustahkamlanadi.</p>
         <div class="auth-stats">
           <div><b>${S.TOTAL}</b><span>so'z</span></div>

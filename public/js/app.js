@@ -251,7 +251,7 @@
   });
   window.addEventListener("offline", () => { S.offline = true; if (S.user) { U.toast("Offline rejim"); App.render(); } });
 
-  S.applyTheme(localStorage.getItem("uk:theme") || "light");
+  S.applyTheme(S.savedTheme());
   if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
   S.boot()
     .then(() => {

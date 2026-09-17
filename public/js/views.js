@@ -88,7 +88,7 @@
       </div></header>`;
 
   Actions.menu = () => document.getElementById("side").classList.toggle("open");
-  Actions["theme-toggle"] = () => { S.setTheme(S.state.settings.theme === "dark" ? "light" : "dark"); App.render(); };
+  Actions["theme-toggle"] = () => { S.setTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark"); App.render(); };
 
   // ---------- Dashboard (B1) ----------
   function nextStage(d) {
@@ -214,8 +214,8 @@
         <div><h3 class="page-h" style="font-size:26px">TOPIK II lug'ati · ${S.DAYS} kun</h3>
           <p class="page-p">Har kunda ~33 so'z. Kun tugashi uchun o'rganish va faol eslash bosqichlari kerak.</p></div>
         <div class="legend">
-          <span><i style="background:var(--pdb)"></i>O'zlashtirilgan</span><span><i style="background:var(--p)"></i>Tugatilgan</span>
-          <span><i style="background:var(--pl);border:1.5px solid var(--p)"></i>Davom etmoqda</span>
+          <span><i style="background:var(--pl2)"></i>O'zlashtirilgan</span><span><i style="background:var(--pl)"></i>Tugatilgan</span>
+          <span><i style="background:var(--sf);border:2px solid var(--p)"></i>Davom etmoqda</span>
           <span><i style="background:var(--sf);border:1px solid var(--line)"></i>Ochiq</span><span><i style="background:var(--sf2);border:1px solid var(--line)"></i>Yopiq</span>
         </div>
       </div>
@@ -540,7 +540,7 @@
           <div class="upl" style="font-size:12px;color:var(--on-pl3);margin-bottom:14px">Seriya</div>
           <div style="font-size:44px;font-weight:800;letter-spacing:-.04em;color:var(--pd);line-height:1;margin-bottom:6px">${streak}</div>
           <div style="font-size:14px;margin-bottom:18px">kun ketma-ket · eng uzun ${S.state.bestStreak}</div>
-          <div class="row" style="gap:4px">${weekDays.map((k) => `<div class="grow" title="${U.fmtDayMonth(k)}" style="height:26px;border-radius:5px;background:${S.dayMinutes(k) >= 1 || (S.state.act[k] || {}).learned ? "var(--pdb)" : "rgba(124,63,11,.25)"}"></div>`).join("")}</div>
+          <div class="row" style="gap:4px">${weekDays.map((k) => `<div class="grow" title="${U.fmtDayMonth(k)}" style="height:26px;border-radius:5px;background:${S.dayMinutes(k) >= 1 || (S.state.act[k] || {}).learned ? "var(--pdb)" : "var(--tint)"}"></div>`).join("")}</div>
         </div>
         <div class="card" style="padding:22px">
           <div class="upl" style="font-size:12px;margin-bottom:14px">O'qish vaqti</div>
@@ -710,7 +710,7 @@
         <div class="card-pl row wrap" style="gap:26px;padding:24px 28px;border-radius:16px;margin-bottom:26px">
           <div><div class="upl" style="font-size:12px;color:var(--on-pl3);margin-bottom:8px">${lv.level}-daraja</div>
             <div style="font-size:34px;font-weight:800;letter-spacing:-.035em;color:var(--on-pl);line-height:1">${U.num(lv.xp)} XP</div></div>
-          <div class="grow" style="min-width:200px"><div style="height:10px;border-radius:6px;background:rgba(124,63,11,.16);overflow:hidden;margin-bottom:8px"><div style="height:100%;width:${lv.pct}%;border-radius:6px;background:var(--pdb)"></div></div>
+          <div class="grow" style="min-width:200px"><div style="height:10px;border-radius:6px;background:var(--tint);overflow:hidden;margin-bottom:8px"><div style="height:100%;width:${lv.pct}%;border-radius:6px;background:var(--pdb)"></div></div>
             <div class="row between" style="font-size:13px"><span>${lv.level + 1}-darajagacha ${U.num(lv.toNext)} XP</span><span>${U.num(lv.next)}</span></div></div>
         </div>
         <div class="card-title" style="margin-bottom:14px">Ochilgan yutuqlar <span class="faint mono" style="font-size:12px;font-weight:400">${open.length}</span></div>
@@ -797,7 +797,7 @@
           </div>
           <div class="card set-card">
             <div class="card-title">Interfeys</div>
-            ${row("Mavzu", `<div class="seg" style="padding:3px"><button class="${set.theme !== "dark" ? "on" : ""}" data-act="set-theme" data-v="light">Yorug'</button><button class="${set.theme === "dark" ? "on" : ""}" data-act="set-theme" data-v="dark">Tungi</button></div>`)}
+            ${row("Mavzu", `<div class="seg" style="padding:3px">${[["system", "Tizim"], ["light", "Yorug'"], ["dark", "Tungi"]].map(([v, l]) => `<button class="${S.themePref() === v ? "on" : ""}" data-act="set-theme" data-v="${v}">${l}</button>`).join("")}</div>`)}
             ${row("Romanizatsiya ko'rsatish", toggle(set.roman, "set-flag", "roman", "Romanizatsiya"))}
             ${row("Avtomatik audio", toggle(set.autoAudio, "set-flag", "autoAudio", "Avtomatik audio"))}
             ${row("Talaffuz tezligi", `<div class="seg" style="padding:3px">${[[0.82, "Sekin"], [0.92, "Tabiiy"], [1.02, "Tez"]].map(([v, t]) => `<button class="${Math.abs((set.speechRate || 0.92) - v) < 0.01 ? "on" : ""}" data-act="set-speech-rate" data-v="${v}">${t}</button>`).join("")}</div>`)}

@@ -41,7 +41,7 @@
         name: "", email: "", joined: U.today(), pace: 17, onboarded: false,
         reminders: { on: true, learn: "09:00", review: "20:30", streak: true, social: false },
       }, profile),
-      settings: { theme: LS.get("uk:theme", "light"), roman: true, autoAudio: true, speechRate: 0.92, apiKey: "" },
+      settings: { theme: LS.get("uk:theme", "system"), roman: true, autoAudio: true, speechRate: 0.92, apiKey: "" },
       words: {}, days: {}, act: {}, notes: {}, log: [], xp: 0, bestStreak: 0,
       typeStats: Object.fromEntries(EX_TYPES.map((t) => [t, { ok: 0, bad: 0 }])),
       firstTry: { ok: 0, total: 0 },
@@ -289,7 +289,19 @@
   S.tutor = (payload) => api("POST", "/tutor", payload);
   S.lastUserPreview = () => LS.get("uk:last", null);
 
-  S.applyTheme = (t) => document.documentElement.setAttribute("data-theme", t === "dark" ? "dark" : "light");
+  // Theme preference: "system" (follow the device), "light" or "dark".
+  const darkQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  let themePref = "system";
+  S.themePref = () => themePref;
+  S.savedTheme = () => LS.get("uk:theme", "system");
+  S.applyTheme = (t) => {
+    themePref = t === "dark" || t === "light" ? t : "system";
+    const dark = themePref === "dark" || (themePref === "system" && !!darkQuery && darkQuery.matches);
+    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", dark ? "#0C1110" : "#F4F7F6");
+  };
+  if (darkQuery && darkQuery.addEventListener) darkQuery.addEventListener("change", () => { if (themePref === "system") S.applyTheme("system"); });
   S.setTheme = (t) => {
     LS.set("uk:theme", t);
     S.applyTheme(t);

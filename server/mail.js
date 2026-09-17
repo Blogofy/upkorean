@@ -28,7 +28,7 @@ export function sendResetEmail(to, name, link) {
     html: `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:#222;max-width:480px">
       <p>${escHtml(hi)}</p>
       <p>UpKorean hisobingiz parolini tiklash uchun quyidagi tugmani bosing:</p>
-      <p><a href="${escHtml(link)}" style="display:inline-block;padding:12px 22px;background:#D88B3F;color:#fff;border-radius:10px;text-decoration:none;font-weight:bold">Parolni tiklash</a></p>
+      <p><a href="${escHtml(link)}" style="display:inline-block;padding:12px 22px;background:#207F73;color:#fff;border-radius:10px;text-decoration:none;font-weight:bold">Parolni tiklash</a></p>
       <p style="color:#666;font-size:13px">Havola 30 daqiqa amal qiladi. Agar bu so'rovni siz yubormagan bo'lsangiz, xatni e'tiborsiz qoldiring — parolingiz o'zgarmaydi.</p>
     </div>`,
   });
