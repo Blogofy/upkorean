@@ -152,7 +152,6 @@
     if (!S.state || !S.user) return;
     dirty = true;
     keepLocal();
-    LS.set("uk:last", { name: S.state.profile.name.split(" ")[0], day: S.currentDay(), streak: S.streak() });
     clearTimeout(saveTimer);
     saveTimer = setTimeout(S.flush, 700);
   };
@@ -287,7 +286,6 @@
   };
   S.leaderboard = () => api("GET", `/leaderboard?tz=${tzOffset()}`);
   S.tutor = (payload) => api("POST", "/tutor", payload);
-  S.lastUserPreview = () => LS.get("uk:last", null);
 
   // Theme preference: "system" (follow the device), "light" or "dark".
   const darkQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
