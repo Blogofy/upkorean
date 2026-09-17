@@ -7,74 +7,74 @@
   const Inputs = (window.Inputs = window.Inputs || {});
 
   // ---------- Shared auth layout ----------
-  function artLogin() {
-    return `<div class="auth-art">
-      <div class="brand"><div class="mark"></div><span class="name">UpKorean</span></div>
-      <div>
-        <div class="hangul" style="font-size:104px">한국어<br>단어</div>
-        <div style="height:1px;background:var(--on-pl-line);margin:36px 0 26px;max-width:420px"></div>
-        <p>${S.DAYS} kunlik TOPIK II lug'at kursi. Har kuni 33 so'z — o'rganish, faol eslash va oraliqli takrorlash bilan mustahkamlanadi.</p>
-        <div class="auth-stats">
-          <div><b>${S.TOTAL}</b><span>so'z</span></div>
-          <div><b>${S.DAYS}</b><span>kun</span></div>
-          <div><b>6</b><span>mashq turi</span></div>
+  const brand = (cls = "") => `<a class="brand ${cls}" href="#/login" aria-label="UpKorean"><span class="mark" aria-hidden="true"></span><span class="name">UpKorean</span></a>`;
+  // The left panel shows the product itself: a word card built from its hanja, as the lessons teach it.
+  function authArt(kind) {
+    const card = `<div class="art-card" aria-hidden="true">
+        <div class="art-card-top"><span class="art-word">관심</span><span class="art-rom">gwansim</span><span class="art-tag">한자어</span></div>
+        <div class="art-parts">
+          <div class="art-part"><b>관</b><i>關</i><span>bog'lanish</span></div>
+          <span class="art-plus">+</span>
+          <div class="art-part"><b>심</b><i>心</i><span>yurak</span></div>
         </div>
+        <div class="art-idea">yurak bog'lanib qolgan narsa → <b>qiziqish</b></div>
+        <div class="art-rel"><span>관계 <em>munosabat</em></span><span>중심 <em>markaz</em></span></div>
+      </div>`;
+    const points = kind === "register"
+      ? [["1", "Kunlik dars", "5 tadan so'z: tanishish, juftlash, eslash"], ["2", "Ildiz bilan yodlash", `${S.TOTAL} so'zning har biri tarkibi bilan`], ["3", "O'z vaqtida takrorlash", "so'z unutilishidan oldin qaytadi"]]
+      : [["漢", "Ieroglif ildizi", "bitta bo'lak — o'nlab so'zning kaliti"], ["↻", "Oraliqli takrorlash", "1, 2, 4, 9 kundan keyin"], ["✓", "Faol eslash", "juftlash, tinglash, yozish mashqlari"]];
+    return `<aside class="auth-art">
+      <div class="art-glyphs" aria-hidden="true">關心生活經驗社會文化學習</div>
+      ${brand()}
+      <div class="art-main">
+        <h1 class="art-title">${kind === "register" ? `${S.DAYS} kunda ${S.TOTAL} ta so'z, ildizidan boshlab.` : "Koreys so'zlarini ildizidan o'rganing."}</h1>
+        ${card}
+        <ul class="art-points">${points.map(([i, t, d]) => `<li><span class="art-ic">${i}</span><div><b>${t}</b><span>${d}</span></div></li>`).join("")}</ul>
       </div>
-      <div class="foot">TOPIK II · o'rta daraja</div>
-    </div>`;
+      <div class="art-foot"><span>TOPIK II lug'ati</span><span>${S.TOTAL} so'z · ${S.DAYS} kun</span></div>
+    </aside>`;
   }
-  function artRegister() {
-    return `<div class="auth-art">
-      <div class="brand"><div class="mark"></div><span class="name">UpKorean</span></div>
-      <div class="stack" style="gap:18px">
-        <div class="hangul" style="font-size:80px">${S.DAYS}일</div>
-        <p>Bir oyda ${S.TOTAL} so'z. Har kuni 20–35 daqiqa, kechqurun takrorlash bilan.</p>
-        <div class="auth-steps">
-          <div><i>1</i>Kunlik dars — 33 yangi so'z</div>
-          <div><i>2</i>Faol eslash — 5 xil mashq</div>
-          <div><i>3</i>Oraliqli takrorlash — so'z o'z vaqtida qaytadi</div>
-        </div>
-      </div>
-      <div class="foot">TOPIK TEAM · online maktab</div>
-    </div>`;
-  }
+  const artLogin = () => authArt("login");
+  const artRegister = () => authArt("register");
   const tabs = (active) => `<div class="tabs" role="tablist">
       <a href="#/login" class="${active === "login" ? "on" : ""}" role="tab">Kirish</a>
       <a href="#/register" class="${active === "register" ? "on" : ""}" role="tab">Ro'yxatdan o'tish</a>
     </div>`;
-  const googleBlock = () => `<div class="or">yoki</div>
-      ${S.config.google ? `<div id="gsi-btn" style="display:flex;justify-content:center;min-height:44px"></div>`
-        : `<button type="button" class="btn btn-sec btn-block" data-act="google-off">Google bilan davom etish</button>`}`;
+  const googleBlock = () => `${S.config.google ? `<div id="gsi-btn" class="gsi-slot"></div>`
+        : `<button type="button" class="btn btn-sec btn-block" data-act="google-off">Google bilan davom etish</button>`}
+      <div class="or">yoki email bilan</div>`;
+  const authFoot = `<p class="auth-legal"><a href="/privacy" target="_blank" rel="noopener">Maxfiylik siyosati</a><span>·</span><span>upkorean.uz</span></p>`;
   const errBox = (id) => `<div class="form-err" id="${id}" hidden></div>`;
 
   V.login = () => {
     const prev = S.lastUserPreview();
     const lead = prev && prev.name ? `${prev.day}-kun sizni kutib turibdi${prev.streak ? ` — seriya ${prev.streak} kun` : ""}.` : "Kursni davom ettirish uchun hisobingizga kiring.";
     return `<div class="auth">${artLogin()}
-      <div class="auth-form"><form data-form="login" novalidate>
+      <div class="auth-form">${brand("auth-mbrand")}<form data-form="login" novalidate>
         ${tabs("login")}
         <h2>${prev && prev.name ? "Qaytganingizdan xursandmiz" : "Xush kelibsiz"}</h2>
         <p class="lead">${esc(lead)}</p>
+        ${googleBlock()}
         <label class="field-label" for="l-email">Email</label>
         <input class="input" id="l-email" name="email" type="email" autocomplete="email" required style="margin-bottom:18px" autofocus>
         <div class="row between" style="align-items:baseline;margin-bottom:7px">
           <label class="field-label" for="l-pass" style="margin:0">Parol</label>
           <button type="button" class="link" data-act="forgot">Esdan chiqdimi?</button>
         </div>
-        <input class="input" id="l-pass" name="password" type="password" autocomplete="current-password" required style="margin-bottom:26px">
+        <input class="input" id="l-pass" name="password" type="password" autocomplete="current-password" required style="margin-bottom:24px">
         ${errBox("login-err")}
-        <button class="btn btn-p btn-block" type="submit" style="padding:15px;font-size:16px">Kirish</button>
-        ${googleBlock()}
-        <p style="margin:26px 0 0;text-align:center;font-size:13px;color:var(--ink3)">Hisobingiz yo'qmi? <a href="#/register" style="font-weight:600">Ro'yxatdan o'ting</a></p>
-        ${S.config.demo ? `<p style="margin:10px 0 0;text-align:center;font-size:13px;color:var(--ink3)">yoki <button type="button" class="link" data-act="demo">demo hisob bilan ko'ring</button></p>` : ""}
-      </form></div></div>`;
+        <button class="btn btn-p btn-block auth-submit" type="submit">Kirish</button>
+        <p class="auth-switch">Hisobingiz yo'qmi? <a href="#/register">Ro'yxatdan o'ting</a></p>
+        ${S.config.demo ? `<p class="auth-switch" style="margin-top:8px"><button type="button" class="link" data-act="demo">Demo hisob bilan ko'rish</button></p>` : ""}
+      </form>${authFoot}</div></div>`;
   };
 
   V.register = () => `<div class="auth">${artRegister()}
-      <div class="auth-form"><form data-form="register" novalidate>
+      <div class="auth-form">${brand("auth-mbrand")}<form data-form="register" novalidate>
         ${tabs("register")}
         <h2>Hisob yaratish</h2>
         <p class="lead">Keyingi qadamda kuniga nechta so'z o'rganishni tanlaysiz.</p>
+        ${googleBlock()}
         <label class="field-label" for="r-name">Ism</label>
         <input class="input" id="r-name" name="name" autocomplete="given-name" required maxlength="60" style="margin-bottom:18px" autofocus>
         <label class="field-label" for="r-email">Email</label>
@@ -83,13 +83,13 @@
         <input class="input" id="r-pass" name="password" type="password" autocomplete="new-password" required placeholder="Kamida 8 belgi" data-input="pw-strength">
         <div class="strength" id="pw-strength" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
         ${errBox("reg-err")}
-        <button class="btn btn-p btn-block" type="submit" style="padding:15px;font-size:16px">Davom etish</button>
-        ${googleBlock()}
-        <p style="margin:22px 0 0;font-size:12px;color:var(--ink3);line-height:1.55">Ro'yxatdan o'tish orqali <a class="link" href="/privacy" target="_blank" rel="noopener">maxfiylik siyosatiga</a> rozilik bildirasiz.</p>
-      </form></div></div>`;
+        <button class="btn btn-p btn-block auth-submit" type="submit">Davom etish</button>
+        <p class="auth-switch">Hisobingiz bormi? <a href="#/login">Kirish</a></p>
+        <p class="auth-note">Ro'yxatdan o'tish orqali <a href="/privacy" target="_blank" rel="noopener">maxfiylik siyosatiga</a> rozilik bildirasiz.</p>
+      </form>${authFoot}</div></div>`;
 
   V.reset = (token) => `<div class="auth">${artLogin()}
-      <div class="auth-form"><form data-form="reset" data-token="${esc(token)}" novalidate>
+      <div class="auth-form">${brand("auth-mbrand")}<form data-form="reset" data-token="${esc(token)}" novalidate>
         <h2>Yangi parol</h2>
         <p class="lead">Hisobingiz uchun yangi parol o'rnating.</p>
         <label class="field-label" for="n-pass">Yangi parol</label>
@@ -188,7 +188,8 @@
           } catch (e) { U.toast(e.message); }
         },
       });
-      window.google.accounts.id.renderButton(box, { theme: "outline", size: "large", text: "continue_with", shape: "rectangular", width: Math.min(400, box.clientWidth || 400) });
+      const dark = document.documentElement.getAttribute("data-theme") === "dark";
+      window.google.accounts.id.renderButton(box, { theme: dark ? "filled_black" : "outline", size: "large", text: "continue_with", shape: "rectangular", logo_alignment: "left", width: Math.min(400, box.clientWidth || 400) });
     };
     if (window.google && window.google.accounts) return render();
     gsiLoading = gsiLoading || new Promise((res, rej) => {
