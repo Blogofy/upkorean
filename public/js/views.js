@@ -47,6 +47,7 @@
     profile: `<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>`,
     flame: `<path d="M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-4 2.5-5 .5 1.5 1.5 2.5 2.5 2.5C12 8 11 6 12 3z"/>`,
     check: `<path d="m5 12 5 5 9-10"/>`,
+    lock: `<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>`,
   };
   V.icon = (k, size = 20) => `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>`;
   const NAV = [["dashboard", "Bugun"], ["course", "Kurs"], ["review", "Takrorlash"], ["library", "So'zlar"], ["progress", "Natijalar"]];
@@ -167,44 +168,56 @@
     return V.shell("dashboard", V.topbar("", date.charAt(0).toUpperCase() + date.slice(1)), body);
   };
 
-  // ---------- Course roadmap (C1) ----------
-  let courseAll = false;
+  // ---------- Course (C1) ----------
+  // Every day in one list; the chosen day (today unless another is picked) opens beside it.
+  let courseSel = null;
   V.course = () => {
     const cur = S.currentDay();
-    const shown = courseAll ? S.DAYS : Math.min(S.DAYS, Math.max(12, Math.ceil((cur + 2) / 6) * 6));
-    const tile = (d) => {
-      const st = S.dayStatus(d), ds = S.dayState(d), words = S.DAY_WORDS[d - 1], n = words.length;
-      const head = S.DAY_WORDS[d - 1][0].ko;
-      if (st === "locked") return `<div class="dtile locked" aria-disabled="true"><div class="dn">${d}-KUN</div><div class="dw">${esc(head)}</div><div class="ds">yopiq</div></div>`;
-      let sub = "", right = "";
-      if (st === "mastered") { sub = `${n} so'z · o'zlashtirilgan`; right = "✓"; }
-      else if (st === "completed") { sub = `${n} so'z · ${U.pct(ds.ok || 0, (ds.ok || 0) + (ds.bad || 0)) || 100}%`; right = "✓"; }
-      else if (st === "progress") { sub = `${S.dayLearned(d)} / ${n} so'z`; right = d === cur ? `<span style="font-size:12px;font-weight:700;color:var(--pd)">bugun</span>` : ""; }
-      else sub = `${n} so'z · ochiq`;
-      const plan = st === "progress" ? S.dayPlan(d) : null;
-      return `<a href="#/day/${d}" class="dtile ${st}" style="color:inherit"><div class="dn"><span>${d}-KUN</span><span>${right}</span></div>
-        <div class="dw">${esc(head)}</div><div class="ds">${sub}</div>
-        ${plan ? `<div class="mini"><div style="width:${U.pct(ds.stage || 0, plan.stages.length)}%"></div></div>` : ""}</a>`;
+    const d = courseSel >= 1 && courseSel <= S.DAYS ? courseSel : cur;
+    const row = (n) => {
+      const st = S.dayStatus(n), ds = S.dayState(n), total = S.DAY_WORDS[n - 1].length;
+      let lead, right;
+      if (st === "mastered" || st === "completed") { lead = `<span class="dr-n done">${V.icon("check", 16)}</span>`; right = `<span class="mono dr-meta">${U.pct(ds.ok || 0, (ds.ok || 0) + (ds.bad || 0)) || 100}%</span>`; }
+      else if (st === "progress") { lead = `<span class="dr-n cur">${n}</span>`; right = `<span class="mono dr-meta">${S.dayLearned(n)}/${total}</span>${n === cur ? `<span class="dr-tag">bugun</span>` : ""}`; }
+      else if (st === "available") { lead = `<span class="dr-n">${n}</span>`; right = `<span class="dr-meta">ochiq</span>`; }
+      else { lead = `<span class="dr-n locked">${n}</span>`; right = `<span class="dr-meta" aria-label="yopiq">${V.icon("lock", 14)}</span>`; }
+      return `<button class="dayrow ${n === d ? "on" : ""}" data-act="course-pick" data-d="${n}"${n === d ? ` aria-current="true"` : ""}>${lead}<span class="grow"><b>${n}-kun</b><span class="ko">${esc(S.DAY_WORDS[n - 1][0].ko)}</span></span>${right}</button>`;
     };
-    const body = `<div class="page">
-      <div class="row wrap between" style="align-items:flex-end;margin-bottom:22px;gap:16px">
-        <div><h3 class="page-h" style="font-size:26px">TOPIK II lug'ati · ${S.DAYS} kun</h3>
-          <p class="page-p">Har kunda ~33 so'z. Kun tugashi uchun o'rganish va faol eslash bosqichlari kerak.</p></div>
-        <div class="legend">
-          <span><i style="background:var(--pl2)"></i>O'zlashtirilgan</span><span><i style="background:var(--pl)"></i>Tugatilgan</span>
-          <span><i style="background:var(--sf);border:2px solid var(--p)"></i>Davom etmoqda</span>
-          <span><i style="background:var(--sf);border:1px solid var(--line)"></i>Ochiq</span><span><i style="background:var(--sf2);border:1px solid var(--line)"></i>Yopiq</span>
+
+    const locked = S.dayStatus(d) === "locked";
+    const { ds, plan } = nextStage(d);
+    const words = plan.words;
+    const origins = { sino: 0, native: 0, loan: 0 };
+    words.forEach((id) => { origins[S.origin(id)]++; });
+    const originText = Object.entries(origins).filter(([, n]) => n).map(([k, n]) => ` · <span class="ko">${S.ORIGINS[k].ko}</span> ${n}`).join("");
+    const eyebrow = `${d}-KUN${ds.done ? " · TUGAGAN" : d === cur ? " · BUGUN" : locked ? " · YOPIQ" : ""}`;
+    const cta = locked ? ""
+      : ds.done ? `<button class="btn btn-sec" data-act="learn" data-day="${d}">Qayta mashq qilish</button>`
+      : `<button class="btn btn-p" data-act="learn" data-day="${d}">${ds.stage ? "Davom etish" : "Boshlash"}</button>`;
+    const stages = plan.stages.map((sg, i) => {
+      const isDone = ds.done || i < ds.stage, isCur = !ds.done && !locked && i === ds.stage;
+      const ids = sg.block >= 0 ? plan.blocks[sg.block] : words;
+      const meta = sg.kind === "mixed" ? `${Math.min(12, words.length)} savol · ~${sg.min} daq` : sg.kind === "learn" ? `${ids.length} so'z · ~${sg.min} daq` : `~${sg.min} daq`;
+      return `<div class="stg ${isDone ? "done" : isCur ? "cur" : ""}">${isDone ? V.icon("check", 18) : `<span class="mono">${isCur ? "HOZIR" : "KEYIN"}</span>`}<b>${stageName(plan, sg)}</b><span>${isDone ? "bajarildi" : meta}</span></div>`;
+    }).join("");
+    const detail = `<section class="card day-detail">
+        <div class="dd-head">
+          <div><div class="eyebrow">${eyebrow}</div><h2 class="dd-h">${esc(S.dayTitle(d))}</h2>
+            <div class="muted">${words.length} so'z · ${plan.blocks.length} blok · ~${plan.minutes} daqiqa${originText}</div></div>
+          ${cta}
         </div>
-      </div>
-      <div class="dgrid">${Array.from({ length: shown }, (_, i) => tile(i + 1)).join("")}</div>
-      ${shown < S.DAYS ? `<div class="card row wrap" style="gap:14px;margin-top:20px;padding:18px 22px">
-        <span class="mono faint" style="font-size:12px">${shown + 1}–${S.DAYS}-KUNLAR</span>
-        <span class="grow muted" style="font-size:14px">Qolgan ${S.DAYS - shown} kun ketma-ket ochiladi: joriy kundan 2 kun oldinga o'tish mumkin.</span>
-        <button class="link" data-act="course-all">Hammasini ko'rish</button></div>` : ""}
-    </div>`;
-    return V.shell("course", V.topbar("Kurs", `${S.learnedIds().length} / ${S.TOTAL} so'z`), body);
+        ${locked ? `<p class="dd-lock">${V.icon("lock", 16)}Bu kun ${d - 2}-kun tugagandan keyin ochiladi.</p>` : ""}
+        <div class="stgs">${stages}</div>
+        <div class="row between"><span class="card-title">Kun so'zlari</span><a class="link" href="#/day/${d}">Hammasi · ${words.length}</a></div>
+        <div class="dd-words">${words.slice(0, 12).map((id) => { const w = S.word(id); return `<button class="dd-word" data-act="word" data-id="${id}"><b class="ko">${esc(w.ko)}</b><span>${esc(w.uz)}</span></button>`; }).join("")}</div>
+      </section>`;
+    const body = `<div class="page"><div class="course-grid">
+        <section class="card day-list" aria-label="Kunlar">${Array.from({ length: S.DAYS }, (_, i) => row(i + 1)).join("")}</section>
+        ${detail}
+      </div></div>`;
+    return V.shell("course", V.topbar("Kurs", `${S.daysDone()} / ${S.DAYS} kun · ${S.learnedIds().length} / ${S.TOTAL} so'z`), body);
   };
-  Actions["course-all"] = () => { courseAll = true; App.render(); };
+  Actions["course-pick"] = (el) => { courseSel = Number(el.dataset.d); App.render(); };
 
   // ---------- Day detail (C2) ----------
   let dayAllWords = false;
@@ -310,55 +323,58 @@
   };
 
   // ---------- Review hub (E1) ----------
-  let reviewTab = "due", reviewAll = false;
+  // Today's queue first, then the other lists to practise, the coming week and the exercise types.
   V.review = () => {
-    const lists = { due: S.dueIds(), weak: S.weakIds(), flag: S.flaggedIds(), forgot: S.forgottenIds() };
-    const due = lists.due;
-    const weakDue = due.filter(S.isWeak).length;
-    const days = [...new Set(due.map((id) => S.word(id).day))].sort((a, b) => a - b);
-    const range = days.length ? (days.length === 1 ? `${days[0]}-kun` : `${days[0]}–${days[days.length - 1]}-kunlar`) : "";
-    const cards = [
-      ["due", "Bugun", "takrorlash vaqti kelgan"], ["weak", "Zaif", "2+ marta xato"],
-      ["flag", "Belgilangan", "o'zim belgilaganlar"], ["forgot", "Unutilgan", "darajasi tushgan"],
-    ];
-    const rows = lists[reviewTab];
-    const shown = reviewAll ? rows : rows.slice(0, 8);
-    const body = `<div class="page">
-      <div class="hero" style="margin-bottom:18px"><div>
-        <div class="eyebrow">KUNLIK TAKRORLASH SESSIYASI</div>
-        <div class="row" style="align-items:baseline;gap:10px;margin-bottom:6px"><span class="big" style="font-size:50px">${due.length}</span><span class="bigsub" style="font-size:20px">so'z kutilmoqda</span></div>
-        <p style="margin-bottom:20px">${due.length ? `${range} dan ${due.length - weakDue} so'z${weakDue ? `, ${weakDue} zaif so'z` : ""}. Taxminan ${Math.max(1, Math.round(due.length * 0.37))} daqiqa.` : "Bugungi takrorlash tugagan. Ertaga yangi so'zlar keladi."}</p>
-        <div class="row wrap">
-          ${due.length ? `<button class="btn btn-p" data-act="review-start" data-mode="due">Sessiyani boshlash</button>` : ""}
-          ${lists.weak.length ? `<button class="btn btn-sec" data-act="review-start" data-mode="weak">Faqat zaiflarini</button>` : ""}
-          <a class="btn btn-sec" href="#/quiz">Mashqlar</a>
-        </div></div><div class="wm" aria-hidden="true" style="font-size:80px;line-height:.9">복습</div></div>
-      <div class="two-sm" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px">
-        ${cards.map(([k, t, d]) => `<button class="card" style="padding:18px 22px;text-align:left;${reviewTab === k ? "border:1.5px solid var(--p)" : ""}" data-act="review-tab" data-k="${k}">
-          <div class="upl s" style="${reviewTab === k ? "color:var(--pd)" : ""};margin-bottom:10px">${t}</div>
-          <div style="font-size:30px;font-weight:800;letter-spacing:-.035em;margin-bottom:5px;${k === "weak" && lists.weak.length ? "color:var(--bad)" : ""}">${lists[k].length}</div>
-          <div class="muted" style="font-size:13px">${d}</div></button>`).join("")}
-      </div>
-      <div class="row between" style="margin-bottom:12px">
-        <span class="card-title">${{ due: "Bugun kutilayotgan so'zlar", weak: "Zaif so'zlar", flag: "Belgilangan so'zlar", forgot: "Esdan chiqqan so'zlar" }[reviewTab]}</span>
-        ${reviewTab !== "due" && rows.length ? `<button class="link" data-act="review-start" data-mode="${reviewTab}">Shularni mashq qilish</button>` : `<span class="mono faint hide-sm" style="font-size:12px">mastery · oxirgi ko'rish · keyingi</span>`}
-      </div>
-      <div class="list">${shown.length ? shown.map((id) => {
-        const w = S.word(id), st = S.ws(id), late = st.due < U.today();
-        return `<button class="li ${late ? "bad" : ""}" style="gap:18px;padding:13px 20px" data-act="word" data-id="${id}">
-          <span class="mono ${late ? "badc" : "faint"}" style="font-size:12px;min-width:44px">D${w.day}</span>
-          <span class="kw">${esc(w.ko)}</span><span class="mean" style="${late ? "color:var(--badd)" : ""}">${esc(w.uz)}</span>
+    const today = U.today();
+    const due = S.dueIds(), learned = S.learnedIds();
+    const late = due.filter((id) => S.ws(id).due < today).length;
+    const week = Array.from({ length: 7 }, (_, i) => {
+      const k = U.addDays(today, i);
+      const n = learned.filter((id) => (i ? S.ws(id).due === k : S.ws(id).due <= k)).length;
+      return { n, today: !i, lbl: i === 0 ? "Bugun" : i === 1 ? "Ertaga" : U.WEEK_SHORT[(U.parseKey(k).getDay() + 6) % 7] };
+    });
+    const hero = `<section class="rv-today">
+        <span class="mono rv-eyebrow">BUGUN KUTMOQDA</span>
+        <div class="rv-big"><b>${due.length}</b><span>so'z${due.length ? ` · ~${Math.max(1, Math.round(due.length * 0.37))} daq` : ""}</span></div>
+        <span class="rv-note">${!due.length ? "Bugungi takrorlash tugagan. Ertaga yangi so'zlar keladi." : late ? `${late} tasi kechikkan — avval ular chiqadi.` : "Unutilishidan oldin qaytarib oling."}</span>
+        ${due.length ? `<button class="btn rv-go" data-act="review-start" data-mode="due">Boshlash</button>` : ""}
+      </section>`;
+    const mode = (title, ids, desc, m, cta, bad) => `<section class="card rv-mode">
+        <span class="card-title">${title}</span><b class="rv-n ${bad && ids.length ? "badc" : ""}">${ids.length}</b><span class="side-note">${desc}</span>
+        ${ids.length ? `<button class="link" data-act="review-start" data-mode="${m}">${cta}</button>` : `<span class="side-note rv-none">Hozircha yo'q</span>`}
+      </section>`;
+    const quizzes = ["mixed", "listen", "type", "sent"].map((k) => {
+      const t = X.QUIZ_TYPES[k];
+      return `<button class="card rv-quiz" data-act="quiz-go" data-k="${k}"><b>${t.name}</b><span class="side-note">${t.desc}</span><span class="mono accent">20 savol · ~${Math.max(1, Math.round(20 * t.mins))} daq</span></button>`;
+    }).join("");
+    const shown = due.slice(0, 8);
+    const list = shown.map((id) => {
+      const w = S.word(id), st = S.ws(id), isLate = st.due < today;
+      return `<button class="li ${isLate ? "bad" : ""}" style="gap:18px;padding:13px 20px" data-act="word" data-id="${id}">
+          <span class="mono ${isLate ? "badc" : "faint"}" style="font-size:12px;min-width:44px">D${w.day}</span>
+          <span class="kw">${esc(w.ko)}</span><span class="mean" style="${isLate ? "color:var(--badd)" : ""}">${esc(w.uz)}</span>
           ${V.mbar(id)}
-          <span class="meta hide-sm" style="min-width:70px">${U.ago(st.last)}</span>
-          <span class="meta" style="min-width:64px;color:${late ? "var(--bad)" : st.due <= U.today() ? "var(--pd)" : "var(--ink3)"}">${U.dueLabel(st.due)}</span></button>`; }).join("")
-        : `<div class="empty">Bu ro'yxat hozircha bo'sh.</div>`}</div>
-      ${rows.length > shown.length ? `<div class="center" style="margin-top:12px"><button class="mono faint" style="font-size:12px" data-act="review-all">+${rows.length - shown.length} so'z</button></div>` : ""}
+          <span class="meta" style="min-width:64px;color:${isLate ? "var(--bad)" : "var(--pd)"}">${U.dueLabel(st.due)}</span></button>`;
+    }).join("");
+    const body = `<div class="page">
+      <div class="rv-top">${hero}
+        ${mode("Qiyin", S.weakIds(), "2 va undan ko'p marta xato qilingan so'zlar", "weak", "Mashq qilish", true)}
+        ${mode("Belgilangan", S.flaggedIds(), "O'zingiz qiyin deb belgilagan so'zlar", "flag", "Mashq qilish")}
+        ${mode("Unutilgan", S.forgottenIds(), "Darajasi pasaygan so'zlar", "forgot", "Qaytarish")}
+      </div>
+      <section class="card rv-cal">
+        <div class="row between"><span class="card-title">Takrorlash taqvimi</span><span class="side-note">keyingi 7 kunda ${week.reduce((s, x) => s + x.n, 0)} so'z</span></div>
+        <div class="rv-days">${week.map((x) => `<div class="${x.today ? "on" : ""}"><span>${x.lbl}</span><b>${x.n}</b><span>so'z</span></div>`).join("")}</div>
+      </section>
+      <div class="row between rv-h"><span class="card-title">Mashq turlari</span><a class="link" href="#/quiz">Barcha sozlamalar</a></div>
+      <div class="rv-quizzes">${quizzes}</div>
+      ${shown.length ? `<div class="row between rv-h"><span class="card-title">Bugungi so'zlar</span>${due.length > shown.length ? `<span class="side-note">yana ${due.length - shown.length} so'z</span>` : ""}</div>
+      <div class="list">${list}</div>` : ""}
     </div>`;
     return V.shell("review", V.topbar("Takrorlash", ""), body);
   };
-  Actions["review-tab"] = (el) => { reviewTab = el.dataset.k; reviewAll = false; App.render(); };
-  Actions["review-all"] = () => { reviewAll = true; App.render(); };
   Actions["review-start"] = (el) => X.startReview(el.dataset.mode || "due");
+  Actions["quiz-go"] = (el) => { quizCfg.type = el.dataset.k; App.go("#/quiz"); };
 
   // ---------- Quiz hub (E2) ----------
   const quizCfg = { type: "mixed", source: "all", days: [], count: 20, timer: false, instant: true };
@@ -718,6 +734,9 @@
   V.resetBoard = () => { board = null; };
 
   // ---------- Profile & settings (G4) ----------
+  // The account on top; below it one settings section at a time, picked from the list beside it.
+  let profTab = "plan";
+  const PROF_TABS = [["plan", "O'qish rejasi"], ["reminders", "Eslatmalar"], ["ui", "Interfeys"], ["account", "Hisob va xavfsizlik"]];
   V.profile = () => {
     const p = S.state.profile, set = S.state.settings, r = p.reminders, lv = S.levelInfo();
     const startKey = Object.values(S.state.days).length ? (Object.values(S.state.days).map((d) => d.doneAt).filter(Boolean).sort()[0] || p.joined) : p.joined;
@@ -725,67 +744,65 @@
     const row = (label, right) => `<div class="set-row"><div class="set-l">${label}</div><div class="set-r">${right}</div></div>`;
     const hint = (text) => ` <span class="faint" style="font-size:13px">· ${text}</span>`;
     const perm = Push.permission();
-    const body = `<div class="page prof">
-      <div class="prof-head">
+
+    let section;
+    if (profTab === "reminders") {
+      section = `<h2 class="ps-h">Eslatmalar</h2>
+        <p class="ps-p">Har kuni shu vaqtda telefon yoki kompyuteringizga bildirishnoma keladi — sayt yopiq bo'lsa ham.</p>
+        ${S.user.demo ? `<p class="muted set-note">Demo hisobda eslatmalar yuborilmaydi.</p>` : ""}
+        ${row(`Eslatmalar${hint({ granted: "ruxsat berilgan", denied: "brauzerda bloklangan", default: "ruxsat so'raladi", install: "bosh ekranga qo'shing", unsupported: "brauzer qo'llamaydi" }[perm])}`, toggle(r.on, "rem-toggle", "on", "Eslatmalar"))}
+        ${row(`Bugungi dars <input type="time" class="time-input sm" value="${esc(r.learn)}" data-change="rem-time" data-k="learn" aria-label="Dars vaqti">`, toggle(r.on && r.learnOn !== false, "rem-toggle", "learnOn", "Dars eslatmasi"))}
+        ${row(`Takrorlash <input type="time" class="time-input sm" value="${esc(r.review)}" data-change="rem-time" data-k="review" aria-label="Takrorlash vaqti">`, toggle(r.on && r.reviewOn !== false, "rem-toggle", "reviewOn", "Takrorlash eslatmasi"))}
+        ${row(`Seriya eslatmasi${hint("21:30")}`, toggle(r.on && r.streak, "rem-toggle", "streak", "Seriya eslatmasi"))}
+        ${r.on && !S.user.demo && perm === "granted" ? row("Sinov bildirishnomasi", `<button class="link" data-act="push-test">yuborish</button>`) : ""}
+        ${r.on && ["denied", "install", "unsupported"].includes(perm) ? `<p class="muted set-note" style="margin:10px 0 0">${esc(Push.explain(perm))}</p>` : ""}`;
+    } else if (profTab === "ui") {
+      section = `<h2 class="ps-h">Interfeys</h2>
+        <p class="ps-p">Ko'rinish va talaffuz. O'zgarishlar darhol qo'llanadi.</p>
+        ${row("Mavzu", `<div class="seg" style="padding:3px">${[["system", "Tizim"], ["light", "Yorug'"], ["dark", "Tungi"]].map(([v, l]) => `<button class="${S.themePref() === v ? "on" : ""}" data-act="set-theme" data-v="${v}">${l}</button>`).join("")}</div>`)}
+        ${row("Romanizatsiya ko'rsatish", toggle(set.roman, "set-flag", "roman", "Romanizatsiya"))}
+        ${row("Avtomatik audio", toggle(set.autoAudio, "set-flag", "autoAudio", "Avtomatik audio"))}
+        ${row("Talaffuz tezligi", `<div class="seg" style="padding:3px">${[[0.82, "Sekin"], [0.92, "Tabiiy"], [1.02, "Tez"]].map(([v, t]) => `<button class="${Math.abs((set.speechRate || 0.92) - v) < 0.01 ? "on" : ""}" data-act="set-speech-rate" data-v="${v}">${t}</button>`).join("")}</div>`)}
+        <div class="hide-sm">${row("Klaviatura yorliqlari", `<button class="link mono" data-act="shortcuts">ko'rish</button>`)}</div>`;
+    } else if (profTab === "account") {
+      section = `<h2 class="ps-h">Hisob va xavfsizlik</h2>
+        <p class="ps-p">Natijalaringiz serverda saqlanadi va har bir qurilmada bir xil ko'rinadi.</p>
+        ${S.user.demo ? "" : row("Parol", `<button class="link" data-act="change-pass">${S.user.hasPassword ? "o'zgartirish" : "o'rnatish"}</button>`)}
+        ${row("Natijalarni yuklab olish", `<button class="link" data-act="export-json">JSON</button>`)}
+        ${row(`Hisobdan chiqish${hint("natijalar saqlanib qoladi")}`, `<button class="link" data-act="logout">Chiqish</button>`)}
+        ${S.user.demo ? "" : row("Hisobni o'chirish", `<button class="link" style="color:var(--bad)" data-act="delete-account">o'chirish</button>`)}`;
+    } else {
+      section = `<h2 class="ps-h">O'qish rejasi</h2>
+        <p class="ps-p">Kunlik temp hali boshlanmagan kunlarga qo'llanadi.</p>
+        <div class="paces">${[11, 17, 33].map((n) => { const x = S.PACES[n], on = p.pace === n; return `<button class="pace ${on ? "on" : ""}" data-act="set-pace" data-v="${n}" aria-pressed="${on}">
+          <span class="pace-top"><b>${n}</b>${on ? `<span class="check">✓</span>` : ""}</span><span class="t">${x.name} · ${x.blocks} blok</span><span class="d">${x.desc}</span></button>`; }).join("")}</div>
+        ${row("Kurs", `<span class="set-v">TOPIK II · ${S.TOTAL} so'z</span>`)}
+        ${row(`Tugash sanasi${hint(`${p.pace} so'z tempida`)}`, `<span class="set-v">${U.fmtDayMonth(endKey)}</span>`)}`;
+    }
+
+    const body = `<div class="page">
+      <section class="card prof-card">
         <div class="avatar prof-av">${initial()}</div>
         <div class="prof-id">
-          <h3 class="page-h">${esc(p.name)}</h3>
-          <p class="page-p">${esc(S.user.email)}</p>
-          <p class="prof-meta">${U.fmtDayMonth([S.user.createdAt, p.joined].filter(Boolean).sort()[0])}dan a'zo · ${lv.level}-daraja</p>
+          <h2 class="page-h">${esc(p.name)}</h2>
+          <p class="page-p">${esc(S.user.email)} · ${U.fmtDayMonth([S.user.createdAt, p.joined].filter(Boolean).sort()[0])}dan a'zo</p>
+        </div>
+        <div class="prof-stats">
+          <div><b>${S.learnedIds().length}</b><span>so'z</span></div>
+          <div><b>${S.streak()}</b><span>kun seriya</span></div>
+          <div><b>${lv.level}</b><span>daraja</span></div>
         </div>
         ${S.user.demo ? `<span class="tag">demo hisob</span>` : `<button class="btn btn-sec btn-sm prof-edit" data-act="edit-name">Tahrirlash</button>`}
+      </section>
+      <div class="prof-grid">
+        <nav class="prof-nav" aria-label="Sozlamalar">${PROF_TABS.map(([k, l]) => `<button class="${profTab === k ? "on" : ""}" data-act="prof-tab" data-k="${k}"${profTab === k ? ` aria-current="true"` : ""}>${l}</button>`).join("")}</nav>
+        <section class="card prof-sec">${section}</section>
       </div>
-      <div class="collapse-md" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px">
-        <div class="stack" style="gap:16px">
-          <div class="card set-card">
-            <div class="card-title">O'qish rejasi</div>
-            ${row("Kurs", `<span class="set-v">TOPIK II · ${S.TOTAL} so'z</span>`)}
-            ${row("Kunlik temp", U.dropdown({ change: "set-pace", value: p.pace, label: "Kunlik temp", options: [11, 17, 33].map((n) => [n, `${n} so'z · ~${S.PACES[n].min} daq`]) }))}
-            ${row("Tugash sanasi", `<span class="set-v">${U.fmtDayMonth(endKey)}</span>`)}
-          </div>
-          <div class="card set-card">
-            <div class="card-title">Bildirishnomalar</div>
-            ${S.user.demo ? `<p class="muted set-note">Demo hisobda eslatmalar yuborilmaydi.</p>` : ""}
-            ${row(`Eslatmalar${hint({ granted: "ruxsat berilgan", denied: "brauzerda bloklangan", default: "ruxsat so'raladi", install: "bosh ekranga qo'shing", unsupported: "brauzer qo'llamaydi" }[perm])}`, toggle(r.on, "rem-toggle", "on", "Eslatmalar"))}
-            ${row(`Bugungi dars <input type="time" class="time-input sm" value="${esc(r.learn)}" data-change="rem-time" data-k="learn" aria-label="Dars vaqti">`, toggle(r.on && r.learnOn !== false, "rem-toggle", "learnOn", "Dars eslatmasi"))}
-            ${row(`Takrorlash <input type="time" class="time-input sm" value="${esc(r.review)}" data-change="rem-time" data-k="review" aria-label="Takrorlash vaqti">`, toggle(r.on && r.reviewOn !== false, "rem-toggle", "reviewOn", "Takrorlash eslatmasi"))}
-            ${row(`Seriya eslatmasi${hint("21:30")}`, toggle(r.on && r.streak, "rem-toggle", "streak", "Seriya eslatmasi"))}
-            ${r.on && !S.user.demo && perm === "granted" ? row("Sinov bildirishnomasi", `<button class="link" data-act="push-test">yuborish</button>`) : ""}
-            ${r.on && ["denied", "install", "unsupported"].includes(perm) ? `<p class="muted set-note" style="margin:10px 0 0">${esc(Push.explain(perm))}</p>` : ""}
-          </div>
-          <div class="card set-card">
-            <div class="card-title">Hisob</div>
-            ${row(`AI ustoz${hint("tez kunda")}`, `<span class="tag">qulflangan</span>`)}
-            ${S.user.demo ? "" : row("Parol", `<button class="link" data-act="change-pass">${S.user.hasPassword ? "o'zgartirish" : "o'rnatish"}</button>`)}
-            ${row("Natijalarni yuklab olish", `<button class="link" data-act="export-json">JSON</button>`)}
-            ${S.user.demo ? "" : row("Hisobni o'chirish", `<button class="link" style="color:var(--bad)" data-act="delete-account">o'chirish</button>`)}
-          </div>
-        </div>
-        <div class="stack" style="gap:16px">
-          <div class="card" style="padding:24px">
-            <div class="card-title" style="margin-bottom:18px">Statistika</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-              <div><div class="stat-n">${S.learnedIds().length}</div><div class="muted" style="font-size:13px">o'rganilgan so'z</div></div>
-              <div><div class="stat-n">${S.masteredIds().length}</div><div class="muted" style="font-size:13px">o'zlashtirilgan</div></div>
-              <div><div class="stat-n">${S.streak()}</div><div class="muted" style="font-size:13px">kunlik seriya</div></div>
-              <div><div class="stat-n">${U.durText(S.totalMinutes())}</div><div class="muted" style="font-size:13px">o'qish vaqti</div></div>
-            </div>
-          </div>
-          <div class="card set-card">
-            <div class="card-title">Interfeys</div>
-            ${row("Mavzu", `<div class="seg" style="padding:3px">${[["system", "Tizim"], ["light", "Yorug'"], ["dark", "Tungi"]].map(([v, l]) => `<button class="${S.themePref() === v ? "on" : ""}" data-act="set-theme" data-v="${v}">${l}</button>`).join("")}</div>`)}
-            ${row("Romanizatsiya ko'rsatish", toggle(set.roman, "set-flag", "roman", "Romanizatsiya"))}
-            ${row("Avtomatik audio", toggle(set.autoAudio, "set-flag", "autoAudio", "Avtomatik audio"))}
-            ${row("Talaffuz tezligi", `<div class="seg" style="padding:3px">${[[0.82, "Sekin"], [0.92, "Tabiiy"], [1.02, "Tez"]].map(([v, t]) => `<button class="${Math.abs((set.speechRate || 0.92) - v) < 0.01 ? "on" : ""}" data-act="set-speech-rate" data-v="${v}">${t}</button>`).join("")}</div>`)}
-            <div class="hide-sm">${row("Klaviatura yorliqlari", `<button class="link mono" data-act="shortcuts">ko'rish</button>`)}</div>
-          </div>
-          <div class="card set-card">
-            ${row(`<span class="muted">Hisobdan chiqish — natijalar serverda saqlanib qoladi</span>`, `<button class="link" style="color:var(--bad);font-size:14px" data-act="logout">Chiqish</button>`)}
-          </div>
-        </div>
-      </div></div>`;
+    </div>`;
     return V.shell("profile", V.topbar("Profil", ""), body);
   };
+  Actions["prof-tab"] = (el) => { profTab = el.dataset.k; App.render(); };
+  Actions["set-pace"] = (el) => { S.state.profile.pace = Number(el.dataset.v); S.save(); App.render(); U.toast("Yangi temp hali boshlanmagan kunlarga qo'llanadi"); };
 
   Actions["set-theme"] = (el) => { S.setTheme(el.dataset.v); App.render(); };
   Actions["set-flag"] = (el) => { const k = el.dataset.k; S.state.settings[k] = !S.state.settings[k]; S.save(); App.render(); };
