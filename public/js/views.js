@@ -32,62 +32,58 @@
     if (S.streak() > 0 || !S.state.bestStreak || active(today) || active(yesterday)) return "";
     return `<span class="streak-lost">Seriya uzildi (eng uzuni ${S.state.bestStreak} kun) — bugungi bitta mashq yangisini boshlaydi.</span> `;
   }
-  const dot = (kind) => `<span style="width:7px;height:7px;border-radius:99px;flex:none;background:${kind === "ok" ? "var(--ok)" : kind === "pd" ? "var(--pd)" : "var(--p)"}"></span>`;
   const toggle = (on, act, k, label) => `<button class="toggle ${on ? "on" : ""}" data-act="${act}" data-k="${k}" role="switch" aria-checked="${!!on}" aria-label="${esc(label)}"></button>`;
   const initial = () => esc((S.state.profile.name || "?").trim().charAt(0).toUpperCase());
   const firstName = () => esc((S.state.profile.name || "").split(" ")[0]);
 
   // ---------- Shell ----------
-  const NAV = [
-    ["dashboard", "Bosh sahifa"], ["course", "30 kunlik kurs"], ["review", "Takrorlash"], ["quiz", "Mashqlar"],
-    ["tutor", "AI ustoz"], ["library", "So'zlar bazasi"], null, ["progress", "Natijalar"], ["achievements", "Yutuqlar"],
-  ];
+  // Five places, each a line icon. Screens without their own entry light up the place they belong to.
+  const ICONS = {
+    dashboard: `<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>`,
+    course: `<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/>`,
+    review: `<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>`,
+    library: `<path d="M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2zM8 7h8"/>`,
+    progress: `<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>`,
+    profile: `<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>`,
+    flame: `<path d="M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-4 2.5-5 .5 1.5 1.5 2.5 2.5 2.5C12 8 11 6 12 3z"/>`,
+    check: `<path d="m5 12 5 5 9-10"/>`,
+  };
+  V.icon = (k, size = 20) => `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>`;
+  const NAV = [["dashboard", "Bugun"], ["course", "Kurs"], ["review", "Takrorlash"], ["library", "So'zlar"], ["progress", "Natijalar"]];
+  const NAV_OF = { day: "course", quiz: "review", achievements: "progress" };
   V.shell = (active, top, body) => {
     const lv = S.levelInfo();
     const due = S.dueIds().length;
-    const nav = NAV.map((n) => {
-      if (!n) return `<div class="div"></div>`;
-      const [k, label] = n;
-      let extra = "";
-      if (k === "course") extra = `<span class="cnt">${S.daysDone()}/${S.DAYS}</span>`;
-      if (k === "review" && due) extra = `<span class="badge">${due}</span>`;
-      if (k === "tutor") extra = `<span class="cnt">tez kunda</span>`;
-      return `<a href="#/${k}" class="${active === k ? "on" : ""}">${label}${extra}</a>`;
-    }).join("");
+    const place = NAV_OF[active] || active;
+    const extra = (k) => k === "course" ? `<span class="cnt">${S.daysDone()}/${S.DAYS}</span>` : k === "review" && due ? `<span class="badge">${due}</span>` : "";
+    const nav = NAV.map(([k, label]) => `<a href="#/${k}" class="${place === k ? "on" : ""}"${place === k ? ` aria-current="page"` : ""}>${V.icon(k)}<span>${label}</span>${extra(k)}</a>`).join("");
     return `<div class="shell">
-      <aside class="side" id="side">
-        <a href="#/dashboard" class="brand" style="color:inherit"><div class="mark"></div><span class="name">UpKorean</span></a>
+      <aside class="side">
+        <a href="#/dashboard" class="brand"><span class="mark" aria-hidden="true"></span><span class="name">UpKorean</span></a>
         <nav class="nav" aria-label="Asosiy">${nav}</nav>
-        <div class="side-foot">
-          <a href="#/achievements" class="lvl" style="color:inherit">
-            <div class="row between" style="align-items:baseline"><span style="font-size:13px;font-weight:700">${lv.level}-daraja</span>
-              <span class="mono muted" style="font-size:12px">${U.num(lv.xp)} / ${U.num(lv.next)}</span></div>
-            <div class="prog"><div style="width:${lv.pct}%"></div></div>
-          </a>
-          <div class="row" style="gap:6px">
-            <a href="#/profile" class="me grow" style="color:inherit">
-              <div class="avatar">${initial()}</div>
-              <div class="grow"><div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${firstName()}</div>
-                <div class="faint" style="font-size:13px">TOPIK II</div></div>
-            </a>
-            <button class="iconbtn" data-act="theme-toggle" title="Mavzu" aria-label="Mavzuni almashtirish">◐</button>
-          </div>
-        </div>
+        <a href="#/profile" class="me ${place === "profile" ? "on" : ""}">
+          <span class="avatar">${V.icon("profile", 18)}</span>
+          <span class="grow"><b>Profil</b><span>${lv.level}-daraja · ${U.num(lv.xp)} XP</span></span>
+        </a>
       </aside>
       <div class="main">${top}${body}</div>
+      <nav class="tabbar" aria-label="Asosiy">${nav}</nav>
     </div>`;
   };
+  const streakChip = () => {
+    const n = S.streak();
+    return n ? `<span class="pill streak" title="Kunlik seriya">${V.icon("flame", 16)}<span class="hide-sm">${n} kunlik seriya</span><b class="show-sm">${n}</b></span>` : "";
+  };
   V.topbar = (title, sub, right = "") => `<header class="topbar">
-      <button class="iconbtn menu-btn" data-act="menu" aria-label="Menyu">☰</button>
-      <span class="title">${title}</span>${sub ? `<span class="sub">${sub}</span>` : ""}
+      <a href="#/dashboard" class="brand show-sm" aria-label="UpKorean"><span class="mark" aria-hidden="true"></span></a>
+      <div class="tb-title">${title ? `<h1 class="title">${title}</h1>` : ""}${sub ? `<span class="sub">${sub}</span>` : ""}</div>
       <div class="right">${right}
-        <div class="pill streak" title="Kunlik seriya"><span>seriya</span><b>${S.streak()}</b></div>
-        <div class="pill xp hide-sm"><span>XP</span><b>${U.num(S.state.xp)}</b></div>
         ${S.offline ? `<span class="offline-pill" title="Natijalar qurilmada saqlanadi va internet qaytganda sinxronlanadi">oflayn</span>` : ""}
         ${S.syncError && !S.offline ? `<span class="badge-bad" title="Natijalar serverga saqlanmadi — qayta urinilmoqda">saqlanmadi</span>` : ""}
+        ${streakChip()}
+        <a href="#/profile" class="iconbtn show-sm" aria-label="Profil">${V.icon("profile", 18)}</a>
       </div></header>`;
 
-  Actions.menu = () => document.getElementById("side").classList.toggle("open");
   Actions["theme-toggle"] = () => { S.setTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark"); App.render(); };
 
   // ---------- Dashboard (B1) ----------
@@ -96,98 +92,79 @@
     return { ds, plan, stage: ds.done ? null : plan.stages[ds.stage] };
   }
   const ORD = ["Birinchi", "Ikkinchi", "Uchinchi"];
+  const stageName = (plan, sg) => {
+    const what = sg.kind === "learn" ? "tanishish" : sg.kind === "recall" ? "faol eslash" : "kun testi";
+    return plan.blocks.length > 1 && sg.block >= 0 ? `${sg.block + 1}-blok · ${what}` : what.charAt(0).toUpperCase() + what.slice(1);
+  };
 
+  // Today is one list of the day's stages: what is done, the one to do now, and what comes after.
   V.dashboard = () => {
     const cd = S.currentDay(), done = S.courseDone();
-    const { ds, plan, stage } = nextStage(cd);
-    const due = S.dueIds().length, weak = S.weakIds();
-    const learned = S.learnedIds().length, mastered = S.masteredIds().length, acc = S.accuracy();
-    const remaining = plan.words.filter((id) => !S.isLearned(id)).length;
-    const wk = U.dur(S.totalMinutes(U.weekStart(U.today())));
-    const ch = S.challenge();
+    const { ds, plan } = nextStage(cd);
+    const due = S.dueIds().length, weak = S.weakIds().length;
+    const learned = S.learnedIds().length;
+    const rem = S.state.profile.reminders;
+    const check = `<span class="st-dot done">${V.icon("check", 15)}</span>`;
 
-    let hero;
+    let today;
     if (done) {
-      hero = `<div class="hero" style="margin-bottom:16px"><div>
-        <div class="eyebrow">${S.DAYS} / ${S.DAYS} · KURS TUGADI</div>
-        <div class="row" style="align-items:baseline;gap:10px;margin-bottom:5px"><span class="big">${S.TOTAL}</span><span class="bigsub">so'z o'rganildi</span></div>
-        <p>Endi asosiy ish — takrorlash. To'liq o'zlashtirilmagan so'zlarni har kuni mustahkamlang.</p>
-        <div class="row wrap"><button class="btn btn-pd" data-act="review-start" data-mode="due" ${due ? "" : "disabled"}>Takrorlash · ${due}</button>
-        <a class="btn btn-glass" href="#/quiz">Mashqlar</a></div></div><div class="wm" aria-hidden="true">졸업</div></div>`;
+      today = `<section class="card today">
+        <div class="today-head"><div><h2 class="today-h">Kurs tugadi</h2><div class="muted">${S.TOTAL} so'z · ${S.DAYS} kun</div></div></div>
+        <p class="muted" style="margin:0;line-height:1.55">Endi asosiy ish — takrorlash. To'liq o'zlashtirilmagan so'zlarni har kuni mustahkamlang.</p>
+        <div class="row wrap">${due ? `<button class="btn btn-p" data-act="review-start" data-mode="due">Takrorlash · ${due}</button>` : ""}<a class="btn btn-sec" href="#/quiz">Mashqlar</a></div>
+      </section>`;
     } else {
-      const block = stage.block >= 0 ? plan.blocks[stage.block] : plan.words;
-      const sample = block.slice(0, 3).map((id) => S.word(id).ko).join(", ");
-      let big, bigsub, text;
-      if (stage.kind === "learn") { big = block.length; bigsub = "yangi so'z"; text = `${ORD[stage.block] || `${stage.block + 1}-`} blok: ${esc(sample)}${block.length > 3 ? ` va yana ${block.length - 3} so'z.` : "."}`; }
-      else if (stage.kind === "recall") { big = block.length; bigsub = "so'z · faol eslash"; text = `${ORD[stage.block] || ""} blok so'zlarini mashq bilan mustahkamlash — ~${stage.min} daqiqa.`; }
-      else { big = Math.min(12, plan.words.length); bigsub = "savol · mixed quiz"; text = `Kunning oxirgi bosqichi — barcha ${plan.words.length} so'z bo'yicha aralash test.`; }
-      hero = `<div class="hero" style="margin-bottom:16px"><div style="min-width:0">
-        <div class="eyebrow">${cd}-KUN / ${S.DAYS} · BUGUNGI DARS</div>
-        <div class="row" style="align-items:baseline;gap:10px;margin-bottom:5px"><span class="big">${big}</span><span class="bigsub">${bigsub}</span></div>
-        <p>${text}</p>
-        <div class="bar"><div style="width:${U.pct(ds.stage, plan.stages.length)}%"></div></div>
-        <div class="row wrap">
-          <button class="btn btn-pd" data-act="learn" data-day="${cd}">${ds.stage ? "Davom etish" : "Darsni boshlash"}</button>
-          <button class="btn btn-glass" data-act="review-start" data-mode="due" ${due ? "" : "disabled"}>Takrorlash · ${due}</button>
-        </div></div><div class="wm" aria-hidden="true">오늘</div></div>`;
+      const steps = plan.stages.map((sg, i) => {
+        const name = stageName(plan, sg);
+        if (i < ds.stage) return `<li class="st past">${check}<span class="grow">${name}</span><span class="st-meta">bajarildi</span></li>`;
+        if (i > ds.stage) return `<li class="st">${`<span class="st-dot">${i + 1}</span>`}<span class="grow">${name}</span><span class="st-meta">~${sg.min} daq</span></li>`;
+        const ids = sg.block >= 0 ? plan.blocks[sg.block] : plan.words;
+        const sample = ids.slice(0, 3).map((id) => S.word(id).ko).join(", ");
+        const detail = sg.kind === "learn" ? `<span class="ko">${esc(sample)}</span>${ids.length > 3 ? ` va yana ${ids.length - 3} so'z` : ""}`
+          : sg.kind === "recall" ? `${ids.length} so'zni mashq bilan eslash` : `${Math.min(12, plan.words.length)} savol · barcha ${plan.words.length} so'z`;
+        return `<li class="st now"><span class="st-dot cur">${i + 1}</span>
+          <span class="grow st-body"><b>${name}</b><span>${detail} · ~${sg.min} daq</span></span>
+          <button class="btn btn-p" data-act="learn" data-day="${cd}">${ds.stage ? "Davom etish" : "Boshlash"}</button></li>`;
+      }).join("");
+      today = `<section class="card today">
+        <div class="today-head">
+          <div><h2 class="today-h">${cd}-kun</h2><div class="muted">${plan.words.length} so'z · ${plan.blocks.length} blok · ~${plan.minutes} daqiqa</div></div>
+          <div class="today-prog"><span>${ds.stage} / ${plan.stages.length} bosqich</span><div class="prog"><div style="width:${U.pct(ds.stage, plan.stages.length)}%"></div></div></div>
+        </div>
+        <ol class="steps">${steps}</ol>
+      </section>`;
     }
 
-    const squares = V.dayWeeks();
-    const weakList = weak.slice(0, 3);
-    const logs = S.state.log.slice(0, 3);
+    const reviewCard = `<section class="card side-card">
+        <div class="card-title">Takrorlash</div>
+        ${due ? `<div class="big-n"><b>${due}</b><span>so'z kutmoqda</span></div>
+          <p class="side-note">${rem.on && rem.reviewOn !== false ? `Kechqurun ${esc(rem.review)} da eslatamiz.` : "Unutilishidan oldin qaytarib oling."}</p>
+          <button class="btn btn-sec btn-block" data-act="review-start" data-mode="due">Hozir takrorlash</button>`
+        : `<p class="side-note">Hozircha takrorlash yo'q. O'rgangan so'zlaringiz unutilishidan oldin shu yerda chiqadi.</p>`}
+        ${weak ? `<button class="link" data-act="quiz-weak" style="align-self:flex-start">${weak} ta qiyin so'zni mashq qilish</button>` : ""}
+      </section>`;
     const week = S.weekRhythm();
-    const maxMin = Math.max(20, ...week.map((w) => w.min));
-    const goalMin = (S.PACES[S.state.profile.pace] || S.PACES[17]).min;
+    const weekCard = `<section class="card side-card">
+        <div class="row between" style="align-items:baseline"><span class="card-title">Bu hafta</span>${S.state.bestStreak ? `<span class="side-note">eng uzun seriya: ${S.state.bestStreak} kun</span>` : ""}</div>
+        <div class="week">${week.map((w) => `<div class="${w.today ? "is-today" : ""}" title="${w.lbl}: ${Math.round(w.min)} daq"><i class="${w.min >= 1 || w.words ? "on" : ""}"></i>${w.lbl}</div>`).join("")}</div>
+      </section>`;
+    const courseCard = `<a class="card course-strip" href="#/course">
+        <div class="cs-t"><b>Kurs</b><span><b>${learned}</b> / ${S.TOTAL} so'z</span></div>
+        <div class="cs-days" aria-hidden="true">${Array.from({ length: S.DAYS }, (_, i) => `<i class="${S.dayStatus(i + 1)}"></i>`).join("")}</div>
+        <span class="cs-link">Kursni ochish</span>
+      </a>`;
 
+    const lost = lostStreakNote();
     const body = `<div class="page">
-      <div style="margin-bottom:16px">
-        <h3 class="page-h">Salom, ${firstName()}</h3>
-        <p class="page-p">${lostStreakNote()}${done ? `Kurs tugadi — bugun ${due} ta takrorlash kutmoqda.` : `${cd}-kun — bugun ${remaining} so'z${due ? `, kechqurun ${due} ta takrorlash` : ""}.`}</p>
+      ${lost ? `<p class="page-p" style="margin-bottom:16px">${lost}</p>` : ""}
+      <div class="dash">
+        ${today}
+        <div class="dash-side">${reviewCard}${weekCard}</div>
       </div>
-      ${hero}
-      <div class="strip" style="margin-bottom:16px">
-        <div><div class="upl s">O'rganilgan</div><div class="v"><b>${learned}</b><span>/ ${S.TOTAL}</span></div></div>
-        <div><div class="upl s">O'zlashtirilgan</div><div class="v"><b>${mastered}</b><span>so'z</span></div></div>
-        <div><div class="upl s">Aniqlik</div><div class="v"><b>${acc ?? "—"}</b><span>${acc === null ? "" : "%"}</span></div></div>
-        <div><div class="upl s">Bu hafta</div><div class="v"><b>${wk.v}</b><span>${wk.u}</span></div></div>
-        <div><div class="upl s">Zaif so'zlar</div><div class="v"><b class="${weak.length ? "badc" : ""}">${weak.length}</b><span>ta</span></div></div>
-      </div>
-      <div class="collapse-md" style="display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:22px">
-        <div style="min-width:0">
-          <div class="row between" style="margin-bottom:11px"><span class="card-title">${S.DAYS} kunlik yo'l</span><a class="link" href="#/course">Butun kursni ko'rish</a></div>
-          <div style="margin-bottom:16px">${squares}</div>
-          <div class="row between" style="margin-bottom:11px"><span class="card-title">Zaif so'zlar</span>
-            ${weak.length ? `<button class="link" data-act="quiz-weak">${weak.length} tasini mashq qilish</button>` : ""}</div>
-          <div class="list">${weakList.length ? weakList.map((id) => { const w = S.word(id), st = S.ws(id); return `<button class="li" data-act="word" data-id="${id}">
-              <span class="kw" style="min-width:88px">${esc(w.ko)}</span><span class="mean">${esc(w.uz)}</span>${V.mbar(id)}
-              <span class="meta" style="min-width:52px">${st.bad} xato</span></button>`; }).join("")
-            : `<div class="empty">Hozircha zaif so'zlar yo'q — 2+ marta xato qilingan so'zlar shu yerda chiqadi.</div>`}</div>
-        </div>
-        <div style="min-width:0">
-          <div class="card-title" style="margin-bottom:11px">So'nggi faollik</div>
-          <div class="card" style="padding:4px 18px;margin-bottom:16px">
-            ${logs.length ? logs.map((l, i) => `<div class="row" style="gap:12px;padding:12px 0;${i < logs.length - 1 ? "border-bottom:1px solid var(--line)" : ""}">${dot(l.kind)}
-              <span class="grow" style="font-size:13px">${esc(l.text)}</span><span class="mono faint" style="font-size:12px">${U.relTime(l.t)}</span></div>`).join("")
-            : `<div class="empty" style="padding:18px 0">Birinchi darsdan keyin faollik shu yerda ko'rinadi.</div>`}
-          </div>
-          <div class="card pad" style="padding:18px;margin-bottom:16px">
-            <div class="row between" style="margin-bottom:14px"><span class="card-title">Haftalik ritm</span>
-              <span class="mono faint" style="font-size:12px">${week.filter((w) => w.min >= 1 || w.words).length} / 7 kun</span></div>
-            <div class="bars" style="height:72px">${week.map((w) => {
-              const h = w.min >= 1 ? Math.max(8, Math.round((w.min / maxMin) * 56)) : 6;
-              const cls = w.min < 1 ? "zero" : w.today && w.min < goalMin ? "cur" : "";
-              return `<div class="col" title="${w.lbl}: ${Math.round(w.min)} daq"><div class="${cls}" style="height:${h}px"></div><span class="${w.today ? "cur" : ""}">${w.lbl}</span></div>`; }).join("")}</div>
-          </div>
-          <div class="card pad" style="padding:18px">
-            <div class="row between" style="margin-bottom:12px"><span class="card-title">Kunlik vazifa</span>
-              <span class="mono ${ch.done ? "okc" : "accent"}" style="font-size:12px">${ch.done ? "bajarildi" : `+${ch.reward} XP`}</span></div>
-            <div class="stack" style="gap:10px">${ch.items.map((i) => `<div><div class="row between" style="margin-bottom:5px"><span style="font-size:13px">${esc(i.label)}</span>
-              <span class="mono ${i.cur >= i.goal ? "okc" : "faint"}" style="font-size:12px">${i.cur >= i.goal ? "✓" : `${i.cur}/${i.goal}`}</span></div>
-              <div class="prog" style="height:5px"><div style="width:${U.pct(i.cur, i.goal)}%;${i.cur >= i.goal ? "background:var(--ok)" : ""}"></div></div></div>`).join("")}</div>
-          </div>
-        </div>
-      </div></div>`;
-    return V.shell("dashboard", V.topbar("Bosh sahifa", U.fmtLong(U.today())), body);
+      ${courseCard}
+    </div>`;
+    const date = U.fmtLong(U.today());
+    return V.shell("dashboard", V.topbar("", date.charAt(0).toUpperCase() + date.slice(1)), body);
   };
 
   // ---------- Course roadmap (C1) ----------
@@ -209,7 +186,7 @@
         <div class="dw">${esc(head)}</div><div class="ds">${sub}</div>
         ${plan ? `<div class="mini"><div style="width:${U.pct(ds.stage || 0, plan.stages.length)}%"></div></div>` : ""}</a>`;
     };
-    const body = `<div class="page" style="padding:32px">
+    const body = `<div class="page">
       <div class="row wrap between" style="align-items:flex-end;margin-bottom:22px;gap:16px">
         <div><h3 class="page-h" style="font-size:26px">TOPIK II lug'ati · ${S.DAYS} kun</h3>
           <p class="page-p">Har kunda ~33 so'z. Kun tugashi uchun o'rganish va faol eslash bosqichlari kerak.</p></div>
@@ -225,7 +202,7 @@
         <span class="grow muted" style="font-size:14px">Qolgan ${S.DAYS - shown} kun ketma-ket ochiladi: joriy kundan 2 kun oldinga o'tish mumkin.</span>
         <button class="link" data-act="course-all">Hammasini ko'rish</button></div>` : ""}
     </div>`;
-    return V.shell("course", V.topbar("30 kunlik kurs", `${S.learnedIds().length} / ${S.TOTAL} so'z`), body);
+    return V.shell("course", V.topbar("Kurs", `${S.learnedIds().length} / ${S.TOTAL} so'z`), body);
   };
   Actions["course-all"] = () => { courseAll = true; App.render(); };
 
@@ -242,7 +219,7 @@
       : ds.done ? `<button class="btn btn-p" data-act="learn" data-day="${d}">Kunni qayta mashq qilish</button>`
       : `<button class="btn btn-p" data-act="learn" data-day="${d}">${stage.kind === "learn" ? `${ORD[stage.block] || ""} blokni boshlash` : `${stage.label}ni boshlash`}</button>`;
     const pill = ds.done ? "tugallangan" : d === S.currentDay() ? "bugungi kun" : locked ? "yopiq" : "ochiq";
-    const body = `<div class="page collapse-md" style="padding:36px 48px;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:44px">
+    const body = `<div class="page collapse-md" style="display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:44px">
       <div style="min-width:0">
         <div class="row wrap between" style="align-items:flex-end;margin-bottom:24px;gap:16px">
           <div><div class="eyebrow" style="margin-bottom:10px">${d}-KUN / ${S.DAYS}</div>
@@ -276,9 +253,7 @@
           ${started && (ds.stage > 0 || ds.done) ? `<div class="faint" style="font-size:13px;margin-top:8px">Kun boshlangan — o'lcham keyingi kunlarga Profil'dan o'zgartiriladi.</div>` : ""}
         </div>
       </div></div>`;
-    const top = `<header class="topbar"><a class="back" href="#/course">← 30 kunlik kurs</a><span class="sub" style="display:inline">${d}-KUN</span>
-      <div class="right"><div class="pill streak">${pill}</div></div></header>`;
-    return `<div class="main" style="min-height:100vh">${top}${body}</div>`;
+    return V.shell("day", V.topbar("", `<a class="back" href="#/course">← 30 kunlik kurs</a>`, `<span class="tag">${pill}</span>`), body);
   };
   Actions["day-all"] = () => { dayAllWords = true; App.render(); };
   Actions["day-pace"] = (el) => {
@@ -349,13 +324,14 @@
     const rows = lists[reviewTab];
     const shown = reviewAll ? rows : rows.slice(0, 8);
     const body = `<div class="page">
-      <div class="hero" style="grid-template-columns:minmax(0,1fr) 240px;padding:26px 34px;margin-bottom:18px"><div>
+      <div class="hero" style="margin-bottom:18px"><div>
         <div class="eyebrow">KUNLIK TAKRORLASH SESSIYASI</div>
         <div class="row" style="align-items:baseline;gap:10px;margin-bottom:6px"><span class="big" style="font-size:50px">${due.length}</span><span class="bigsub" style="font-size:20px">so'z kutilmoqda</span></div>
         <p style="margin-bottom:20px">${due.length ? `${range} dan ${due.length - weakDue} so'z${weakDue ? `, ${weakDue} zaif so'z` : ""}. Taxminan ${Math.max(1, Math.round(due.length * 0.37))} daqiqa.` : "Bugungi takrorlash tugagan. Ertaga yangi so'zlar keladi."}</p>
         <div class="row wrap">
-          <button class="btn btn-pd" data-act="review-start" data-mode="due" ${due.length ? "" : "disabled"}>Sessiyani boshlash</button>
-          <button class="btn btn-glass" data-act="review-start" data-mode="weak" ${lists.weak.length ? "" : "disabled"}>Faqat zaiflarini</button>
+          ${due.length ? `<button class="btn btn-p" data-act="review-start" data-mode="due">Sessiyani boshlash</button>` : ""}
+          ${lists.weak.length ? `<button class="btn btn-sec" data-act="review-start" data-mode="weak">Faqat zaiflarini</button>` : ""}
+          <a class="btn btn-sec" href="#/quiz">Mashqlar</a>
         </div></div><div class="wm" aria-hidden="true" style="font-size:80px;line-height:.9">복습</div></div>
       <div class="two-sm" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px">
         ${cards.map(([k, t, d]) => `<button class="card" style="padding:18px 22px;text-align:left;${reviewTab === k ? "border:1.5px solid var(--p)" : ""}" data-act="review-tab" data-k="${k}">
@@ -378,7 +354,7 @@
         : `<div class="empty">Bu ro'yxat hozircha bo'sh.</div>`}</div>
       ${rows.length > shown.length ? `<div class="center" style="margin-top:12px"><button class="mono faint" style="font-size:12px" data-act="review-all">+${rows.length - shown.length} so'z</button></div>` : ""}
     </div>`;
-    return V.shell("review", V.topbar("Takrorlash", `${due.length} so'z bugun kutilmoqda`), body);
+    return V.shell("review", V.topbar("Takrorlash", ""), body);
   };
   Actions["review-tab"] = (el) => { reviewTab = el.dataset.k; reviewAll = false; App.render(); };
   Actions["review-all"] = () => { reviewAll = true; App.render(); };
@@ -420,7 +396,7 @@
         <div class="done-glyph" aria-hidden="true" style="font-size:44px">연습</div><h3 style="margin:0 0 8px;font-size:22px">Mashq uchun so'z yo'q</h3>
         <p class="muted" style="margin:0 0 20px">Avval kunlik darsda kamida 4 ta so'z o'rganing.</p>
         <button class="btn btn-p" data-act="learn" data-day="${S.currentDay()}">${S.currentDay()}-kunni boshlash</button></div></div>`
-      : `<div class="page collapse-md" style="padding:36px 48px;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:44px">
+      : `<div class="page collapse-md" style="display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:44px">
       <div style="min-width:0">
         <h3 class="page-h">Mashq turini tanlang</h3>
         <p class="page-p" style="margin-bottom:26px">Har bir mashq natijasi so'z mastery'siga yoziladi.</p>
@@ -552,7 +528,7 @@
         <div class="card" style="padding:20px 22px"><div style="font-size:13px;font-weight:700;margin-bottom:10px">Tavsiya</div><p class="muted" style="margin:0;font-size:13px;line-height:1.55">${esc(tip)}</p></div>
       </div></div>`;
     const tabs = `<div class="seg">${[[30, "30 kun"], [7, "7 kun"], [0, "Hammasi"]].map(([v, l]) => `<button class="${progRange === v ? "on" : ""}" data-act="prog-range" data-v="${v}">${l}</button>`).join("")}</div>`;
-    return V.shell("progress", V.topbar("Natijalar", progRange ? `oxirgi ${progRange} kun` : "butun davr", tabs), body);
+    return V.shell("progress", V.topbar("Natijalar", progRange ? `oxirgi ${progRange} kun` : "butun davr", `<a class="btn btn-sec btn-sm" href="#/achievements">Yutuqlar</a>${tabs}`), body);
   };
   Actions["prog-range"] = (el) => { progRange = Number(el.dataset.v); App.render(); };
 
@@ -616,12 +592,12 @@
     const og = [["all", "Hammasi", ""], ...Object.entries(S.ORIGINS).map(([k, o]) => [k, o.uz, o.ko])];
     const learnedDays = [...new Set(S.learnedIds().map((id) => S.word(id).day))].sort((a, b) => a - b);
     const st = [["all", "Hammasi"], ["mastered", "O'zlashtirilgan"], ["learning", "O'rganilmoqda"], ["weak", "Zaif"], ["recent", "Yaqinda o'rganilgan"], ["flag", "Belgilanganlar"], ["unlearned", "Hali o'rganilmagan"]];
-    const body = `<div class="page collapse-md" style="padding:28px 40px;display:grid;grid-template-columns:220px minmax(0,1fr);gap:32px">
+    const body = `<div class="page collapse-md" style="display:grid;grid-template-columns:220px minmax(0,1fr);gap:32px">
       <div class="stack" style="gap:22px">
         <div><div class="upl" style="margin-bottom:10px">Holat</div>
-          <div class="nav" style="gap:4px">${st.map(([k, l]) => `<a href="javascript:void 0" class="${lib.status === k ? "on" : ""}" data-act="lib-status" data-k="${k}" style="padding:9px 12px">${l}<span class="cnt" style="${k === "weak" && sets.weak.length ? "color:var(--bad)" : ""}">${sets[k].length}</span></a>`).join("")}</div></div>
+          <div class="nav filt">${st.map(([k, l]) => `<a href="javascript:void 0" class="${lib.status === k ? "on" : ""}" data-act="lib-status" data-k="${k}" style="padding:9px 12px">${l}<span class="cnt" style="${k === "weak" && sets.weak.length ? "color:var(--bad)" : ""}">${sets[k].length}</span></a>`).join("")}</div></div>
         <div><div class="upl" style="margin-bottom:10px">Kelib chiqishi</div>
-          <div class="nav" style="gap:4px">${og.map(([k, l, ko]) => `<a href="javascript:void 0" class="${lib.origin === k ? "on" : ""}" data-act="lib-origin" data-k="${k}" style="padding:9px 12px" title="${k === "all" ? "" : esc(S.ORIGINS[k].desc)}">${ko ? `<span class="ko" style="font-weight:700">${ko}</span>` : ""}${l}<span class="cnt">${origins[k]}</span></a>`).join("")}</div></div>
+          <div class="nav filt">${og.map(([k, l, ko]) => `<a href="javascript:void 0" class="${lib.origin === k ? "on" : ""}" data-act="lib-origin" data-k="${k}" style="padding:9px 12px" title="${k === "all" ? "" : esc(S.ORIGINS[k].desc)}">${ko ? `<span class="ko" style="font-weight:700">${ko}</span>` : ""}${l}<span class="cnt">${origins[k]}</span></a>`).join("")}</div></div>
         <div><div class="upl" style="margin-bottom:10px">Kun</div>
           <div class="days">${(lib.status === "unlearned" ? Array.from({ length: S.DAYS }, (_, i) => i + 1) : learnedDays).map((d) => `<button class="dsq ${lib.days.includes(d) ? "completed" : "available"}" style="width:28px;height:28px" data-act="lib-day" data-d="${d}">${d}</button>`).join("") || `<span class="faint" style="font-size:12px">—</span>`}</div></div>
         <div><div class="upl" style="margin-bottom:10px">Saralash</div>
@@ -635,7 +611,7 @@
         </div>
         <div id="lib-table">${libTable()}</div>
       </div></div>`;
-    return V.shell("library", V.topbar("So'zlar bazasi", `${S.learnedIds().length} so'z o'rganilgan · ${S.TOTAL} jami`), body);
+    return V.shell("library", V.topbar("So'zlar", `${S.learnedIds().length} so'z o'rganilgan · ${S.TOTAL} jami`), body);
   };
   const refreshLib = () => { const el = document.getElementById("lib-table"); if (el) el.innerHTML = libTable(); };
   Actions["lib-status"] = (el) => { lib.status = el.dataset.k; lib.page = 1; App.render(); };
