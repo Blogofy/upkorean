@@ -35,7 +35,25 @@ Windows PowerShell'da bu buyruq ishlamaydi: PowerShell `|` orqali o'tgan tar arx
 cmd /c "git archive --format=tar HEAD | ssh root@109.205.177.244 sh /opt/upkorean/deploy/update.sh"
 ```
 
-Faqat commit qilingan kod ketadi. `.env`, `data/` va `node_modules/` serverda saqlanib qoladi.
+Faqat commit qilingan kod ketadi. `.env`, `data/`, `audio/` va `node_modules/` serverda saqlanib qoladi.
+
+## Diktor bo'laklari (`audio/`)
+
+45 MB, 2000 ta `.mp3` — kod bilan birga o'zgarmaydi, shuning uchun git'da kuzatilmaydi va har
+yangilashda qayta uzatilmaydi. Ular faqat klip qo'shilganda yoki almashtirilganda alohida ko'chiriladi:
+
+```sh
+rsync -az --delete audio/ root@109.205.177.244:/opt/upkorean/audio/
+ssh root@109.205.177.244 "chown -R upkorean:upkorean /opt/upkorean/audio && systemctl restart upkorean"
+```
+
+Restart kerak: server ishga tushganda bo'laklarni sanaydi (`/api/config` dagi `clips`).
+Windows'da `rsync` bo'lmasa `scp -r audio/. root@...:/opt/upkorean/audio/` ham bo'ladi, faqat u
+serverdagi ortiqcha fayllarni o'chirmaydi.
+
+**Audio — yagona nusxa.** U git'da ham, `git archive` deploy'ida ham yo'q, ya'ni faqat shu
+kompyuterda va serverda turibdi. Ikkalasining birortasi yo'qolsa qayta yozdirish kerak bo'ladi —
+uchinchi nusxasini tashqi diskda yoki bulutda saqlang.
 
 ## Birinchi o'rnatish (bajarilgan, 2026-09-16)
 
