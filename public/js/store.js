@@ -24,6 +24,16 @@
     17: { blocks: 2, min: 22, name: "Muvozanatli", desc: "Kuniga ~22 daqiqa — eng ko'p tanlanadigan temp" },
     33: { blocks: 1, min: 40, name: "Intensiv", desc: "Kuniga ~40 daqiqa, butun kun bir sessiyada" },
   };
+  // A day's review goal, by pace: how many review items this learner is asked for, whatever the queue holds.
+  // Whoever chose a longer sitting carries more of the load. Everything above the goal is moved into the
+  // coming days (S.newDay), so the number on the dashboard is one a learner can finish today — a queue that
+  // grows every day is read as one's own failure and is why the review button was abandoned in week two.
+  const REVIEW_GOALS = { 11: 60, 17: 90, 33: 140 };
+  // Minutes per question, at the rate the app already plans with: S.dayPlan prices its "recall" stage at
+  // 0.3 min an item and exercise.js prices a mixed quiz question the same.
+  const ITEM_MIN = 0.3;
+  // How far ahead the overflow may land. A word pushed further than a week is a word lost anyway.
+  const PUSH_DAYS = 7;
   const EX_TYPES = ["mc", "mcr", "type", "listen", "sent"];
   const TYPE_NAMES = { mc: "Koreyscha → o'zbekcha", mcr: "O'zbekcha → koreyscha", type: "Yozish", listen: "Tinglash", sent: "Gapni to'ldirish" };
 
@@ -145,6 +155,7 @@
     S.state.profile.name = S.user.name;
     S.state.profile.email = S.user.email;
     if (S.state.settings.theme) S.applyTheme(S.state.settings.theme);
+    S.newDay(); // the queue is bounded before the first render, never during one
     if (dirty) S.save(); else keepLocal();
   }
 
@@ -220,7 +231,12 @@
     LS.set(sendingKey(), rev);
     fetch("/api/progress", { method: "PATCH", keepalive: true, credentials: "same-origin", headers: { "Content-Type": "application/json" }, body });
   });
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") S.flush(); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") { S.flush(); return; }
+    // Coming back to a tab that stayed open overnight is the other moment the local date changes (boot is the
+    // first). The day is rolled over here, outside any render, and the page is redrawn if anything moved.
+    if (S.newDay() && window.App && !/^#\/(session|tutor|onboarding)/.test(location.hash)) window.App.render();
+  });
 
   // ---------- Accounts ----------
   S.boot = async () => {
@@ -257,7 +273,7 @@
     const r = await api("POST", "/auth/demo", {});
     S.user = r.user;
     // The server just cleared the demo progress, so any copy a previous visitor left here is stale.
-    forgetLocal(); S.state = S.buildDemoState(); S.save(); await S.flush();
+    forgetLocal(); S.state = S.buildDemoState(); S.newDay(); S.save(); await S.flush();
   };
   S.logout = async () => {
     await S.flush().catch(() => {});
@@ -339,12 +355,17 @@
   S.isMastered = (id) => { const w = S.ws(id); return !!(w && w.learned && w.s >= MASTER_STEP); };
   S.isWeak = (id) => { const w = S.ws(id); return !!(w && w.learned && w.bad >= 2 && w.s < 3); };
 
+  // ±15% on every interval, so the 33 words met on one day stop coming back as one wave on exactly the same
+  // later days. Never sooner than tomorrow. INTERVALS[0] = 1 and INTERVALS[1] = 2 cannot spread at this
+  // width — they round back to themselves; the scatter starts at the 4-day step and grows from there.
+  const fuzz = (days) => Math.max(1, Math.round(days * (0.85 + Math.random() * 0.3)));
+
   function setStep(w, s) {
     const prev = w.s;
     w.s = U.clamp(s, 0, 5);
     if (prev >= 3 && w.s <= 1 && w.learned) { w.forgot = true; w.lapses++; }
     if (w.s >= 3) w.forgot = false;
-    w.due = U.addDays(U.today(), INTERVALS[w.s]);
+    w.due = U.addDays(U.today(), fuzz(INTERVALS[w.s]));
   }
   const gradeStep = (w, g) => {
     const first = !w || !w.learned;
@@ -386,19 +407,31 @@
   // Exercise answer. mode: "learn" (same-day recall), "review" (spaced repetition), "quiz" (free practice)
   S.answer = (id, correct, type, mode) => {
     const w = touch(id);
+    // Is this answer the word's scheduled moment? Read before anything else: it is what stops a word answered
+    // several times inside one session from walking up the ladder once per question.
+    const scheduled = !w.due || w.due <= U.today();
+    const fresh = !w.learned || w.learned === U.today();
     if (!w.learned) { w.learned = U.today(); act().learned++; }
     w.seen++; w.last = U.today();
     if (S.state.typeStats[type]) S.state.typeStats[type][correct ? "ok" : "bad"]++;
     if (correct) {
       w.ok++;
-      if (mode === "review" && (!w.due || w.due <= U.today())) setStep(w, w.s + 1);
+      // The day's own test advances the schedule exactly as a review session does. At pace 11 or 17 a day is
+      // spread over two or three sittings, so its later blocks fall on the day the earlier ones are due, and
+      // those correct answers used to count for nothing. A word introduced today is already due tomorrow, so
+      // its first day is never touched by this; free practice never advances a word at all.
+      if (mode !== "quiz" && scheduled) setStep(w, w.s + 1);
       S.addXP(3);
     } else {
       w.bad++;
-      if (mode === "quiz") setStep(w, w.s - 1); else setStep(w, 0);
-      w.due = U.addDays(U.today(), 1); // wrong words come back tomorrow
+      // Free practice records the miss — w.bad feeds S.isWeak, typeStats feeds the reports — but leaves the
+      // ladder alone: drilling hard words late at night must not cost a month of consolidation. lapses and
+      // forgot stay untouched for the same reason: both mean "recall failed at the moment the schedule chose
+      // it", and a word picked by the learner, often minutes after seeing it, is no such moment.
+      if (mode !== "quiz") { setStep(w, 0); w.due = U.addDays(U.today(), 1); } // wrong words come back tomorrow
     }
-    if (mode === "review") act().reviewed++;
+    // A due word cleared in the day's own test is a review; without this the day's target could not be reached.
+    if (mode === "review" || (mode === "learn" && scheduled && !fresh)) act().reviewed++;
   };
   S.flag = (id, on) => { const w = touch(id); w.flag = on === undefined ? !w.flag : on; S.save(); return w.flag; };
 
@@ -476,7 +509,10 @@
 
   // ---------- Selectors ----------
   S.learnedIds = () => Object.keys(S.state.words).filter((id) => S.isLearned(id) && BY_ID[id]);
-  S.dueIds = () => S.learnedIds().filter((id) => S.ws(id).due && S.ws(id).due <= U.today()).sort((a, b) => S.ws(a).due.localeCompare(S.ws(b).due));
+  // Most overdue first, and inside one due date the least consolidated first. S.newDay and S.reviewQueue both
+  // cut this one order, from opposite ends: the overflow comes off the front, today's queue off the back.
+  S.dueIds = () => S.learnedIds().filter((id) => S.ws(id).due && S.ws(id).due <= U.today())
+    .sort((a, b) => S.ws(a).due.localeCompare(S.ws(b).due) || S.ws(a).s - S.ws(b).s);
   S.weakIds = () => S.learnedIds().filter(S.isWeak).sort((a, b) => S.ws(b).bad - S.ws(a).bad);
   S.flaggedIds = () => S.learnedIds().filter((id) => S.ws(id).flag);
   S.forgottenIds = () => S.learnedIds().filter((id) => S.ws(id).forgot);
@@ -487,6 +523,67 @@
     return all ? U.pct(ok, all) : null;
   };
   S.typeAccuracy = (t) => { const s = S.state.typeStats[t]; const all = s.ok + s.bad; return all ? U.pct(s.ok, all) : null; };
+
+  // ---------- The daily review goal ----------
+  const paceGoal = () => REVIEW_GOALS[S.state.profile.pace] || REVIEW_GOALS[17];
+  // Today's review target for this learner: goal — the pace's target, due — what is really due now,
+  // done — review items already cleared today, left — what is still to do, minutes — a rough cost for it.
+  // A pure read: it is called from render paths and must not write state or hand out XP.
+  S.reviewGoal = () => {
+    const goal = paceGoal();
+    const due = S.dueIds().length;
+    const done = (S.state.act[U.today()] || {}).reviewed || 0; // act() would create today's entry
+    // Both bounds matter: never more than the queue holds, never more than the goal still allows.
+    const left = Math.min(due, Math.max(0, goal - done));
+    return { goal, due, done, left, minutes: left ? Math.max(1, Math.round(left * ITEM_MIN)) : 0 };
+  };
+
+  // The ids a review session should run. "due" is today's queue already cut to the goal (most overdue first),
+  // so nothing else has to know the rule; the hand-picked lists are unchanged. Passing n overrides the cut —
+  // that is how an extra round is offered once the day's goal is already met.
+  S.reviewQueue = (mode = "due", n) => {
+    if (mode === "due") return S.dueIds().slice(0, n === undefined ? S.reviewGoal().left : n);
+    const pick = { weak: S.weakIds, flag: S.flaggedIds, forgot: S.forgottenIds }[mode];
+    if (!pick) return [];
+    return n === undefined ? pick() : pick().slice(0, n);
+  };
+
+  // The day transition. Runs once per local day and never from a render: at boot (finishLoad) and when the tab
+  // comes back on a new date. Today's queue is cut to the goal and the overflow is moved into the coming days,
+  // so a learner doing their part meets a number they can finish instead of a debt that grows every day.
+  // Returns true when it actually rolled the day over.
+  S.newDay = () => {
+    if (!S.state) return false;
+    const t = U.today();
+    if (S.state.dueStart && S.state.dueStart.date === t) return false; // already done today
+    const goal = paceGoal();
+    const ids = S.dueIds(); // most overdue first
+    if (ids.length > goal) pushForward(ids.slice(0, ids.length - goal), t);
+    // The day's target is fixed here and saved: read back by S.challenge, it must not shrink as the queue drains.
+    S.state.dueStart = { date: t, n: Math.min(goal, ids.length) };
+    S.save();
+    return true;
+  };
+
+  // What did not fit today goes to the emptiest of the coming days, so each of those also lands near the goal
+  // instead of inheriting the whole pile.
+  // What moves is the *most* overdue, and that was measured rather than assumed. Keeping the oldest words and
+  // pushing the freshly due ones looks kinder, but a pushed word gets a later due date, which puts it behind
+  // the backlog the next day and then for ever: over a simulated 30 days at pace 17 it left every word one
+  // step short of consolidation — 0 words mastered against 331 the other way round, where a pushed word comes
+  // back as a freshly due one and is reviewed, so nothing starves. It also reads the forgetting curve
+  // honestly: a repetition buys most at the word's scheduled moment, while a word already ten days late has
+  // decayed anyway and one more day changes little.
+  function pushForward(ids, t) {
+    const days = Array.from({ length: PUSH_DAYS }, (_, i) => U.addDays(t, i + 1));
+    const load = Object.fromEntries(days.map((d) => [d, 0]));
+    for (const id of S.learnedIds()) { const d = S.ws(id).due; if (d && d in load) load[d]++; }
+    for (const id of ids) {
+      const to = days.reduce((a, b) => (load[b] < load[a] ? b : a)); // emptiest, earliest on a tie
+      load[to]++;
+      S.ws(id).due = to;
+    }
+  }
 
   S.weekRhythm = () => {
     const start = U.weekStart(U.today());
@@ -499,7 +596,13 @@
   // Daily challenge (resets every day); AI is excluded while that feature is locked.
   S.challenge = () => {
     const t = U.today();
-    if (!S.state.dueStart || S.state.dueStart.date !== t) { S.state.dueStart = { date: t, n: S.dueIds().length }; }
+    const { goal, due } = S.reviewGoal();
+    // The review target is the day's goal, not the whole queue: a target nobody can reach is one they stop
+    // reading. S.newDay fixes it when the day turns over; this is the fallback for a page that was already
+    // open then. It is saved — an unsaved target came back as a different, smaller number after a reload.
+    const ds = S.state.dueStart;
+    if (!ds || ds.date !== t) { S.state.dueStart = { date: t, n: Math.min(goal, due) }; S.save(); }
+    else if (ds.n > goal) { ds.n = goal; S.save(); } // a target saved before the goal existed
     const a = act();
     const dayTotal = DAY_WORDS[S.currentDay() - 1].length;
     const items = [
