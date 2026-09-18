@@ -443,14 +443,41 @@
         : `<span class="rv-note">${learned.length ? "O'rgangan so'zlaringiz muddati kelganda shu yerda chiqadi." : "Birinchi kunni boshlang — o'rgangan so'zlaringiz takrorlash uchun shu yerda chiqadi."}</span>`}
       </section>`;
     }
-    const mode = (title, ids, desc, m, cta, bad) => `<section class="card rv-mode">
-        <span class="card-title">${title}</span><b class="rv-n ${bad && ids.length ? "badc" : ""}">${ids.length}</b><span class="side-note">${desc}</span>
-        ${ids.length ? `<button class="link" data-act="review-start" data-mode="${m}">${cta}</button>` : `<span class="side-note rv-none">Hozircha yo'q</span>`}
-      </section>`;
+    // The three hand-picked lists, as rows rather than cards: the count, what the list is, and the way in. An
+    // empty one has nothing to press, so the empty ones collapse into the single line at the foot that says so
+    // — three cards reading "0 · Hozircha yo'q" took a third of the screen to report nothing.
+    const lists = [
+      ["weak", "Qiyin", S.weakIds(), "2+ marta xato qilingan", "Mashq qilish", true],
+      ["flag", "Belgilangan", S.flaggedIds(), "o'zingiz belgilagan", "Mashq qilish", false],
+      ["forgot", "Unutilgan", S.forgottenIds(), "darajasi pasaygan", "Qaytarish", false],
+    ];
+    const rows = lists.filter((l) => l[2].length).map(([m, title, ids, desc, cta, bad]) =>
+      `<button class="rv-row" data-act="review-start" data-mode="${m}" aria-label="${esc(title)} — ${ids.length} ta so'z. ${esc(cta)}">
+        <b class="rv-n${bad ? " badc" : ""}">${ids.length}</b>
+        <span class="rv-row-t"><span class="card-title">${title}</span><span class="side-note">${desc}</span></span>
+        <span class="rv-cta" aria-hidden="true">${cta}</span>${V.icon("chev", 14)}
+      </button>`).join("");
+    const none = lists.filter((l) => !l[2].length).map((l) => l[1]);
+    const picked = `<section class="card rv-lists">${rows}${none.length
+      ? `<span class="rv-empty">${none.join(" · ")} — hozircha bo'sh</span>` : ""}</section>`;
+    // Seven days as seven bars. The word "so'z" was printed seven times to label seven numbers; it is said once,
+    // in the total, and the height carries the comparison the numbers were there to make.
+    const peak = Math.max(1, ...week.map((x) => x.n));
+    const cal = `<section class="card rv-cal">
+      <div class="row between"><span class="card-title">Keyingi 7 kun</span><span class="side-note">${week.reduce((s, x) => s + x.n, 0)} so'z</span></div>
+      <div class="rv-days">${week.map((x) => `<div class="${x.today ? "on" : ""}" title="${esc(x.lbl)} — ${x.n} so'z">
+        <b>${x.n}</b><span class="bar" aria-hidden="true"><i style="height:${Math.round(3 + (x.n / peak) * 25)}px"></i></span><span>${esc(x.lbl)}</span></div>`).join("")}</div>
+    </section>`;
+    // The four types this screen used to repeat as cards — the same four #/quiz offers, with its own settings —
+    // as the chips they always were: a type is a setting for a session, not a destination of its own.
     const quizzes = ["mixed", "listen", "type", "sent"].map((k) => {
       const t = X.QUIZ_TYPES[k];
-      return `<button class="card rv-quiz" data-act="quiz-go" data-k="${k}"><b>${t.name}</b><span class="side-note">${t.desc}</span><span class="mono accent">20 savol · ~${Math.max(1, Math.round(20 * t.mins))} daq</span></button>`;
+      return `<button class="chip rv-chip" data-act="quiz-go" data-k="${k}">${t.name}<span class="mono">~${Math.max(1, Math.round(20 * t.mins))} daq</span></button>`;
     }).join("");
+    const practice = `<section class="card rv-prac">
+      <div class="row between"><span class="card-title">Mashq turlari</span><a class="link" href="#/quiz">Barcha sozlamalar</a></div>
+      <div class="rv-chips">${quizzes}</div>
+    </section>`;
     const shown = queue.slice(0, 8);
     const list = shown.map((id) => {
       const w = S.word(id), st = S.ws(id), isLate = st.due < today;
@@ -460,20 +487,15 @@
           ${V.mbar(id)}
           <span class="meta" style="min-width:64px;color:${isLate ? "var(--bad)" : "var(--pd)"}">${U.dueLabel(st.due)}</span></button>`;
     }).join("");
+    // The queue belongs to the session, not to this screen: a phone spent its whole second screen on eight rows
+    // of words the "Boshlash" button was about to deal out anyway. It is named and counted, and opens on a tap.
+    const queueBlock = shown.length ? `<details class="card rv-queue"${U.wide() ? " open" : ""}>
+      <summary><span class="card-title">Bugungi so'zlar</span><span class="side-note">${esc(queue.length)} ta</span></summary>
+      <div class="list">${list}${queue.length > shown.length
+        ? `<span class="li rv-rest">yana ${esc(queue.length - shown.length)} so'z — sessiyada chiqadi</span>` : ""}</div></details>` : "";
     const body = `<div class="page">
-      <div class="rv-top">${hero}
-        ${mode("Qiyin", S.weakIds(), "2 va undan ko'p marta xato qilingan so'zlar", "weak", "Mashq qilish", true)}
-        ${mode("Belgilangan", S.flaggedIds(), "O'zingiz qiyin deb belgilagan so'zlar", "flag", "Mashq qilish")}
-        ${mode("Unutilgan", S.forgottenIds(), "Darajasi pasaygan so'zlar", "forgot", "Qaytarish")}
-      </div>
-      <section class="card rv-cal">
-        <div class="row between"><span class="card-title">Takrorlash taqvimi</span><span class="side-note">keyingi 7 kunda ${week.reduce((s, x) => s + x.n, 0)} so'z</span></div>
-        <div class="rv-days">${week.map((x) => `<div class="${x.today ? "on" : ""}"><span>${x.lbl}</span><b>${x.n}</b><span>so'z</span></div>`).join("")}</div>
-      </section>
-      <div class="row between rv-h"><span class="card-title">Mashq turlari</span><a class="link" href="#/quiz">Barcha sozlamalar</a></div>
-      <div class="rv-quizzes">${quizzes}</div>
-      ${shown.length ? `<div class="row between rv-h"><span class="card-title">Bugungi so'zlar</span>${queue.length > shown.length ? `<span class="side-note">yana ${esc(queue.length - shown.length)} so'z</span>` : ""}</div>
-      <div class="list">${list}</div>` : ""}
+      <div class="rv-top">${hero}${picked}</div>
+      ${cal}${practice}${queueBlock}
     </div>`;
     return V.shell("review", V.topbar("Takrorlash", ""), body);
   };

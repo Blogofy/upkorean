@@ -172,7 +172,10 @@ button.chip:hover { color: var(--ink); }
 /* The closing ring: the same track-and-value pair as .prog, bent into a circle so a finished day reads as one
    shape rather than a number. The svg carries the rotation, the label sits above it as plain text. */
 .ring { position: relative; display: inline-grid; place-items: center; flex: none; }
-.ring svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+/* The track and its arc only. The finished ring puts a check inside .ring-c, and that is an <svg> too: it was
+   being stretched over the whole ring and turned a quarter turn with it, which is why a finished day was
+   marked with something that read as "›". */
+.ring > svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
 .ring circle { fill: none; stroke-width: 4; }
 .ring-t { stroke: var(--line); }
 .ring-v { stroke: var(--pd); stroke-linecap: round; stroke-dasharray: 100; animation: ring-close .6s ease-out; }
@@ -511,40 +514,55 @@ button.wtile:hover { border-color: var(--pl2); }
 .dd-word span { font-size: 12px; color: var(--ink2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Review: today's queue, the other lists, the coming week and the exercise types. */
-.rv-top { display: grid; grid-template-columns: 1.4fr repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 20px; }
-.rv-today { border-radius: 20px; padding: 26px; background: #0F3F39; color: #F2FAF8; display: flex; flex-direction: column; gap: 12px; }
+.rv-top { display: grid; grid-template-columns: 1.4fr minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
+.rv-today { border-radius: 20px; padding: 24px; background: #0F3F39; color: #F2FAF8; display: flex; flex-direction: column; gap: 12px; }
 .rv-eyebrow { font-size: 12px; color: #8FD3C8; }
-/* The hero keeps its own fixed dark card in both themes, so its ring is given the same literal colours as the
-   rest of it rather than the theme tokens, which would go dark-on-dark in the light theme. */
 .rv-goal { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .rv-today .ring-t { stroke: rgba(180, 230, 222, .16); }
 .rv-today .ring-v { stroke: #4DC3B3; }
 .rv-today .ring-c { color: #F2FAF8; }
 .rv-today :focus-visible { outline-color: #F2FAF8; }
 .rv-big { display: flex; align-items: baseline; gap: 10px; color: #B4E6DE; }
-.rv-big b { font-family: var(--display); font-size: 56px; line-height: 1; color: #F2FAF8; }
+.rv-big b { font-family: var(--display); font-size: 52px; line-height: 1; color: #F2FAF8; }
 .rv-note { font-size: 13px; color: #B4E6DE; }
 .rv-go { margin-top: auto; background: #4DC3B3; color: #0C1110; }
 .rv-go:hover { filter: brightness(1.05); color: #0C1110; }
-/* The finished day's optional extra round: outlined, not filled, so it reads as an offer under a card that
+/* An outline button rather than a filled one: the filled green is the day's work, and this card
    has just said the work is done. #B4E6DE on this card is 8.55:1, the same ink .rv-note already uses. */
 .rv-more { margin-top: auto; background: none; border: 1px solid rgba(180, 230, 222, .35); color: #B4E6DE; }
 .rv-more:hover { border-color: #B4E6DE; color: #F2FAF8; }
-.rv-mode { padding: 22px; display: flex; flex-direction: column; gap: 10px; }
-.rv-n { font-family: var(--display); font-size: 38px; line-height: 1; color: var(--pd); }
-.rv-mode .link, .rv-none { margin-top: auto; align-self: flex-start; font-size: 14px; }
-.rv-mode .link { font-weight: 700; }
-.rv-cal { padding: 20px 24px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
-.rv-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
-.rv-days > div { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 0; border-radius: 14px; font-size: 12px; color: var(--ink3); }
+/* The hand-picked lists: one row each, a thumb's height, with the count read first. */
+.rv-lists { padding: 6px 8px; display: flex; flex-direction: column; justify-content: center; }
+.rv-lists > * + * { border-top: 1px solid var(--line); }
+.rv-row { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 58px; padding: 10px 12px; text-align: left; }
+.rv-row:hover { color: var(--ink); }
+.rv-row:hover .rv-cta { text-decoration: underline; text-underline-offset: 3px; }
+.rv-n { font-family: var(--display); font-size: 27px; line-height: 1; color: var(--pd); min-width: 38px; }
+.rv-row-t { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.rv-cta { font-size: 13px; font-weight: 700; color: var(--pd); white-space: nowrap; }
+/* The one chevron this design has, turned to point the way the row goes. */
+.rv-row .ic { color: var(--pd); flex: none; transform: rotate(-90deg); }
+.rv-empty { display: block; padding: 14px 12px; font-size: 13px; color: var(--ink3); }
+/* The week ahead: seven numbers, and the height that compares them. */
+.rv-cal { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+.rv-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.rv-days > div { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 0 8px; border-radius: 12px; font-size: 11px; color: var(--ink3); }
 .rv-days > div.on { background: var(--pl); color: var(--on-pl2); }
-.rv-days b { font-family: var(--display); font-size: 24px; color: var(--ink); }
-.rv-h { margin-bottom: 12px; }
-.rv-quizzes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 20px; }
-.rv-quiz { padding: 18px 20px; display: flex; flex-direction: column; gap: 6px; text-align: left; transition: border-color .15s; }
-.rv-quiz:hover { border-color: var(--pl2); }
-.rv-quiz b { font-size: 15px; }
-.rv-quiz .mono { margin-top: auto; padding-top: 6px; font-size: 12px; }
+.rv-days b { font-family: var(--display); font-size: 19px; line-height: 1; color: var(--ink); }
+.rv-days .bar { display: flex; align-items: flex-end; justify-content: center; width: 100%; height: 28px; padding: 0 4px; }
+.rv-days i { width: 100%; max-width: 56px; border-radius: 4px 4px 0 0; background: var(--pl2); }
+.rv-days > div.on i { background: var(--p); }
+.rv-prac { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+.rv-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.rv-chip { min-height: 40px; }
+.rv-chip .mono { font-size: 11px; color: var(--ink3); }
+.rv-chip:hover { background: var(--pl); color: var(--on-pl2); }
+.rv-queue > summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 56px; padding: 12px 18px; cursor: pointer; }
+.rv-queue > summary::marker { content: ""; }
+.rv-queue > summary::after { content: ""; width: 7px; height: 7px; margin: -3px 2px 0 0; border-right: 2px solid var(--ink3); border-bottom: 2px solid var(--ink3); transform: rotate(45deg); }
+.rv-queue[open] > summary::after { margin-top: 3px; transform: rotate(-135deg); }
+.rv-queue .list { border: 0; border-radius: 0; border-top: 1px solid var(--line); background: none; }
+.rv-rest { justify-content: center; font-size: 13px; color: var(--ink3); }
 
 /* Profile: the account card, then settings one section at a time. */
 .prof-card { display: flex; align-items: center; gap: 22px; padding: 24px 28px; margin-bottom: 22px; }
@@ -929,11 +947,8 @@ table.tbl { width: 100%; border-collapse: collapse; }
   .dd-head { flex-wrap: wrap; }
   .dd-h { font-size: 26px; }
   .dd-words { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .rv-top { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-  .rv-today { grid-column: 1 / -1; }
-  .rv-quizzes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .rv-top { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .rv-days { gap: 4px; }
-  .rv-days b { font-size: 20px; }
   .prof-nav { flex-direction: row; overflow-x: auto; }
   .prof-sec { padding: 20px; }
   .dash { grid-template-columns: minmax(0,1fr); gap: 16px; margin-bottom: 16px; }
@@ -969,11 +984,12 @@ table.tbl { width: 100%; border-collapse: collapse; }
   .prof-stats { order: 3; width: 100%; padding: 14px 0 0; border-left: 0; border-top: 1px solid var(--line); justify-content: space-around; text-align: center; }
   .prof-edit { order: 4; width: 100%; }
   .paces { grid-template-columns: minmax(0, 1fr); }
-  .rv-top { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .rv-mode { padding: 14px; gap: 6px; }
-  .rv-mode > .side-note { display: none; }
-  .rv-n { font-size: 28px; }
-  .rv-mode .link { font-size: 13px; }
+  .rv-today { padding: 18px; gap: 10px; }
+  .rv-big b { font-size: 40px; }
+  .rv-cal, .rv-prac { padding: 14px 16px; }
+  .rv-days b { font-size: 16px; }
+  .rv-days .bar { height: 24px; padding: 0 2px; }
+  .rv-queue > summary { padding: 12px 16px; }
   .dd-words { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .wgrid, .choices { grid-template-columns: minmax(0,1fr); }
   .ob h2 { font-size: 28px; }
