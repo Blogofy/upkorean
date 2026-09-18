@@ -87,7 +87,10 @@ input, select, textarea { font: inherit; color: inherit; }
 
 /* Brand */
 .brand { display: flex; align-items: center; gap: 10px; }
-.brand .mark { width: 26px; height: 26px; border-radius: 8px; background: var(--p); flex: none; }
+/* The mark is the app's own icon — the U from /icon.svg — not a blank tile. A plain green square beside the
+   name read as a logo that had failed to load, on every screen that carries the brand. */
+.brand .mark { width: 26px; height: 26px; border-radius: 8px; flex: none; background: var(--pdb) center / contain no-repeat
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%23fff' d='M144 126v144c0 76 38 116 112 116s112-40 112-116V126h-72v144c0 34-10 54-40 54s-40-20-40-54V126z'/%3E%3C/svg%3E"); }
 .brand .name { font-weight: 800; font-size: 16px; letter-spacing: -.02em; }
 
 /* Buttons */
