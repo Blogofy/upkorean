@@ -507,7 +507,7 @@
   const hlSentence = (ex) => esc(ex.ko).replace(esc(ex.hl), `<b>${esc(ex.hl)}</b>`);
   const uzPlain = (ex) => esc(ex.uz.replace(/[{}]/g, ""));
   const uzBlank = (ex) => esc(ex.uz.replace(/\{.*?\}/, "______"));
-  const sentBtn = `<button class="audio-dot" style="width:28px;height:28px;font-size:12px" data-act="ex-play-sent" aria-label="Gapni eshitish">▸</button>`;
+  const sentBtn = `<button class="audio-dot sm" data-act="ex-play-sent" aria-label="Gapni eshitish">▸</button>`;
 
   function header(s) {
     const it = cur();
@@ -588,7 +588,7 @@
         ${ex ? `<div class="row" style="gap:10px;align-items:center;margin-bottom:10px"><span class="upl">Misol</span>${sentBtn}</div>
         <div class="example">
           <div class="s">${hlSentence(ex)}</div>
-          <div style="font-size:15px;color:var(--ink2);line-height:1.5">${uzPlain(ex)}</div>
+          <div class="uz">${uzPlain(ex)}</div>
           ${S.state.settings.roman ? `<div class="mono faint" style="font-size:12px;margin-top:12px">[ ${esc(U.romanize(ex.ko.replace(/[.?!]$/, "")))} ]</div>` : ""}
         </div>` : ""}
         ${ex && ex.note ? `<div style="font-size:13px;color:var(--ink3);line-height:1.5">${esc(ex.note)}</div>` : `<div style="font-size:13px;color:var(--ink3);line-height:1.5">${w.day}-kun · TOPIK II lug'ati</div>`}
@@ -614,7 +614,7 @@
   // How the word is built and what to remember: parts and idea, memory hook, warning, related words. The intro
   // card and the word modal each order these themselves, so they are handed back as pieces.
   // linkWords: related course words open their own word card (in the word modal).
-  X.rootsSections = (wordId, { linkWords = false } = {}) => {
+  X.rootsSections = (wordId, { linkWords = false, fold = false } = {}) => {
     const r = S.roots(wordId) || {};
     const pieces = (r.parts || []).filter((p) => !p.space);
     const parts = pieces.length > 1 || (pieces[0] && pieces[0].h)
@@ -641,8 +641,12 @@
       }
     }
     const family = (r.family || []).filter(([ko]) => !shown.has(ko)).map(([ko, uz]) => `<li><span class="ko b">${esc(ko)}</span> — ${esc(uz)}</li>`);
-    const related = links.length + family.length
-      ? `<div class="isec"><div class="upl">Bog'liq so'zlar</div><ul class="rel">${links.concat(family).slice(0, 5).join("")}</ul></div>` : "";
+    // On a phone the list of relatives is the longest thing on the card and the last thing a learner meeting the
+    // word needs, so it is offered by name and by count and opens on a tap; a wide screen has the column for it.
+    const items = links.concat(family).slice(0, 5);
+    const related = !items.length ? ""
+      : fold ? `<details class="isec ifold"><summary>Bog'liq so'zlar<b>${items.length}</b></summary><ul class="rel">${items.join("")}</ul></details>`
+        : `<div class="isec"><div class="upl">Bog'liq so'zlar</div><ul class="rel">${items.join("")}</ul></div>`;
     return {
       build: parts || idea ? `<div class="isec"><div class="upl">${parts ? "Tarkibi" : "Ma'nosi"}</div>${parts}${idea}</div>` : "",
       hint: r.hint ? `<div class="isec tip"><div class="upl">Eslab qolish</div><div>${esc(r.hint)}</div></div>` : "",
@@ -653,16 +657,17 @@
 
   // A phone shows one column, so this order is the order the learner meets the word in: the word, how it is
   // said, what it means, then the sentence that proves it — and only then the hanja layer, which is the reason
-  // this is not a flashcard app and stays whole. What follows it is depth a curious learner scrolls to: the
-  // look-alike warning, which taught a confusion before the word itself had landed, and the learner's own note,
-  // which had a keyboard-summoning field sitting between the card and its button. "Tushundim →" is docked.
+  // this is not a flashcard app and stays whole. What follows it is depth a curious learner opens: the
+  // relatives, the look-alike warning, and the learner's own note, whose keyboard-summoning field would
+  // otherwise sit between the card and its button. "Tushundim →" is docked, and on a phone everything above
+  // it is meant to fit on the screen without a scroll — hence the shorter scale and the two closed sections.
   function introView(it) {
     const w = S.word(it.id);
     const ex = S.example(it.id);
-    const r = X.rootsSections(it.id);
+    const r = X.rootsSections(it.id, { fold: !U.wide() });
     const note = S.note(it.id);
     return `<div class="intro">
-      <div class="ex-cap center" style="margin-bottom:18px">YANGI SO'Z · ${it.pos + 1} / ${it.size}</div>
+      <div class="ex-cap center intro-cap">YANGI SO'Z · ${it.pos + 1} / ${it.size}</div>
       <div class="fc intro-card">
         <div class="intro-top">
           <div class="row" style="justify-content:center;align-items:center;gap:14px">
@@ -676,15 +681,14 @@
         </div>
         <div class="intro-grid">
           <div>
-            ${ex ? `<div class="isec"><div class="row" style="gap:10px;align-items:center"><span class="upl">Misol</span>${sentBtn}</div>
-              <div class="example" style="margin:10px 0 0">
-                <div class="s">${hlSentence(ex)}</div>
-                <div style="font-size:15px;color:var(--ink2);line-height:1.5">${uzPlain(ex)}</div>
+            ${ex ? `<div class="isec"><div class="example">
+                <div class="s">${hlSentence(ex)} ${sentBtn}</div>
+                <div class="uz">${uzPlain(ex)}</div>
               </div></div>` : ""}
-            ${r.build}${r.hint}
+            ${r.build}${r.hint}${r.note}
           </div>
           <div>
-            ${r.related}${r.note}
+            ${r.related}
             <details class="isec inote"${note ? " open" : ""}>
               <summary>O'z eslatmangiz</summary>
               <input class="input note-in" id="note-in" data-input="word-note" data-id="${esc(it.id)}" maxlength="140" autocomplete="off"

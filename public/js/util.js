@@ -130,6 +130,11 @@
     return out.replace(/\s+/g, " ").trim();
   };
 
+  // Anything wider than a phone. Read while a screen is being built, not through a resize listener: the screens
+  // that ask are redrawn on every navigation and on every answer, so a turned phone gets the new answer with
+  // the next card rather than keeping a layout meant for the other orientation.
+  U.wide = () => !window.matchMedia || window.matchMedia("(min-width: 641px)").matches;
+
   // ---------- Recorded narrator audio ----------
   // Missing config (for example after a server restart) should not block known, bundled clips.
   U.canListen = () => !(window.S && window.S.config && window.S.config.clips === false);
