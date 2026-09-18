@@ -31,7 +31,7 @@ function learner({ reminders = { on: true, learn: "09:00", review: "20:30", stre
   q.putSub.run(`https://fcm.googleapis.com/fcm/send/${id}`, id, "key", "auth", Date.now());
   return Number(id);
 }
-const collect = () => { const sent = []; const send = async (userId, payload) => { sent.push({ userId, ...payload }); return 1; }; return { sent, send }; };
+const collect = () => { const sent = []; const send = async (userId, payload) => { sent.push({ userId, ...payload }); return { delivered: 1, retry: false }; }; return { sent, send }; };
 
 test("reminder times come from the saved profile", () => {
   assert.deepEqual(reminderTimes({ profile: { reminders: { on: true, learn: "09:00", review: "20:30", streak: true } } }), { learn: "09:00", review: "20:30", streak: "21:30" });
@@ -82,6 +82,34 @@ test("a reminder more than two hours late is skipped, and learners who already s
   assert.equal(sent.filter((s) => s.userId === late).length, 0);
   assert.equal(sent.filter((s) => s.userId === busy).length, 0);
   assert.equal(sent.filter((s) => s.userId === off).length, 0);
+});
+
+test("a reminder is kept for the next tick when the send fails, and given up on when retrying cannot help", async () => {
+  const DAY = "2026-09-19";
+  const flaky = learner({ reminders: { on: true, learn: "09:00" } }); // push service answers 500 once
+  const broken = learner({ reminders: { on: true, learn: "09:00" } }); // ... and keeps answering 500
+  const gone = learner({ reminders: { on: true, learn: "09:00" } }); // 404/410: the subscription was dropped
+  const tries = {};
+  let down = true;
+  const send = async (userId) => {
+    tries[userId] = (tries[userId] || 0) + 1;
+    if (userId === broken || (userId === flaky && down)) return { delivered: 0, retry: true };
+    if (userId === gone) return { delivered: 0, retry: false };
+    return { delivered: 1, retry: false };
+  };
+
+  await runReminders(at(DAY, "09:01"), send);
+  assert.deepEqual([tries[flaky], tries[broken], tries[gone]], [1, 1, 1]);
+  down = false;
+  await runReminders(at(DAY, "09:02"), send);
+  assert.equal(tries[flaky], 2, "a failed send is retried on the next tick, not silently lost");
+  await runReminders(at(DAY, "09:03"), send);
+  assert.equal(tries[flaky], 2, "once it is delivered it is done for the day");
+  assert.equal(tries[gone], 1, "a subscription that is gone is not worth retrying");
+
+  await runReminders(at(DAY, "09:04"), send);
+  await runReminders(at(DAY, "09:05"), send);
+  assert.equal(tries[broken], 3, "a send that keeps failing gives up instead of retrying the whole window");
 });
 
 test("the payload a push service receives is encrypted for the subscriber and decrypts to the reminder", () => {

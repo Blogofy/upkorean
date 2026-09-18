@@ -34,9 +34,12 @@ export const PUSH_CONTACT = contact();
 webpush.setVapidDetails(PUSH_CONTACT, keys.publicKey, keys.privateKey);
 
 // ---------- Sending ----------
-// Sends to every browser the learner subscribed; drops subscriptions the push service says are gone.
-export async function sendToUser(userId, payload) {
+// One delivery round for a learner: how many browsers got it, and whether trying again could still help.
+// A 404/410 means that subscription is gone for good, so it is dropped and there is nothing to retry;
+// anything else (5xx, a network hiccup, a momentarily wrong key) is transient and worth another attempt.
+export async function deliverToUser(userId, payload) {
   let delivered = 0;
+  let retry = false;
   for (const sub of q.subsForUser.all(userId)) {
     try {
       await webpush.sendNotification(
@@ -50,10 +53,18 @@ export async function sendToUser(userId, payload) {
         q.deleteSub.run(sub.endpoint);
         console.log(`[push] user ${userId}: subscription expired (${err.statusCode}), removed`);
       }
-      else console.error(`[push] user ${userId}: ${err.statusCode || ""} ${err.body || err.message}`);
+      else {
+        retry = true;
+        console.error(`[push] user ${userId}: ${err.statusCode || ""} ${err.body || err.message}`);
+      }
     }
   }
-  return delivered;
+  return { delivered, retry };
+}
+
+// Sends to every browser the learner subscribed; returns how many of them got it.
+export async function sendToUser(userId, payload) {
+  return (await deliverToUser(userId, payload)).delivered;
 }
 
 // ---------- What to remind about ----------
@@ -105,8 +116,16 @@ export function reminderTimes(state) {
 const WINDOW_MIN = 120;
 const toMin = (hm) => Number(hm.slice(0, 2)) * 60 + Number(hm.slice(3));
 
+// A delivery that failed for a passing reason is left unmarked so the next tick retries it — but only a
+// few times, so a push service that stays broken is not hammered for the whole window. Attempts live in
+// memory as `${user}:${kind}` -> { day, n }: a new local day replaces the old entry, so the map never
+// grows past the reminders table. Trade-off: a restart clears them, which only grants a fresh set of
+// tries — the marking itself stays in the database, so no reminder can go out twice.
+const MAX_TRIES = 3;
+const attempts = new Map();
+
 let running = false;
-export async function runReminders(now = Date.now(), send = sendToUser) {
+export async function runReminders(now = Date.now(), send = deliverToUser) {
   if (running) return 0;
   running = true;
   let sent = 0;
@@ -124,8 +143,15 @@ export async function runReminders(now = Date.now(), send = sendToUser) {
           try { state = p ? JSON.parse(p.state) : null; } catch { state = null; }
         }
         const payload = state && reminderFor(kind, state, today);
-        q.markSent[kind].run(today, row.user_id); // handled for today, whether or not it was needed
-        if (payload && (await send(row.user_id, payload))) sent++;
+        if (!payload) { q.markSent[kind].run(today, row.user_id); continue; } // not needed today: handled
+        const { delivered, retry } = await send(row.user_id, payload);
+        if (delivered) sent++;
+        const key = `${row.user_id}:${kind}`;
+        const prev = attempts.get(key);
+        const n = (prev && prev.day === today ? prev.n : 0) + 1;
+        // Marked only once it is out of our hands: delivered, no live subscription left, or out of tries.
+        if (delivered || !retry || n >= MAX_TRIES) { q.markSent[kind].run(today, row.user_id); attempts.delete(key); }
+        else attempts.set(key, { day: today, n });
       }
     }
   } finally {
