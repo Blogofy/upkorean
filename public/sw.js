@@ -16,6 +16,10 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== VERSION).map((key) => caches.delete(key)))).then(() => self.clients.claim()));
 });
 
+// install's addAll rejects as a batch, so one 404 can leave the shell cache empty. Without this the
+// learner would get the browser's raw network error page instead of a hint about what happened.
+const offlinePage = () => new Response(`<!doctype html><meta charset="utf-8"><title>UpKorean</title><body style="font:16px/1.6 system-ui;padding:48px 24px;text-align:center">Internet yo'q. Ulanishni tekshirib, sahifani yangilang.`, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
@@ -24,9 +28,11 @@ self.addEventListener("fetch", (event) => {
 
   if (req.mode === "navigate") {
     event.respondWith(fetch(req).then((res) => {
-      if (res.ok) { const copy = res.clone(); caches.open(VERSION).then((cache) => cache.put("/index.html", copy)); }
+      // Only the app root is the shell: every other page (/privacy opens in a new tab) is a navigation too,
+      // and caching it here would replace the app with that page the next time it is opened offline.
+      if (res.ok && url.pathname === "/") { const copy = res.clone(); caches.open(VERSION).then((cache) => cache.put("/index.html", copy)); }
       return res;
-    }).catch(() => caches.match("/index.html")));
+    }).catch(() => caches.match("/index.html").then((cached) => cached || offlinePage())));
     return;
   }
 
