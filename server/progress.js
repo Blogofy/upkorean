@@ -28,21 +28,39 @@ export function localTime(now, tz) {
 }
 
 // Progress is computed in the browser, so the server cannot prove the XP is real. It can make faking it
-// pointless for the leaderboard: no day counts for more than a very busy day of study, and the weekly
-// total grows no faster than a fast learner earns it (it catches up within a minute or two after a bonus).
+// pointless for the leaderboard: no day counts for more than a very busy day of study, the weekly total
+// grows no faster than a fast learner earns it (it catches up within a minute or two after a bonus), and it
+// never runs ahead of the practice the saved words can show for it.
 export const DAY_XP_CAP = 5000;
 export const XP_PER_MIN = 150;
+// Every practice path in the browser (grade / introduce / answer, js/store.js) stamps the word with today's
+// date and reschedules it, so the words carrying a date from this week are the work behind the claim. Still
+// the client's own word, but bounded by the 1000-word course instead of a free-form counter, and a busy day
+// touches ~60 words for ~400 XP, so 25 XP a word leaves honest study far below the line.
+export const XP_PER_WORD = 25;
+
+const isDate = (v) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
 
 export function leaderboardXp(state, prev, now, tz) {
   const { week, weekEnd, weekStartMs } = localTime(now, tz);
+  const inWeek = (d) => isDate(d) && d >= week && d <= weekEnd;
   let claimed = 0;
   for (const [k, a] of Object.entries((state && state.act) || {})) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || k < week || k > weekEnd || !a || !Number.isFinite(a.xp)) continue;
+    if (!inWeek(k) || !a || !Number.isFinite(a.xp)) continue;
     claimed += Math.min(Math.max(a.xp, 0), DAY_XP_CAP);
+  }
+  // The evidence behind the claim: how many words were practised this week. A word only drops out of the
+  // count when the week itself ends, so this never takes back XP already awarded earlier in the same week.
+  let practised = 0;
+  for (const w of Object.values((state && state.words) || {})) {
+    if (w && typeof w === "object" && (inWeek(w.last) || inWeek(w.due))) practised++;
   }
   const sameWeek = prev && prev.week_key === week;
   const base = sameWeek ? prev.week_xp : 0;
-  const since = sameWeek ? prev.updated_at : weekStartMs;
-  const allowed = base + (XP_PER_MIN * Math.max(0, now - since)) / 60000;
-  return { week, xp: Math.round(Math.min(claimed, allowed)) };
+  // The budget runs from the previous save; the week start is only the floor for the first save of a week.
+  // One save never unlocks more than a single very busy day, so a first save on Thursday collects no
+  // back-pay for Monday to Wednesday.
+  const since = prev ? Math.max(weekStartMs, prev.updated_at) : weekStartMs;
+  const allowed = base + Math.min(DAY_XP_CAP, (XP_PER_MIN * Math.max(0, now - since)) / 60000);
+  return { week, xp: Math.round(Math.min(claimed, allowed, practised * XP_PER_WORD)) };
 }

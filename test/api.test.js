@@ -5,6 +5,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { localTime } from "../server/progress.js";
 
 const root = path.resolve(import.meta.dirname, "..");
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "upkorean-api-"));
@@ -100,14 +101,28 @@ test("progress: versions, deltas and conflicts between two devices", async () =>
   assert.equal((await laptop("PUT", "/api/progress", { state: { xp: 3 } })).status, 200);
 });
 
-test("leaderboard: capped XP in the learner's own week", async () => {
+// The weekly ceiling used to be 7 × DAY_XP_CAP, reachable from a standing start: the rate budget was counted
+// from Monday 00:00 whenever the week had no row yet, so one PUT claiming every day of the week scored 35000.
+test("leaderboard: capped XP in the learner's own week, and only for practice that happened", async () => {
+  const TZ = -300; // Tashkent
+  const { week, today } = localTime(Date.now(), TZ);
+  const days = Array.from({ length: 7 }, (_, i) => new Date(Date.parse(week) + i * 86400000).toISOString().slice(0, 10));
+
+  const cheat = await signedUp("Firibgar Bekov");
+  const act = Object.fromEntries(days.map((d) => [d, { xp: 999999 }]));
+  assert.equal((await cheat("PUT", "/api/progress", { state: { xp: 999999, act, words: {} }, baseAt: null, tz: TZ })).status, 200);
+  // Not one word practised, so the week is worth nothing at all.
+  assert.equal((await cheat("GET", `/api/leaderboard?tz=${TZ}`)).data.rows.find((r) => r.me), undefined);
+
+  // An honest day still counts for exactly what it earned.
   const c = await signedUp("Lola Karimova");
-  const today = new Date(Date.now() + 5 * 3600000).toISOString().slice(0, 10); // Tashkent date
-  await c("PUT", "/api/progress", { state: { xp: 1, act: { [today]: { xp: 999999 }, "2099-01-01": { xp: 5000 } } }, baseAt: null, tz: -300 });
-  const board = await c("GET", "/api/leaderboard?tz=-300");
-  const me = board.data.rows.find((r) => r.me);
+  const words = Object.fromEntries(Array.from({ length: 60 }, (_, i) => [`1-${i}`, { s: 1, last: today, due: today }]));
+  await c("PUT", "/api/progress", { state: { xp: 300, act: { [today]: { xp: 300 }, "2099-01-01": { xp: 5000 } }, words }, baseAt: null, tz: TZ });
+  const me = (await c("GET", `/api/leaderboard?tz=${TZ}`)).data.rows.find((r) => r.me);
   assert.equal(me.name, "Lola K.");
-  assert.ok(me.xp <= 5000 && me.xp > 0, `xp ${me.xp}`);
+  // 300 claimed, 60 words (1500 XP of practice) behind it, and the future day never counts. A save made in
+  // the first minutes of the learner's Monday is still held back by the budget, hence the range.
+  assert.ok(me.xp > 0 && me.xp <= 300, `xp ${me.xp}`);
 });
 
 test("push: only real push services are accepted; demo cannot subscribe", async () => {
