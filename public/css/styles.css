@@ -555,7 +555,8 @@ button.wtile:hover { border-color: var(--pl2); }
 .badge-ok, .badge-bad { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 8px; font-family: var(--mono); font-size: 12px; }
 .badge-ok { background: var(--okl); color: var(--ok); }
 .badge-bad { background: var(--badl); color: var(--bad); }
-.ex-body { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px; }
+/* Top-aligned, not centred: feedback appears under the answer, and centring would shove the whole card up on every check. */
+.ex-body { flex: 1; display: flex; align-items: flex-start; justify-content: center; padding: 32px 40px 40px; }
 .ex-cap { font-family: var(--mono); font-size: 12px; color: var(--ink3); }
 
 .fc { background: var(--sf); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow-card); }
