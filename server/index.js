@@ -221,21 +221,19 @@ api.post("/auth/forgot", authLimit, (req, res) => {
   const email = validEmail(req.body.email);
   const user = email && q.userByEmail.get(email);
   const out = { ok: true };
+  // Returning the link skips the mailbox check, so only a developer's own browser may get it.
+  const devLink = DEV && isLocalRequest(req);
+  // A token is created only when there is somewhere safe to send it. Without SMTP it would have nowhere to go
+  // but the server log, and a reset link in a log is a working password for whoever can read the log.
   // The same answer whether or not the account exists, and no more than a few emails per address.
-  if (user && !isDemo(user) && !resetRequests.blocked(email)) {
+  if (user && !isDemo(user) && (mailEnabled() || devLink) && !resetRequests.blocked(email)) {
     resetRequests.add(email);
     const token = randomToken();
     q.insertReset.run(sha256(token), user.id, Date.now() + 30 * 60000);
     const link = `${APP_URL}/#/reset/${token}`;
-    if (mailEnabled()) {
-      // Not awaited: waiting for SMTP would make "account exists" answers measurably slower.
-      sendResetEmail(email, user.name, link).catch((err) => console.error(`[password reset] email to ${email} failed:`, err.message));
-    } else {
-      // No email provider yet: the link goes to the server log so an administrator can pass it on.
-      console.log(`[password reset] ${email}: ${link}`);
-    }
-    // Returning the link skips the mailbox check, so only a developer's own browser may get it.
-    if (DEV && isLocalRequest(req)) out.devLink = link;
+    // Not awaited: waiting for SMTP would make "account exists" answers measurably slower.
+    if (mailEnabled()) sendResetEmail(email, user.name, link).catch((err) => console.error(`[password reset] email to ${email} failed:`, err.message));
+    if (devLink) out.devLink = link;
   }
   res.json(out);
 });
@@ -456,11 +454,18 @@ setInterval(() => {
 }, 3600000).unref();
 setInterval(() => runReminders().catch((err) => console.error("[push] reminders failed:", err)), 60000).unref();
 
+// Without SMTP nobody can reset a password on a live site, and the old fallback (the link in the server log)
+// handed an account to anyone who can read the log. So a production server says so and stops instead.
+if (PROD && !mailEnabled()) {
+  console.error("Xatolik: NODE_ENV=production uchun SMTP sozlanishi shart. .env ga SMTP_HOST (va SMTP_USER, SMTP_PASS, MAIL_FROM) qo'shing — ularsiz parolni tiklash havolasini yuborib bo'lmaydi. Namuna: .env.example");
+  process.exit(1);
+}
+
 app.listen(PORT, () => {
   console.log(`UpKorean → ${APP_URL}`);
   console.log(`  AI tutor: tez kunda (vaqtincha qulflangan${tutorEnabled() ? ", server tayyor" : ""})`);
   console.log(`  Google:   ${GOOGLE_CLIENT_ID ? "yoqilgan" : "o'chirilgan (GOOGLE_CLIENT_ID yo'q)"}`);
-  console.log(`  Email:    ${mailEnabled() ? "yoqilgan (SMTP)" : "o'chirilgan — parol tiklash havolalari server logiga yoziladi (SMTP_HOST yo'q)"}`);
+  console.log(`  Email:    ${mailEnabled() ? "yoqilgan (SMTP)" : `o'chirilgan — parolni tiklash havolasi yuborilmaydi${DEV ? ", faqat shu kompyuterdagi brauzerga ko'rsatiladi" : ""} (SMTP_HOST yo'q)`}`);
   console.log(`  Audio:    diktor bo'laklari ${WORD_CLIPS}/1000 so'z, ${SENTENCE_CLIPS}/1000 gap`);
   console.log(`  Backup:   ${BACKUP_HOURS ? `har ${BACKUP_HOURS} soatda, oxirgi ${BACKUP_KEEP} tasi → ${BACKUP_DIR}` : "o'chirilgan (BACKUP_HOURS=0)"}`);
   console.log(`  Eslatma:  Web Push yoqilgan (aloqa: ${PUSH_CONTACT})`);

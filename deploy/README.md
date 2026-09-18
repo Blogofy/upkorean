@@ -59,7 +59,14 @@ PORT=3000
 APP_URL=https://upkorean.uz
 NODE_ENV=production
 TRUST_PROXY=1
-# Keyin kerak bo'lsa: GOOGLE_CLIENT_ID, SMTP_*, MAIL_FROM, ANTHROPIC_API_KEY (.env.example ga qarang).
+# SMTP majburiy: `NODE_ENV=production` da SMTP_HOST bo'lmasa server ishga tushmaydi (parolni tiklash
+# havolasini yuborib bo'lmaydi — u hech qachon logga yozilmaydi).
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_USER=<gmail manzil>
+SMTP_PASS=<16 harfli ilova paroli>
+MAIL_FROM="UpKorean <gmail manzil>"
+# Keyin kerak bo'lsa: GOOGLE_CLIENT_ID, ANTHROPIC_API_KEY (.env.example ga qarang).
 # O'zgartirgach: systemctl restart upkorean
 ```
 
