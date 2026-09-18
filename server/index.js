@@ -24,7 +24,6 @@ const PROD = process.env.NODE_ENV === "production";
 // Development conveniences are opt-in (`npm run dev`), so a server started without NODE_ENV is still safe.
 const DEV = !PROD && process.argv.includes("--dev");
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
-const TUTOR_COMING_SOON = true;
 const DEMO = process.env.DEMO ? process.env.DEMO === "1" : DEV;
 const AUDIO_DIR = path.resolve("audio");
 // Narrator clips: audio/words/<id>.mp3 = word, audio/sentences/<id>.mp3 = example sentence.
@@ -103,7 +102,6 @@ const authLimit = rateLimit({ windowMs: 10 * 60000, max: 60, key: (req) => req.i
 const loginFailures = counter({ windowMs: 15 * 60000, max: 10 });
 const loginKey = (req, email) => `${email} ${req.ip}`;
 const resetRequests = counter({ windowMs: 15 * 60000, max: 3 });
-const tutorLimit = rateLimit({ windowMs: 10 * 60000, max: 40, key: (req) => `t${req.user.id}` });
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const str = (v) => (typeof v === "string" ? v : "");
@@ -115,9 +113,11 @@ const isLocalRequest = (req) => ["127.0.0.1", "::1", "::ffff:127.0.0.1"].include
 const noDemo = (req, res, next) => (isDemo(req.user) ? res.status(403).json({ error: "Demo hisobda bu amal o'chirilgan" }) : next());
 
 // ---------- Config ----------
+// `tutor` and `tutorComingSoon` are both false and stay in the payload on purpose: a browser still running
+// a cached copy of the old front-end reads this object, and a missing key is not the same as a false one.
 api.get("/config", (req, res) => {
   res.setHeader("Cache-Control", "no-store");
-  res.json({ google: GOOGLE_CLIENT_ID || null, tutor: false, tutorComingSoon: TUTOR_COMING_SOON, demo: DEMO, clips: HAS_CLIPS, mail: mailEnabled(), push: PUSH_PUBLIC_KEY });
+  res.json({ google: GOOGLE_CLIENT_ID || null, tutor: false, tutorComingSoon: false, demo: DEMO, clips: HAS_CLIPS, mail: mailEnabled(), push: PUSH_PUBLIC_KEY });
 });
 
 // ---------- Auth ----------
@@ -417,9 +417,11 @@ api.post("/push/test", requireAuth, noDemo, pushTestLimit, async (req, res) => {
 });
 
 // ---------- AI tutor ----------
-api.post("/tutor", requireAuth, tutorLimit, async (req, res, next) => {
-  res.status(503).json({ error: "AI Tutor tez kunda ishga tushadi", comingSoon: true });
-});
+// Switched off end to end. There used to be a POST /tutor here that only ever answered 503, a client module
+// (public/js/tutor.js) nothing routed to, and a "tez kunda" button on the day-done screen — a flagship
+// feature that had been about to ship for long enough to read as abandonment.
+// server/tutor.js — the Claude call, its response schema and the prompt — is kept and is the part worth
+// keeping; deploy/README.md ("AI ustozni qaytarish") lists what to restore to turn the feature on.
 
 api.use((req, res) => res.status(404).json({ error: "Topilmadi" }));
 api.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
@@ -431,8 +433,9 @@ api.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
 
 app.use("/api", api);
 
-// The service worker caches the app shell under a version name. The name is a fingerprint of the files in
-// public/, so every deploy that changes a file makes browsers fetch the new shell — no manual version bumps.
+// The service worker caches the app shell under a version name, and index.html stamps the same id onto every
+// script and stylesheet URL. The id is a fingerprint of the files in public/, so every deploy that changes a
+// file makes browsers fetch the new shell and the new assets — no manual version bumps, no build step.
 function publicFingerprint() {
   const hash = crypto.createHash("sha1");
   const walk = (dir) => {
@@ -445,12 +448,34 @@ function publicFingerprint() {
   walk(PUBLIC_DIR);
   return hash.digest("hex").slice(0, 12);
 }
-app.get("/sw.js", (req, res) => {
-  const src = fs.readFileSync(path.join(PUBLIC_DIR, "sw.js"), "utf8").replaceAll("__BUILD__", publicFingerprint());
+// Walked once, at startup, instead of on every /sw.js request. `npm run dev` edits public/ without
+// restarting, so there the walk is repeated per request and nothing is cached for long.
+const BUILD = publicFingerprint();
+const buildId = () => (DEV ? publicFingerprint() : BUILD);
+
+// index.html and sw.js carry __BUILD__ placeholders, so they are rendered rather than served from disk, and
+// they must never be cached hard: they are what tells a browser that everything else has changed.
+const stamped = (file, type) => (req, res) => {
   res.setHeader("Cache-Control", "no-cache");
-  res.type("application/javascript").send(src);
-});
-app.use(express.static(PUBLIC_DIR, { extensions: ["html"] }));
+  res.type(type).send(fs.readFileSync(path.join(PUBLIC_DIR, file), "utf8").replaceAll("__BUILD__", buildId()));
+};
+app.get("/sw.js", stamped("sw.js", "application/javascript"));
+app.get(["/", "/index.html"], stamped("index.html", "html"));
+
+const YEAR = 31536000;
+app.use(express.static(PUBLIC_DIR, {
+  extensions: ["html"],
+  index: false, // "/" is rendered above
+  setHeaders(res, filePath) {
+    // A year of immutable caching is only safe for a URL that changes when the file does — that is, one
+    // carrying this build's id. The same file asked for without it (an old cached page, a hand-typed URL)
+    // gets a short cache and a revalidation instead.
+    const versioned = !DEV && res.req && res.req.query && res.req.query.v === BUILD;
+    if (DEV || /\.html$/i.test(filePath)) res.setHeader("Cache-Control", "no-cache");
+    else if (/\.(?:js|css|woff2?)$/i.test(filePath)) res.setHeader("Cache-Control", versioned ? `public, max-age=${YEAR}, immutable` : "public, max-age=300");
+    else res.setHeader("Cache-Control", "public, max-age=86400"); // icons, manifest — small, and named for their content
+  },
+}));
 
 q.purgeSessions.run(Date.now());
 q.purgeResets.run(Date.now());
@@ -482,7 +507,7 @@ if (PROD && !mailEnabled()) {
 
 app.listen(PORT, () => {
   console.log(`UpKorean → ${APP_URL}`);
-  console.log(`  AI tutor: tez kunda (vaqtincha qulflangan${tutorEnabled() ? ", server tayyor" : ""})`);
+  console.log(`  AI ustoz: o'chirilgan — ilovada kirish nuqtasi yo'q${tutorEnabled() ? " (server tarafi tayyor: ANTHROPIC_API_KEY topildi)" : ""}`);
   console.log(`  Google:   ${GOOGLE_CLIENT_ID ? "yoqilgan" : "o'chirilgan (GOOGLE_CLIENT_ID yo'q)"}`);
   console.log(`  Email:    ${mailEnabled() ? "yoqilgan (SMTP)" : `o'chirilgan — parolni tiklash havolasi yuborilmaydi${DEV ? ", faqat shu kompyuterdagi brauzerga ko'rsatiladi" : ""} (SMTP_HOST yo'q)`}`);
   console.log(`  Audio:    diktor bo'laklari ${WORD_CLIPS}/1000 so'z, ${SENTENCE_CLIPS}/1000 gap`);

@@ -1,9 +1,11 @@
 // The server fills in the build fingerprint of public/ below, so each deploy gets a fresh shell cache.
 const VERSION = "upkorean-__BUILD__";
+// The three corpus files stay in the shell even though index.html no longer loads them: S.loadCorpus()
+// asks for them after sign-in, and offline they have to come from here.
 const SHELL = [
   "/", "/index.html", "/manifest.webmanifest", "/icon.svg", "/icon-192.png", "/badge-72.png", "/css/styles.css",
   "/js/vocab.js", "/js/examples.js", "/js/roots.js", "/js/util.js", "/js/sync.js", "/js/store.js", "/js/push.js", "/js/exercise.js",
-  "/js/views-auth.js", "/js/tutor.js", "/js/views.js", "/js/app.js"
+  "/js/views-auth.js", "/js/views.js", "/js/app.js"
 ];
 
 self.addEventListener("install", (event) => {
@@ -39,7 +41,10 @@ self.addEventListener("fetch", (event) => {
   // Only the versioned app shell is served from the cache. API calls and narrator audio (which needs the
   // account's session and range requests) always go to the network and use normal HTTP caching.
   if (!SHELL.includes(url.pathname)) return;
-  event.respondWith(caches.match(req).then((cached) => cached || fetch(req)));
+  // The page asks for "/js/store.js?v=<build>" while the shell was cached under the bare path, so the
+  // build id is ignored when matching. It is not lost: it is this cache's name, and a new build empties
+  // the old cache in activate.
+  event.respondWith(caches.match(req, { ignoreSearch: true }).then((cached) => cached || fetch(req)));
 });
 
 // ---------- Reminders (Web Push) ----------

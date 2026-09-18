@@ -361,7 +361,6 @@
       <div class="row wrap" style="justify-content:center;gap:12px">
         ${weak.length ? `<button class="btn btn-p" data-act="quiz-ids" data-ids="${weak.map((w) => w.id).join(",")}">${weak.length} zaif so'zni mashq qilish</button>`
           : d < S.DAYS ? `<a class="btn btn-p" href="#/day/${d + 1}">${d + 1}-kunga o'tish</a>` : ""}
-        <a class="btn btn-sec" href="#/tutor">AI ustoz · tez kunda</a>
         <a class="btn btn-ghost" href="#/dashboard">Bosh sahifa</a>
       </div></div></div></div>`;
   };
@@ -609,7 +608,7 @@
           <div style="font-size:32px;font-weight:800;letter-spacing:-.035em;line-height:1;margin-bottom:5px">${U.durText(total)}</div>
           <div class="muted" style="font-size:13px;margin-bottom:18px">jami · kuniga o'rtacha ${days ? Math.round(total / days) : 0} daq</div>
           <div class="sep" style="margin-bottom:16px"></div>
-          <div class="stack" style="gap:9px">${[["O'rganish", "learn"], ["Takrorlash", "review"], ["Mashqlar", "quiz"], ["AI ustoz", "tutor"]].map(([l, k]) => `<div class="row between"><span class="muted" style="font-size:13px">${l}</span><span class="mono" style="font-size:13px">${U.durText(S.minutesBy(k))}</span></div>`).join("")}</div>
+          <div class="stack" style="gap:9px">${[["O'rganish", "learn"], ["Takrorlash", "review"], ["Mashqlar", "quiz"]].map(([l, k]) => `<div class="row between"><span class="muted" style="font-size:13px">${l}</span><span class="mono" style="font-size:13px">${U.durText(S.minutesBy(k))}</span></div>`).join("")}</div>
         </div>
         <div class="card" style="padding:20px 22px"><div style="font-size:13px;font-weight:700;margin-bottom:10px">Tavsiya</div><p class="muted" style="margin:0;font-size:13px;line-height:1.55">${esc(tip)}</p></div>
       </div></div>`;

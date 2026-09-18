@@ -3,17 +3,61 @@
   const U = window.U;
 
   // ---------- Static course data ----------
+  // js/vocab.js, js/examples.js and js/roots.js are 383 KB of course data that the sign-in screens do not
+  // need, so index.html no longer carries them: S.loadCorpus() fetches them once, after sign-in and before
+  // any screen reads a word (S.loadProgress and S.demo await it). Everything below is filled in place, so
+  // the arrays and maps the helpers in this file close over stay the same objects either way.
   const WORDS = [];
-  window.UK_VOCAB.forEach((list, di) => list.forEach(([ko, uz], i) => WORDS.push({ id: `${di + 1}-${i}`, day: di + 1, i, ko, uz })));
-  const BY_ID = Object.fromEntries(WORDS.map((w) => [w.id, w]));
-  const DAYS = window.UK_VOCAB.length;
-  const DAY_WORDS = Array.from({ length: DAYS }, (_, d) => WORDS.filter((w) => w.day === d + 1));
+  const BY_ID = {};
+  const DAY_WORDS = [];
   // One book sentence per word, keyed by word id so repeated words (e.g. 위험하다 on Day 6 and 25) keep their own sentence.
-  const EXAMPLES = Object.fromEntries((window.UK_EXAMPLES || []).map((e) => [e.id, e]));
+  const EXAMPLES = {};
   // How each word is built (js/roots.js), and every word that contains a given hanja.
-  const ROOTS = window.UK_ROOTS || {};
+  const ROOTS = {};
   const HANJA_WORDS = new Map();
-  for (const [id, r] of Object.entries(ROOTS)) for (const p of r.parts || []) if (p.h) HANJA_WORDS.set(p.h, [...(HANJA_WORDS.get(p.h) || []), id]);
+  let DAYS = 0;
+
+  function buildCorpus() {
+    if (DAYS || !window.UK_VOCAB) return;
+    window.UK_VOCAB.forEach((list, di) => list.forEach(([ko, uz], i) => WORDS.push({ id: `${di + 1}-${i}`, day: di + 1, i, ko, uz })));
+    for (const w of WORDS) BY_ID[w.id] = w;
+    DAYS = window.UK_VOCAB.length;
+    for (let d = 1; d <= DAYS; d++) DAY_WORDS.push(WORDS.filter((w) => w.day === d));
+    for (const e of window.UK_EXAMPLES || []) EXAMPLES[e.id] = e;
+    Object.assign(ROOTS, window.UK_ROOTS || {});
+    for (const [id, r] of Object.entries(ROOTS)) for (const p of r.parts || []) if (p.h) HANJA_WORDS.set(p.h, [...(HANJA_WORDS.get(p.h) || []), id]);
+  }
+
+  // The build id this file was served with ("?v=…"), taken off its own <script src> so the corpus is
+  // fetched from the same immutably cached URLs as the rest of the payload.
+  let VER = "";
+  try { VER = new URL(document.currentScript.src).search; } catch { /* not served from a <script src> */ }
+  const CORPUS = ["/js/vocab.js", "/js/examples.js", "/js/roots.js"];
+
+  function addScript(src) {
+    return new Promise((resolve, reject) => {
+      const el = document.createElement("script");
+      el.src = src;
+      el.async = false; // keep them in list order, in case one ever reads another
+      el.onload = resolve;
+      el.onerror = () => reject(new Error("Kurs ma'lumotlarini yuklab bo'lmadi. Internetni tekshirib, qayta urining."));
+      document.head.appendChild(el);
+    });
+  }
+  let corpusLoad = null;
+  // Offline this is served by the service worker, which caches all three in its app shell. A failure clears
+  // the memo, so the boot screen's "Qayta urinish" (or the next sign-in) really does try again.
+  const loadCorpus = () => {
+    if (DAYS) return Promise.resolve();
+    if (!corpusLoad) {
+      corpusLoad = Promise.all(CORPUS.map((p) => addScript(p + VER)))
+        .then(buildCorpus)
+        .catch((e) => { corpusLoad = null; throw e; });
+    }
+    return corpusLoad;
+  };
+  // A page that already carries the corpus (the content validator, the node test harnesses) needs no fetch.
+  buildCorpus();
 
   // Review ladder: a new word comes back after 1, 3, 7, 16, 35 days (cumulative).
   const INTERVALS = [1, 2, 4, 9, 19, 40];
@@ -61,7 +105,15 @@
     };
   }
 
-  const S = { WORDS, BY_ID, DAYS, DAY_WORDS, EXAMPLES, INTERVALS, MASTER_STEP, PACES, EX_TYPES, TYPE_NAMES, TOTAL: WORDS.length, state: null, user: null, config: {}, syncError: false, offline: !navigator.onLine };
+  // DAYS and TOTAL are counts, not references, so they are read through getters: until loadCorpus() has run
+  // they are 0, and every screen that shows them is behind sign-in, which awaits it.
+  const S = {
+    WORDS, BY_ID, DAY_WORDS, EXAMPLES, INTERVALS, MASTER_STEP, PACES, EX_TYPES, TYPE_NAMES,
+    get DAYS() { return DAYS; },
+    get TOTAL() { return WORDS.length; },
+    state: null, user: null, config: {}, syncError: false, offline: !navigator.onLine,
+  };
+  S.loadCorpus = loadCorpus;
 
   // ---------- Server API ----------
   async function api(method, path, body) {
@@ -117,7 +169,10 @@
   const MERGED = "Boshqa qurilmadagi progress bilan birlashtirildi";
 
   // Load progress from the server and reconcile it with this device's unsynced copy, if any.
+  // This is the one door every sign-in goes through (boot, the login/register forms, Google, a reset link),
+  // so it is where the course data is pulled in: nothing below here is meaningful without it.
   S.loadProgress = async () => {
+    await loadCorpus();
     const cache = LS.get(cacheKey(), null);
     const saved = LS.get(baseKey(), null);
     const sentRev = LS.get(sendingKey(), null);
@@ -272,6 +327,9 @@
   S.demo = async () => {
     const r = await api("POST", "/auth/demo", {});
     S.user = r.user;
+    // The only sign-in that builds its state here instead of through S.loadProgress, so it asks for the
+    // course data itself: buildDemoState reads DAY_WORDS.
+    await loadCorpus();
     // The server just cleared the demo progress, so any copy a previous visitor left here is stale.
     forgetLocal(); S.state = S.buildDemoState(); S.newDay(); S.save(); await S.flush();
   };
@@ -301,7 +359,6 @@
     S.user = null; S.state = null;
   };
   S.leaderboard = () => api("GET", `/leaderboard?tz=${tzOffset()}`);
-  S.tutor = (payload) => api("POST", "/tutor", payload);
 
   // Theme preference: "system" (follow the device), "light" or "dark".
   const darkQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
@@ -617,7 +674,10 @@
   };
 
   // ---------- Achievements ----------
-  const ACH = [
+  // Built on first use, not at load: two of the titles below spell out the course size, which is only known
+  // once loadCorpus() has run.
+  let ACH = null;
+  const achList = () => (ACH = ACH || [
     { id: "first", g: "첫", t: "Birinchi qadam", d: "1-kun tugatildi", ok: () => S.dayState(1).done, p: () => `${S.dayLearned(1)} / ${DAY_WORDS[0].length}` },
     { id: "s3", g: "삼", t: "3 kunlik seriya", d: "3 kun ketma-ket", ok: () => S.state.bestStreak >= 3, p: () => `${S.streak()} / 3` },
     { id: "s10", g: "십", t: "10 kunlik seriya", d: "10 kun ketma-ket", ok: () => S.state.bestStreak >= 10, p: () => `${S.streak()} / 10` },
@@ -633,10 +693,10 @@
     { id: "ear", g: "귀", t: "Yaxshi quloq", d: "Tinglash 90%+ (20+ javob)", ok: () => { const s = S.state.typeStats.listen; return s.ok + s.bad >= 20 && S.typeAccuracy("listen") >= 90; }, p: () => `${S.typeAccuracy("listen") ?? 0}%` },
     { id: "hand", g: "손", t: "Hangul yozuvchi", d: "Yozishda 50 to'g'ri", ok: () => S.state.typeStats.type.ok >= 50, p: () => `${S.state.typeStats.type.ok} / 50` },
     { id: "grad", g: "졸업", t: "Kurs tamom", d: `${DAYS} kun tugatildi`, ok: () => S.daysDone() >= DAYS, p: () => `${S.daysDone()} / ${DAYS} kun` },
-  ];
+  ]);
   S.achievements = () => {
     let changed = false;
-    const list = ACH.map((a) => {
+    const list = achList().map((a) => {
       const done = !!S.state.achievements[a.id] || a.ok();
       if (done && !S.state.achievements[a.id]) { S.state.achievements[a.id] = U.today(); changed = true; S.log(`Yutuq ochildi — ${a.t}`, "pd"); }
       return { ...a, done, when: S.state.achievements[a.id], prog: done ? null : a.p() };
@@ -651,7 +711,7 @@
     const t = U.today();
     for (let i = 12; i >= 1; i--) {
       const k = U.addDays(t, -i);
-      st.act[k] = { learned: 0, reviewed: 8 + ((i * 7) % 17), xp: 90 + ((i * 13) % 60), min: { learn: 6 + (i % 5) * 3, review: 7 + (i % 4) * 2, quiz: 3 + (i % 3) * 2, tutor: i % 4 === 0 ? 12 : 0 } };
+      st.act[k] = { learned: 0, reviewed: 8 + ((i * 7) % 17), xp: 90 + ((i * 13) % 60), min: { learn: 6 + (i % 5) * 3, review: 7 + (i % 4) * 2, quiz: 3 + (i % 3) * 2, tutor: 0 } };
     }
     const weak = { "1-18": 3, "2-20": 2, "3-0": 2, "4-25": 2, "1-21": 2, "2-2": 2, "3-19": 3, "4-9": 2, "2-16": 2 };
     for (let d = 1; d <= 4; d++) {
@@ -682,7 +742,7 @@
     st.log = [
       { t: Date.now() - 86400000 * 1, text: "4-kun tugatildi — 33 so'z", kind: "ok" },
       { t: Date.now() - 86400000 * 1 - 3600000, text: "Takrorlash — 28/31 to'g'ri", kind: "p" },
-      { t: Date.now() - 86400000 * 2, text: "AI ustoz bilan 12 daqiqa suhbat", kind: "pd" },
+      { t: Date.now() - 86400000 * 2, text: "3-kun tugatildi — 33 so'z", kind: "ok" },
     ];
     return st;
   };

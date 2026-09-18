@@ -6,7 +6,6 @@
   const S = window.S;
   const V = window.V;
   const X = window.X;
-  const T = window.T;
   const Actions = (window.Actions = window.Actions || {});
   const Forms = (window.Forms = window.Forms || {});
   const Changes = (window.Changes = window.Changes || {});
@@ -16,7 +15,7 @@
   const TITLES = {
     dashboard: "Bosh sahifa", course: "Kurs", review: "Takrorlash",
     quiz: "Mashqlar", progress: "Natijalar", library: "So'zlar bazasi",
-    achievements: "Yutuqlar", profile: "Profil", tutor: "AI ustoz",
+    achievements: "Yutuqlar", profile: "Profil",
     login: "Kirish", register: "Ro‘yxatdan o‘tish",
   };
 
@@ -110,7 +109,6 @@
       else if (r.name === "library") html = V.library();
       else if (r.name === "achievements") html = V.achievements();
       else if (r.name === "profile") html = V.profile();
-      else if (r.name === "tutor") html = V.tutorStart();
       else if (r.name === "session") {
         if (!X.session) {
           App.go(S.state.profile.onboarded ? "#/dashboard" : "#/onboarding/1");
@@ -233,11 +231,6 @@
   document.addEventListener("input", (event) => {
     const el = event.target.closest("[data-input]");
     if (el && Inputs[el.dataset.input]) Inputs[el.dataset.input](el, event);
-    const input = event.target;
-    if (input.id === "chat-input") {
-      input.style.height = "auto";
-      input.style.height = `${Math.min(input.scrollHeight, 160)}px`;
-    }
   });
 
   document.addEventListener("keydown", (event) => {
@@ -246,14 +239,13 @@
     if (event.key === "Escape" && U.modalOpen()) { U.closeModal(); return; }
     const r = route();
     if (r.name === "session") X.onKey(event);
-    else if (r.name === "tutor" && r.args[0] === "chat") T.onKey(event);
     else if (r.name === "onboarding") V.onboardingKey(event, Math.max(1, Math.min(V.OB_STEPS, Number(r.args[0]) || 1)));
   });
 
   // A new deploy activates its service worker while this page still runs the old scripts. Switch to the new
-  // version on the next navigation — never in the middle of an exercise, onboarding or tutor chat.
+  // version on the next navigation — never in the middle of an exercise or onboarding.
   let updateReady = false;
-  const MID_TASK = ["session", "complete", "onboarding", "tutor"];
+  const MID_TASK = ["session", "complete", "onboarding"];
   if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
     navigator.serviceWorker.addEventListener("controllerchange", () => { updateReady = true; });
   }
@@ -283,6 +275,18 @@
     S.flush().then(() => { if (S.user) U.toast("Internet qaytdi — progress sinxronlandi"); App.render(); });
   });
   window.addEventListener("offline", () => { S.offline = true; if (S.user) { U.toast("Offline rejim"); App.render(); } });
+
+  // index.html asks for the Google Fonts stylesheet as media="print" so it cannot block the first paint —
+  // it is 395 KB (94 KB gzip) of @font-face rules, most of them Noto Sans KR's Korean ranges. It is switched
+  // on only once it has arrived: flipping the media while it is still in flight would make it block again,
+  // which on a slow connection is worse than not deferring it at all. The URL carries display=swap, so text
+  // is drawn in the fallback face from the first paint either way.
+  const fontCss = document.getElementById("font-css");
+  if (fontCss) {
+    const useFonts = () => { fontCss.media = "all"; };
+    if (fontCss.sheet) useFonts(); // already loaded while the scripts were parsing
+    else fontCss.addEventListener("load", useFonts, { once: true });
+  }
 
   S.applyTheme(S.savedTheme());
   if (["login", "register", "reset"].includes(route().name)) S.forceLight(true);

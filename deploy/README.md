@@ -55,6 +55,94 @@ serverdagi ortiqcha fayllarni o'chirmaydi.
 kompyuterda va serverda turibdi. Ikkalasining birortasi yo'qolsa qayta yozdirish kerak bo'ladi —
 uchinchi nusxasini tashqi diskda yoki bulutda saqlang.
 
+## Asset kesh (build id)
+
+Loyihada build step yo'q, shuning uchun fayl nomlarida content-hash ham yo'q. Uning o'rniga server
+ishga tushganda `public/` ni bir marta yurib chiqib **build id** hisoblaydi (`publicFingerprint()`,
+`server/index.js`) va uni ikki joyga qo'yadi:
+
+- `sw.js` dagi `VERSION` — service worker keshining nomi;
+- `index.html` dagi har bir `<script src>` va `<link href>` oxiridagi `?v=…`.
+
+Shu sababli kesh sarlavhalari quyidagicha:
+
+| Nima | `Cache-Control` |
+| --- | --- |
+| `/` va `/index.html` | `no-cache` — har tashrifda tekshiriladi, aks holda deploy hech kimga yetib bormaydi |
+| `/sw.js` | `no-cache` |
+| `?v=<build>` bilan so'ralgan `.js` / `.css` / `.woff2` | `public, max-age=31536000, immutable` |
+| `?v=` siz (yoki eski `v=`) so'ralgan o'sha fayl | `public, max-age=300` |
+| `.png`, `.svg`, `.webmanifest` | `public, max-age=86400` |
+| `/media/clip/...` (diktor mp3) | `private, max-age=604800` |
+
+**Muhim:** bir yillik `immutable` faqat URL'da shu deploy'ning build id'si bo'lsa beriladi. Fayl
+nomi o'zgarmagani uchun id'siz so'rovga uzoq kesh berish xavfli bo'lardi — eski sahifa yangilanmay
+qolardi. `npm run dev` da build id har so'rovda qayta hisoblanadi va uzoq kesh umuman berilmaydi,
+shuning uchun `public/` ni tahrirlab, sahifani yangilash kifoya.
+
+Deploy'dan keyin tekshirish:
+
+```sh
+curl -sI https://upkorean.uz/ | grep -i cache-control              # no-cache
+curl -s  https://upkorean.uz/ | grep -o 'v=[0-9a-f]\{12\}' | head -1
+curl -sI "https://upkorean.uz/js/views.js?v=<yuqoridagi id>" | grep -i cache-control   # immutable
+```
+
+### Keyingi qadam — fontlarni o'zida hosting qilish
+
+Hozir to'rt oila Google Fonts'dan olinadi va to'rttasi ham ishlatiladi (`Fraunces` → sarlavhalar,
+`Plus Jakarta Sans` → asosiy matn, `JetBrains Mono` → raqam/teg, `Noto Sans KR` → koreyscha).
+O'lchangan: o'sha bitta stylesheet **394 795 bayt (gzip 93 974)** va 537 ta `@font-face` qoidasi,
+shundan **496 tasi Noto Sans KR** (4 ta og'irlik × ~124 unicode-range bo'lagi).
+
+U endi `media="print"` bilan so'raladi va `app.js` uni yuklab bo'lgandan keyin yoqadi, ya'ni
+birinchi chizishni bloklamaydi. Qolgan ikki yaxshilanish fayl tayyorlashni talab qiladi, shuning
+uchun keyinga qoldirildi:
+
+1. **Kerak bo'lmagan og'irlikni olib tashlash.** Noto Sans KR 900 faqat dekorativ vodiy belgisida
+   (`.hero .wm`, `.auth-wm`) ishlatiladi. Uni 700 ga o'tkazib, URL'dan `900` ni olib tashlash
+   stylesheet'ni **283 215 baytga (gzip 69 720)** tushiradi — 23 KB gzip tejov.
+   (400 — oddiy matn, 500 — `.example .s` / `.cloze .s`, 700 — so'z sarlavhalari; uchalasi kerak.)
+2. **O'zida hosting + subset.** Kursda ~1000 so'z va ularning gaplari bor, ya'ni koreyscha glif
+   to'plami cheklangan. `pyftsubset` bilan faqat shu gliflarga qisqartirilgan bitta `.woff2`
+   (og'irlik boshiga ~30–60 KB) 496 ta `@font-face` ni **4 tasiga** tushiradi va uchinchi tomon
+   ulanishini (DNS + TLS) butunlay yo'q qiladi. Buning uchun font fayllarini generatsiya qilish
+   kerak — bu repoda build step yo'q, shuning uchun fayllar qo'lda tayyorlanib `public/fonts/` ga
+   qo'yiladi, `styles.css` ga `@font-face` (`font-display: swap`) yoziladi va `index.html` dagi
+   Google Fonts havolasi bilan CSP'dagi `fonts.googleapis.com` / `fonts.gstatic.com` olib tashlanadi.
+
+## AI ustozni qaytarish
+
+Funksiya **butunlay o'chirilgan**: mijoz tarafi payload'da yo'q, `#/tutor` route'i yo'q, kirish
+nuqtalari olib tashlangan (audit M7 va 8.3 — doimiy "tez kunda" tugmasi mahsulot va'dalarini
+shartli qilib ko'rsatadi). **Server tarafi saqlangan:** `server/tutor.js` — Claude chaqiruvi,
+javob sxemasi va prompt — o'z holicha turibdi va `ANTHROPIC_API_KEY` bilan ishlaydi.
+
+Yoqish uchun:
+
+1. `git show 4a243e9:public/js/tutor.js > public/js/tutor.js` — mijoz ekranlari (start + chat).
+2. **Avval `highlight()` ni tuzating** (o'sha fayl, ~202-209-qatorlar). U placeholder sifatida
+   yalang'och butun sondan foydalanadi, ya'ni javobdagi **har qanday raqam** placeholder deb
+   o'qiladi:
+   `highlight("하루에 30분 공부해요", {words:[{id:"1-0",ko:"공부하다"},{id:"1-1",ko:"시간"}]})` →
+   `TypeError: Cannot destructure property 'w' of 'found[i]'`. Qo'shni placeholder'lar ham
+   birikib ketadi (`"1"+"2"` → `12`). Raqamsiz sentinel kerak (masalan `U+0000 <i> U+0000`).
+3. `index.html` ga `<script src="/js/tutor.js?v=__BUILD__">` (views.js dan **oldin**) va
+   `public/sw.js` dagi `SHELL` ro'yxatiga `"/js/tutor.js"` qo'shing.
+4. `public/js/app.js`: `const T = window.T`, `TITLES.tutor`, `#/tutor` → `V.tutorStart()` tarmog'i,
+   `keydown` da `T.onKey`, `MID_TASK` ga `"tutor"`, va `#chat-input` balandligini moslashtiruvchi
+   `input` handler'i — hammasi shu commit'da olib tashlangan, `git show` bilan qaytariladi.
+5. `public/js/store.js`: `S.tutor = (payload) => api("POST", "/tutor", payload);`.
+6. `server/index.js`: `tutorLimit` va `POST /api/tutor` route'i (endi `tutorReply` ni haqiqatdan
+   chaqirsin — ilgari u faqat 503 qaytarardi va `tutorReply` import ham qilinmagan edi), hamda
+   `/api/config` da `tutor: true`. **`/api/config` kalitlari o'zgarmasin** — eski keshdagi mijoz
+   shu obyektni o'qiydi.
+7. Kirish nuqtalari: `views.js` da kun tugash ekranidagi tugma va Natijalar sahifasidagi vaqt
+   taqsimotida "AI ustoz" qatori.
+
+Holat maydonlari (`state.tutor`, `act[...].min.tutor`) **o'chirilmagan** — `sync.js` ularni hamon
+merge qiladi, ya'ni eski qurilmalardagi progress buzilmaydi va qaytarganda joyida turadi.
+
 ## Birinchi o'rnatish (bajarilgan, 2026-09-16)
 
 ```sh

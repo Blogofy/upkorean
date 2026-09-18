@@ -11,8 +11,14 @@
   <title>UpKorean — TOPIK II</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600..800&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css">
+  <!-- media="print" keeps this third-party stylesheet out of the critical path: it is fetched at low priority
+       and does not hold up the first paint. It is 395 KB of @font-face rules, most of them Noto Sans KR's
+       Korean ranges. app.js switches it to media="all" once it has finished downloading; the <noscript> copy
+       covers a browser with JavaScript turned off. The inline onload the usual version of this trick uses is
+       blocked by this site's CSP (script-src 'self'), which is why the flip lives in app.js. -->
+  <link id="font-css" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600..800&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600..800&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
+  <link rel="stylesheet" href="/css/styles.css?v=__BUILD__">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23207F73'/%3E%3Cpath d='M18 17v18c0 9 5 13 14 13s14-4 14-13V17h-9v18c0 4-1 6-5 6s-5-2-5-6V17z' fill='white'/%3E%3C/svg%3E">
 </head>
@@ -29,17 +35,17 @@
   <div id="live" class="sr-only" role="status" aria-live="polite"></div>
 
   <noscript>UpKorean ishlashi uchun JavaScript yoqilgan bo‘lishi kerak.</noscript>
-  <script src="/js/vocab.js"></script>
-  <script src="/js/examples.js"></script>
-  <script src="/js/roots.js"></script>
-  <script src="/js/util.js"></script>
-  <script src="/js/sync.js"></script>
-  <script src="/js/store.js"></script>
-  <script src="/js/push.js"></script>
-  <script src="/js/exercise.js"></script>
-  <script src="/js/views-auth.js"></script>
-  <script src="/js/tutor.js"></script>
-  <script src="/js/views.js"></script>
-  <script src="/js/app.js"></script>
+  <!-- js/vocab.js, js/examples.js and js/roots.js are deliberately missing: 383 KB of course data that the
+       sign-in screens never touch. S.loadCorpus() (js/store.js) adds them after sign-in, before the first
+       screen that reads a word. ?v= is the build id the server stamps in; the same id names the service
+       worker's cache, so these URLs can be cached for a year and still change on every deploy. -->
+  <script src="/js/util.js?v=__BUILD__"></script>
+  <script src="/js/sync.js?v=__BUILD__"></script>
+  <script src="/js/store.js?v=__BUILD__"></script>
+  <script src="/js/push.js?v=__BUILD__"></script>
+  <script src="/js/exercise.js?v=__BUILD__"></script>
+  <script src="/js/views-auth.js?v=__BUILD__"></script>
+  <script src="/js/views.js?v=__BUILD__"></script>
+  <script src="/js/app.js?v=__BUILD__"></script>
 </body>
 </html>
