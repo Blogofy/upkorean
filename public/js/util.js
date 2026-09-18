@@ -165,30 +165,81 @@
     return true;
   };
 
+  // ---------- Live region ----------
+  // #app carried aria-live, and every render replaces all of it, so answering one question had assistive tech
+  // read the whole page again. The announcements live in #live (index.html) instead, outside the part that is
+  // replaced. Two mechanics decide whether a message is heard at all: writing the string that is already there
+  // is not a change, and clearing then writing in the same tick collapses into a single mutation. So the region
+  // is emptied now and filled a tick later, and an invisible trailing space alternates — two identical verdicts
+  // in a row are two different strings, and both are announced. Written as text, so never through U.esc.
+  let sayFlip = false, sayTimer = 0;
+  U.say = (msg) => {
+    const el = document.getElementById("live");
+    if (!el || !msg) return;
+    el.textContent = "";
+    clearTimeout(sayTimer);
+    sayFlip = !sayFlip;
+    sayTimer = setTimeout(() => { el.textContent = sayFlip ? String(msg) : `${msg}\u00a0`; }, 60);
+  };
+
   // ---------- Toast & modal ----------
   U.toast = (msg, ms = 2600) => {
     let wrap = document.querySelector(".toast-wrap");
-    // The wrapper stays in the page and is the live region, so every appended toast is announced.
-    if (!wrap) { wrap = document.createElement("div"); wrap.className = "toast-wrap"; wrap.setAttribute("role", "status"); wrap.setAttribute("aria-live", "polite"); document.body.appendChild(wrap); }
+    if (!wrap) { wrap = document.createElement("div"); wrap.className = "toast-wrap"; document.body.appendChild(wrap); }
     const t = document.createElement("div");
     t.className = "toast"; t.textContent = msg;
     wrap.appendChild(t);
+    // The wrapper used to be a live region of its own, but it is created together with the very first toast and
+    // a region that new is usually missed. One region for everything: keeping both would say each toast twice.
+    U.say(msg);
     setTimeout(() => t.remove(), ms);
   };
+
+  // What Tab may reach inside an open dialog, in document order.
+  const FOCUSABLE = "a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex='-1'])";
+  let modalReturn = null;
+  function trapTab(event, bg) {
+    const items = [...bg.querySelectorAll(FOCUSABLE)];
+    if (!items.length) { event.preventDefault(); return; }
+    const here = document.activeElement;
+    const gone = !here || !bg.contains(here);
+    const edge = event.shiftKey ? items[0] : items[items.length - 1];
+    if (!gone && here !== edge) return;
+    event.preventDefault();
+    (event.shiftKey ? items[items.length - 1] : items[0]).focus();
+  }
   U.modal = (title, bodyHtml, { wide = false, width = 0 } = {}) => {
-    U.closeModal();
+    U.closeModal(); // gives focus back to the opener of the dialog this one replaces, so the chain is unbroken
+    const opener = document.activeElement;
     const bg = document.createElement("div");
     bg.className = "modal-bg"; bg.id = "modal";
-    bg.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="${U.esc(title)}" style="${width ? `max-width:${width}px` : wide ? "max-width:720px" : ""}">
+    bg.innerHTML = `<div class="modal" role="dialog" aria-modal="true" tabindex="-1" aria-label="${U.esc(title)}" style="${width ? `max-width:${width}px` : wide ? "max-width:720px" : ""}">
       <div class="modal-h"><div class="modal-title" style="font-size:19px;font-weight:700;letter-spacing:-.01em">${U.esc(title)}</div>
       <button class="iconbtn" data-act="modal-close" aria-label="Yopish">✕</button></div>
       <div class="modal-b">${bodyHtml}</div></div>`;
     bg.addEventListener("mousedown", (e) => { if (e.target === bg) U.closeModal(); });
+    // aria-modal="true" promises the page behind is out of reach; without this Tab walked straight out of the
+    // dialog into the nav links and the quiz buttons underneath it.
+    bg.addEventListener("keydown", (e) => { if (e.key === "Tab") trapTab(e, bg); });
     document.body.appendChild(bg);
-    const f = bg.querySelector("[autofocus]"); if (f) f.focus();
+    document.body.classList.add("modal-lock"); // and the page behind must not scroll under the dialog either
+    modalReturn = opener && opener !== document.body ? opener : null;
+    const box = bg.querySelector(".modal");
+    (bg.querySelector("[autofocus]") || box.querySelector(FOCUSABLE) || box).focus();
     return bg;
   };
-  U.closeModal = () => { const m = document.getElementById("modal"); if (m) m.remove(); };
+  U.closeModal = () => {
+    const m = document.getElementById("modal");
+    if (m) m.remove();
+    document.body.classList.remove("modal-lock");
+    const back = modalReturn;
+    modalReturn = null;
+    // Escape used to leave focus on <body>, at the very start of the tab order. Hand it back to whatever opened
+    // the dialog — but only while that control is still in the page: the dialog's own action often re-renders or
+    // navigates away from the view underneath (ex-exit-force, ex-rest-stop, the delete form), and then the
+    // render owns where focus goes.
+    if (back && back.isConnected) back.focus();
+  };
 
   // ---------- Dropdown (styled replacement for <select>) ----------
   // U.dropdown({ change: "lib-sort", value, options: [[value, label], ...], label: "Saralash", block: true })

@@ -33,6 +33,21 @@
     return S.state.profile.onboarded ? "#/dashboard" : "#/onboarding/1";
   }
 
+  // What the live region says on arrival. A document.title change is not announced in many screen reader and
+  // browser pairs, so the page has to name itself; TITLES covers the fixed routes, these four carry a number.
+  function pageName(r) {
+    if (r.name === "day") return `${Number(r.args[0])}-kun`;
+    if (r.name === "complete") return `${Number(r.args[0])}-kun tugadi`;
+    if (r.name === "session") return "Sessiya boshlandi";
+    if (r.name === "onboarding") return `Sozlash, ${Math.max(1, Math.min(V.OB_STEPS, Number(r.args[0]) || 1))}-qadam`;
+    if (r.name === "reset") return "Yangi parol";
+    return TITLES[r.name] || "Sahifa topilmadi";
+  }
+  // App.render draws both a navigation and a redraw (an answer, a chip, a keystroke in the library search).
+  // Only a navigation may move the focus: the hash is what tells them apart, because every redraw leaves it
+  // where it was. Stealing focus on a redraw would make the search box impossible to type in.
+  let lastHash = null;
+
   const App = (window.App = {
     go(hash) {
       if (location.hash === hash) App.render();
@@ -104,10 +119,21 @@
         html = X.render();
       } else html = V.notFound();
 
+      const navigated = lastHash !== location.hash;
+      lastHash = location.hash;
       root.innerHTML = html;
       document.title = `${TITLES[r.name] || "UpKorean"} · UpKorean`;
       document.documentElement.lang = "uz";
-      window.scrollTo({ top: 0, behavior: "instant" });
+      if (navigated) {
+        // Only a new page starts at the top. This used to run on every render, so picking a chip, a day or a
+        // quiz setting threw the learner back to the top of a page they had scrolled down.
+        window.scrollTo({ top: 0, behavior: "instant" });
+        // The swap destroyed whatever had focus, so it fell back to <body> and the tab order started again at
+        // the browser chrome. Honour the page's own autofocus, else the heading; #app carries tabindex="-1" as
+        // the last resort, because the dashboard and the session have no heading of their own.
+        (root.querySelector("[autofocus]") || root.querySelector("h1, h2") || root).focus();
+        U.say(pageName(r));
+      }
 
       if (r.name === "login" || r.name === "register") V.mountGoogle();
       if (r.name === "session") X.afterRender();

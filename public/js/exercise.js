@@ -207,6 +207,10 @@
     S.save();
     if (!s.instant) { X.next(); return; }
     s.phase = "a";
+    // The page is no longer a live region, so the feedback below is a silent change: the verdict is the one
+    // thing that has to be spoken. Short — the screen carries the example sentence and the rest. A wrong answer
+    // names the right one, because the learner has no other way to hear it without hunting for the feedback.
+    U.say(correct ? "To'g'ri" : `Noto'g'ri — ${it.answer || S.word(it.id).ko}`);
     App.render();
   }
 
