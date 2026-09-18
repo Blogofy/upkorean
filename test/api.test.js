@@ -125,6 +125,34 @@ test("leaderboard: capped XP in the learner's own week, and only for practice th
   assert.ok(me.xp > 0 && me.xp <= 300, `xp ${me.xp}`);
 });
 
+// One account could fire unlimited saves at a synchronous SQLite write, park 2.5 MB of junk in its row and
+// invent top-level keys that nothing ever reads.
+test("progress: saves are rate limited, bounded in size and limited to the keys the app uses", async () => {
+  const TZ = -300;
+  const flood = await signedUp();
+  const codes = {};
+  for (let i = 0; i < 125; i++) {
+    const r = await flood("PUT", "/api/progress", { state: { xp: i }, tz: TZ });
+    codes[r.status] = (codes[r.status] || 0) + 1;
+  }
+  // 120 get through: record() saves on every answer, so the fastest honest session — an answer a second for
+  // a whole minute — must never meet the limit, let alone the "saqlanmadi" badge that follows it.
+  assert.deepEqual(codes, { 200: 120, 429: 5 });
+
+  const c = await signedUp();
+  // More than a finished course with a note on every word, three years of activity and a tutor chat can be.
+  const huge = { xp: 1, notes: { "1-0": "x".repeat(1_100_000) } };
+  assert.equal((await c("PUT", "/api/progress", { state: huge, baseAt: null, tz: TZ })).status, 413);
+  const saved = await c("PUT", "/api/progress", { state: { xp: 1 }, baseAt: null, tz: TZ });
+  assert.equal(saved.status, 200);
+  // A top-level key freshState() never creates is refused, and the rest of that batch is not stored either.
+  const junk = await c("PATCH", "/api/progress", { baseAt: saved.data.updatedAt, tz: TZ, changes: [{ p: ["xp"], v: 9 }, { p: ["junk"], v: "x" }] });
+  assert.equal(junk.status, 400);
+  const after = (await c("GET", "/api/progress")).data;
+  assert.deepEqual(after.state, { xp: 1 });
+  assert.equal(after.updatedAt, saved.data.updatedAt);
+});
+
 test("push: only real push services are accepted; demo cannot subscribe", async () => {
   const c = await signedUp();
   const keys = { p256dh: "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM", auth: "tBHItJI5svbpez7KI4CCXg" };

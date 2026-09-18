@@ -5,6 +5,12 @@
   // Maps whose entries change independently; they are diffed and merged one entry at a time.
   const MAPS = ["words", "days", "act", "notes", "achievements", "challengeDone"];
   const FORBIDDEN = new Set(["__proto__", "prototype", "constructor"]);
+  // Every top-level key freshState() (js/store.js) creates. A delta touching anything else is not something
+  // this app produces, so the server refuses the whole batch rather than storing keys it will never read.
+  const TOP = new Set([
+    "v", "profile", "settings", "words", "days", "act", "notes", "log", "xp", "bestStreak",
+    "typeStats", "firstTry", "quizResults", "reviewSessions", "tutor", "achievements", "challengeDone", "dueStart",
+  ]);
 
   const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -27,7 +33,7 @@
     return out;
   }
 
-  const validPath = (p) => Array.isArray(p) && (p.length === 1 || p.length === 2)
+  const validPath = (p) => Array.isArray(p) && (p.length === 1 || p.length === 2) && TOP.has(p[0])
     && p.every((k) => typeof k === "string" && k.length > 0 && k.length <= 64 && !FORBIDDEN.has(k));
 
   // Applies changes in place. Returns false (and applies nothing) if any change is malformed.

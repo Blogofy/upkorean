@@ -318,7 +318,10 @@ const progressConflict = (res, row) => res.status(409).json({
 function storeProgress(req, res, state, row) {
   if (!state || typeof state !== "object" || Array.isArray(state)) return res.status(400).json({ error: "Noto'g'ri ma'lumot" });
   const json = JSON.stringify(state);
-  if (json.length > 2_500_000) return res.status(413).json({ error: "Ma'lumot hajmi juda katta" });
+  // The largest progress a learner can reach is ~575 KB: all 1000 course words scheduled (~150 KB), a
+  // 140-character note on each (~150 KB), an activity entry and a finished challenge for every day of three
+  // years (~170 KB) and one full 80-message tutor conversation (~95 KB). Anything past 1 MB is not progress.
+  if (json.length > 1_000_000) return res.status(413).json({ error: "Ma'lumot hajmi juda katta" });
   // Strictly increasing, so two saves within one millisecond still get different versions.
   const now = Math.max(Date.now(), row ? row.updated_at + 1 : 0);
   const tz = tzOf(req.body.tz);
@@ -339,15 +342,21 @@ api.get("/progress", requireAuth, (req, res) => {
   res.json({ state: row ? JSON.parse(row.state) : null, updatedAt: row ? row.updated_at : null, rev: row ? row.rev : null });
 });
 
+// Every save parses the stored state and writes SQLite synchronously on the one event loop, so no account
+// gets to hammer it. The ceiling is set off the fastest honest session: record() saves on every answer and
+// the 700 ms debounce turns that into one request per answer, so a learner answering once a second reaches
+// 60 a minute. Double that leaves room for conflict retries without letting a loop through.
+const progressLimit = rateLimit({ windowMs: 60000, max: 120, key: (req) => `pg${req.user.id}` });
+
 // Whole progress. Without baseAt (older app versions) it simply overwrites.
-api.put("/progress", requireAuth, (req, res) => {
+api.put("/progress", requireAuth, progressLimit, (req, res) => {
   const row = q.getProgress.get(req.user.id);
   if ("baseAt" in req.body && (row ? row.updated_at : null) !== req.body.baseAt) return progressConflict(res, row);
   storeProgress(req, res, req.body.state, row);
 });
 
 // Only what changed since baseAt: { baseAt, changes: [{ p: ["words", "1-3"], v: {...} }, ...] }.
-api.patch("/progress", requireAuth, (req, res) => {
+api.patch("/progress", requireAuth, progressLimit, (req, res) => {
   const row = q.getProgress.get(req.user.id);
   if (!row || row.updated_at !== req.body.baseAt) return progressConflict(res, row);
   const state = JSON.parse(row.state);
