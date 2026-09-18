@@ -119,8 +119,101 @@ tail /www/wwwlogs/upkorean.uz-error_log
 
 ## Zaxira
 
-Ilova har 24 soatda `/opt/upkorean/data/backups/` ga nusxa oladi. Uni boshqa diskka ham ko'chirib turing:
+Ilova har 24 soatda `/opt/upkorean/data/backups/` ga nusxa oladi (`VACUUM INTO` — server ishlab
+turganda olinadigan butun nusxa) va oxirgi **14** tasini saqlaydi. Ular jonli baza bilan **bitta
+diskda** turibdi, ya'ni server yoki disk yo'qolsa zaxiralar ham u bilan ketadi.
+
+`vapid.json` ham o'sha papkada: u yo'qolsa server push uchun **yangi kalit** yaratadi va hamma
+brauzer eslatmalarni qaytadan yoqishi kerak bo'ladi (`server/push.js`, `loadKeys`).
+
+### Avtomatik tortish (`deploy/backup-offsite.ps1`)
+
+Skript shu kompyuterda ishlaydi va nusxalarni serverdan **o'zi tortib oladi** ("pull"). Serverda
+hech qanday yangi kalit saqlanmaydi: server sindirilsa ham bu nusxalarga undan yetib bo'lmaydi.
+Evaziga kompyuter o'chiq bo'lgan kun o'tkazib yuboriladi — bu ataylab qabul qilingan kelishuv.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File D:\UPKOREAN\deploy\backup-offsite.ps1
+```
+
+Nusxalar `%USERPROFILE%\UpKorean-zaxira\` ga tushadi; `-Destination` yoki `UPKOREAN_BACKUP_DIR`
+bilan boshqa joyga, masalan tashqi diskka yo'naltiriladi. Jurnal — o'sha papkadagi `pull.log`.
+
+- **Serverda rotatsiya qilingan fayllar bu yerda o'chirilmaydi** — serverning 14 talik oynasi
+  aynan shunday yengib o'tiladi.
+- **Saqlash qoidasi:** oxirgi 180 kunlik hamma nusxa qoladi; undan eskilaridan har oyning
+  birinchisi qoladi, qolgani o'chiriladi; eng yangi 14 tasi esa hech qachon o'chirilmaydi.
+- **Tekshiruv:** eng yangi zaxira **nomidagi** vaqt 48 soatdan eski bo'lsa yoki serverdagi eng
+  yangi fayl yetib kelmagan bo'lsa, skript xato bilan tugaydi. Nomdagi vaqt — serverning nusxa
+  olgan payti; fayl sanasiga qarab bo'lmaydi, chunki u faqat qachon ko'chirib olinganini
+  bildiradi (server bir oy oldin to'xtagan bo'lsa ham "bugungi" bo'lib ko'rinaveradi).
+
+| Kod | Ma'nosi |
+|---|---|
+| `0` | hammasi joyida |
+| `1` | sozlama xatosi (ssh/scp topilmadi, papka ochilmadi) |
+| `2` | serverga ulanib bo'lmadi yoki zaxira papkasi bo'sh |
+| `3` | ko'chirish tugallanmadi, fayl yetib kelmadi |
+| `4` | tekshiruv yiqildi: zaxira eskirgan yoki bitta ham nusxa yo'q |
+
+**Birinchi marta qo'lda ishga tushiring**: server kaliti `known_hosts` ga tushishi kerak. Skript
+`BatchMode=yes` bilan ishlaydi — parol yoki tasdiq so'ralsa u kutib turmay xato qaytaradi, shuning
+uchun rejalashtirilgan vazifa hech qachon osilib qolmaydi. Ya'ni ssh'ga kalit bilan kirish
+sozlangan bo'lishi shart.
+
+### Kunlik vazifa qilib qo'yish
+
+`cmd` da bir marta:
+
+```bat
+schtasks /Create /TN "UpKorean zaxira" /SC DAILY /ST 21:30 /RU "%USERNAME%" /IT /F /TR "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"D:\UPKOREAN\deploy\backup-offsite.ps1\""
+```
+
+`/IT` — vazifa faqat siz tizimga kirgan paytda ishlaydi, parol saqlanmaydi. O'tkazib yuborilgan
+kunni keyinroq quvib olish uchun:
+
+```powershell
+Set-ScheduledTask -TaskName "UpKorean zaxira" -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable)
+```
+
+Tekshirish: Task Scheduler'da **Last Run Result** `0x0` bo'lsin. Boshqa qiymat — yuqoridagi
+jadvaldagi kod, batafsili `pull.log` da.
+
+### Tiklash
+
+Kompyuterdan kerakli nusxani serverga yuklang:
+
+```powershell
+scp %USERPROFILE%\UpKorean-zaxira\upkorean-2026-09-17-19-04-49.db root@109.205.177.244:/tmp/restore.db
+```
+
+Keyin serverda:
 
 ```sh
-scp -r root@109.205.177.244:/opt/upkorean/data/backups ./server-backups
+systemctl stop upkorean
+cd /opt/upkorean/data
+cp upkorean.db upkorean.db.eski-$(date +%F)   # joriy holat ham qolsin
+mv /tmp/restore.db upkorean.db
+rm -f upkorean.db-wal upkorean.db-shm         # MUHIM, pastga qarang
+chown upkorean:upkorean upkorean.db
+systemctl start upkorean
+systemctl status upkorean
+journalctl -u upkorean -n 30 --no-pager
 ```
+
+`-wal` va `-shm` ni o'chirish shart: baza WAL rejimida ishlaydi (`PRAGMA journal_mode = WAL`),
+zaxira esa `VACUUM INTO` bilan olingan mustaqil fayl va uning o'z WAL'i yo'q. Eski WAL joyida
+qolsa SQLite uni yangi bazaga qo'llashga urinadi.
+
+Push kalitlarini tiklash (kerak bo'lsa):
+
+```powershell
+scp %USERPROFILE%\UpKorean-zaxira\vapid.json root@109.205.177.244:/opt/upkorean/data/vapid.json
+ssh root@109.205.177.244 "chown upkorean:upkorean /opt/upkorean/data/vapid.json && systemctl restart upkorean"
+```
+
+> **Tiklash qadamlari serverda hali sinalmagan — birinchi marta bajarishdan oldin tekshiring.**
+> Fayl egasi va huquqlarini yonidagi mavjud fayllar bilan solishtiring (`ls -l /opt/upkorean/data/`).
+> `sqlite3` o'rnatilgan bo'lsa, tiklashdan oldin nusxani sinab ko'ring:
+> `sqlite3 upkorean-....db "PRAGMA integrity_check;"` → `ok`.
+> Eng yaxshisi — bu yo'lni bir marta jonli bazada emas, sinov nusxasida o'tkazib ko'rish.
