@@ -208,11 +208,14 @@
     event.preventDefault();
     (event.shiftKey ? items[items.length - 1] : items[0]).focus();
   }
-  U.modal = (title, bodyHtml, { wide = false, width = 0 } = {}) => {
+  // "sheet" only moves the box to the bottom edge (.modal-bg.sheet) and leaves every mechanic below in place:
+  // a bottom sheet is this dialog in another shape, and a second one of these would be a second Tab trap to keep
+  // right. Everything that opens a dialog keeps working on it — Escape, the backdrop, hashchange in app.js.
+  U.modal = (title, bodyHtml, { wide = false, width = 0, sheet = false } = {}) => {
     U.closeModal(); // gives focus back to the opener of the dialog this one replaces, so the chain is unbroken
     const opener = document.activeElement;
     const bg = document.createElement("div");
-    bg.className = "modal-bg"; bg.id = "modal";
+    bg.className = sheet ? "modal-bg sheet" : "modal-bg"; bg.id = "modal";
     bg.innerHTML = `<div class="modal" role="dialog" aria-modal="true" tabindex="-1" aria-label="${U.esc(title)}" style="${width ? `max-width:${width}px` : wide ? "max-width:720px" : ""}">
       <div class="modal-h"><div class="modal-title" style="font-size:19px;font-weight:700;letter-spacing:-.01em">${U.esc(title)}</div>
       <button class="iconbtn" data-act="modal-close" aria-label="Yopish">✕</button></div>

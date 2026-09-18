@@ -56,42 +56,75 @@
   const firstName = () => esc((S.state.profile.name || "").split(" ")[0]);
 
   // ---------- Shell ----------
-  // Five places, each a line icon. Screens without their own entry light up the place they belong to.
+  // Seven places, each a line icon. Only a screen without an entry of its own lights up the place it belongs to.
   const ICONS = {
     dashboard: `<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>`,
     course: `<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/>`,
     review: `<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>`,
+    quiz: `<path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>`,
     library: `<path d="M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2zM8 7h8"/>`,
     progress: `<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>`,
+    achievements: `<path d="M12 3.6 14.1 9.3 20.2 9.5 15.4 13.3 17.1 19.2 12 15.8 6.9 19.2 8.6 13.3 3.8 9.5 9.9 9.3z"/>`,
+    more: `<path d="M4 7h16M4 12h16M4 17h16"/>`,
     profile: `<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>`,
     flame: `<path d="M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-4 2.5-5 .5 1.5 1.5 2.5 2.5 2.5C12 8 11 6 12 3z"/>`,
     check: `<path d="m5 12 5 5 9-10"/>`,
     lock: `<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>`,
   };
   V.icon = (k, size = 20) => `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>`;
-  const NAV = [["dashboard", "Bugun"], ["course", "Kurs"], ["review", "Takrorlash"], ["library", "So'zlar"], ["progress", "Natijalar"]];
-  const NAV_OF = { day: "course", quiz: "review", achievements: "progress" };
+  // Reading order: the day, then the material, then the two ways to practise it, then the dictionary, then the
+  // two ways to look back. Mashqlar and Yutuqlar sit directly under the screen each used to hide inside, so a
+  // learner who knew the old place finds the new one in the same spot, one level up.
+  const NAV = [["dashboard", "Bugun"], ["course", "Kurs"], ["review", "Takrorlash"], ["quiz", "Mashqlar"], ["library", "So'zlar"], ["progress", "Natijalar"], ["achievements", "Yutuqlar"]];
+  // Only the day is still a sub-route: quiz and achievements light up themselves now.
+  const NAV_OF = { day: "course" };
+  // Seven tabs at 393px give each 53px, which "Takrorlash" cannot spell at 11px. Four keep a tab — the plan, the
+  // lesson, the due queue and the dictionary, the four a learner opens every single day — and the fifth slot is
+  // a door to the rest. Profil is not among them: the topbar already carries it on every phone screen.
+  const TABS = ["dashboard", "course", "review", "library"];
+  const SHEET = NAV.filter(([k]) => !TABS.includes(k));
+  // What the shell drew last: which place is current, and what today still asks for. The sheet is built from a
+  // tap, long after the render, and has to draw its rows exactly as the bar behind it drew them — so both are
+  // taken once per render and kept here. Ephemeral either way, and never a key in S.state.
+  let navPlace = "", navLeft = 0;
+  const navExtra = (k) => {
+    if (k === "course") return `<span class="cnt">${S.daysDone()}/${S.DAYS}</span>`;
+    return k === "review" && navLeft ? `<span class="badge">${esc(navLeft)}</span>` : "";
+  };
+  // One row, drawn the same in the rail, on the phone bar and in the sheet, so the counter and the badge follow
+  // the place rather than the place they are drawn in.
+  const navLink = ([k, label], attrs = "") => `<a href="#/${k}" class="${navPlace === k ? "on" : ""}"${navPlace === k ? ` aria-current="page"` : ""}${attrs}>${V.icon(k)}<span>${label}</span>${navExtra(k)}</a>`;
   V.shell = (active, top, body) => {
     const lv = S.levelInfo();
+    navPlace = NAV_OF[active] || active;
     // What today still asks for, not the whole queue: this badge sits on every screen, so the raw due count is
     // the one number a learner would read as a debt they are losing to. When the day is done the badge is gone.
-    const left = S.reviewGoal().left;
-    const place = NAV_OF[active] || active;
-    const extra = (k) => k === "course" ? `<span class="cnt">${S.daysDone()}/${S.DAYS}</span>` : k === "review" && left ? `<span class="badge">${esc(left)}</span>` : "";
-    const nav = NAV.map(([k, label]) => `<a href="#/${k}" class="${place === k ? "on" : ""}"${place === k ? ` aria-current="page"` : ""}>${V.icon(k)}<span>${label}</span>${extra(k)}</a>`).join("");
+    navLeft = S.reviewGoal().left;
+    // The fifth slot is a door, not a place, so it carries the current page whenever the page is behind it —
+    // without this a learner reading Mashqlar would stand on a bar with nothing selected at all.
+    const inSheet = SHEET.some(([k]) => k === navPlace);
+    const tabs = NAV.filter(([k]) => TABS.includes(k)).map((e) => navLink(e)).join("")
+      + `<button class="${inSheet ? "on" : ""}" data-act="nav-more" aria-haspopup="dialog"${inSheet ? ` aria-current="true"` : ""}>${V.icon("more")}<span>Ko'proq</span></button>`;
     return `<div class="shell">
       <aside class="side">
         <a href="#/dashboard" class="brand"><span class="mark" aria-hidden="true"></span><span class="name">UpKorean</span></a>
-        <nav class="nav" aria-label="Asosiy">${nav}</nav>
-        <a href="#/profile" class="me ${place === "profile" ? "on" : ""}">
+        <nav class="nav" aria-label="Asosiy">${NAV.map((e) => navLink(e)).join("")}</nav>
+        <a href="#/profile" class="me ${navPlace === "profile" ? "on" : ""}">
           <span class="avatar">${V.icon("profile", 18)}</span>
           <span class="grow"><b>Profil</b><span>${lv.level}-daraja · ${U.num(lv.xp)} XP</span></span>
         </a>
       </aside>
       <div class="main">${top}${body}</div>
-      <nav class="tabbar" aria-label="Asosiy">${nav}</nav>
+      <nav class="tabbar" aria-label="Asosiy">${tabs}</nav>
     </div>`;
   };
+  // The sheet is a U.modal with one class added, so the backdrop, the Tab trap, Escape, the scroll lock and the
+  // hand-back of focus are the dialog's own; a second implementation would be a second trap to keep correct.
+  // Focus lands on the first row, not on ✕: the sheet was opened to pick something.
+  Actions["nav-more"] = () => U.modal("Ko'proq", `<nav class="nav" aria-label="Ko'proq">${SHEET.map((e, i) => navLink(e, ` data-act="nav-go" data-href="#/${e[0]}"${i ? "" : " autofocus"}`)).join("")}</nav>`, { sheet: true });
+  // Closed by hand rather than left to the hash change: tapping the page you are already on fires no hashchange,
+  // and the sheet would stay sitting over the page the learner just asked for.
+  Actions["nav-go"] = (el) => { U.closeModal(); App.go(el.dataset.href); };
   const streakChip = () => {
     const n = S.streak();
     return n ? `<span class="pill streak" title="Kunlik seriya">${V.icon("flame", 16)}<span class="hide-sm">${n} kunlik seriya</span><b class="show-sm">${n}</b></span>` : "";
