@@ -84,13 +84,16 @@ export function rateLimit({ windowMs, max, key }) {
   };
 }
 
-// Counts events per key (e.g. failed logins for one email) independent of the client's IP.
+// Counts events per key (e.g. reset requests for one email) and turns the count into a block or a delay.
 export function counter({ windowMs, max }) {
   const hits = new Map();
   const live = (k, now) => { const h = hits.get(k); return h && h.reset > now ? h : null; };
   return {
     // Seconds until the key may try again, or 0 when it is under the limit.
     blocked(k) { const now = Date.now(), h = live(k, now); return h && h.n >= max ? Math.ceil((h.reset - now) / 1000) : 0; },
+    // Milliseconds this key should be held back: nothing for the first `max` events, then half a second more
+    // each time, up to 5s. Slowing a client down throttles guessing without ever locking an account out.
+    delay(k) { const h = live(k, Date.now()); return h && h.n > max ? Math.min(5000, (h.n - max) * 500) : 0; },
     add(k) {
       const now = Date.now();
       const h = live(k, now) || { n: 0, reset: now + windowMs };

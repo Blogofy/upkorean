@@ -96,9 +96,12 @@ api.use((req, res, next) => {
 });
 
 // Per IP. Kept loose because many learners share one address (mobile carrier NAT, dormitories, classrooms);
-// guessing one account's password is stopped by the per-email counters below instead.
+// guessing one account's password is slowed down by the counters below instead.
 const authLimit = rateLimit({ windowMs: 10 * 60000, max: 60, key: (req) => req.ip });
+// Failed logins are counted per (email, IP), never per email alone: a counter keyed on something the caller
+// types in is a lockout anyone can trigger for anyone. This way a guesser only ever slows itself down.
 const loginFailures = counter({ windowMs: 15 * 60000, max: 10 });
+const loginKey = (req, email) => `${email} ${req.ip}`;
 const resetRequests = counter({ windowMs: 15 * 60000, max: 3 });
 const tutorLimit = rateLimit({ windowMs: 10 * 60000, max: 40, key: (req) => `t${req.user.id}` });
 
@@ -130,19 +133,26 @@ api.post("/auth/register", authLimit, (req, res) => {
   res.status(201).json({ user: publicUser(user) });
 });
 
-api.post("/auth/login", authLimit, (req, res) => {
+api.post("/auth/login", authLimit, async (req, res) => {
   const email = validEmail(req.body.email);
-  const wait = email ? loginFailures.blocked(email) : 0;
-  if (wait) {
-    res.setHeader("Retry-After", wait);
-    return res.status(429).json({ error: `Bu hisobga juda ko'p noto'g'ri urinish bo'ldi. ${Math.ceil(wait / 60)} daqiqadan keyin qayta urinib ko'ring yoki parolni tiklang.` });
-  }
-  const user = email && q.userByEmail.get(email);
-  if (!user || isDemo(user) || !verifyPassword(str(req.body.password), user.pass_hash)) {
-    if (email) loginFailures.add(email);
+  // Over-long passwords are refused before hashing: scrypt is deliberately expensive, so it must not run on
+  // input nobody could have registered with.
+  const pw = validPassword(req.body.password);
+  const key = email ? loginKey(req, email) : "";
+  // Nothing is consulted before the password itself, so the right password always gets in, no matter how many
+  // failures came before it. Only failures are counted, and they cost the guesser a growing wait.
+  const user = email && pw && q.userByEmail.get(email);
+  if (!user || isDemo(user) || !verifyPassword(pw, user.pass_hash)) {
+    if (key) {
+      loginFailures.add(key);
+      const wait = loginFailures.delay(key);
+      if (wait) await new Promise((done) => setTimeout(done, wait));
+    }
+    // The same answer for a wrong password, an unknown address and a held-back client: none of them says
+    // whether the account exists.
     return res.status(401).json({ error: "Email yoki parol noto'g'ri" });
   }
-  loginFailures.clear(email);
+  loginFailures.clear(key);
   startSession(req, res, user.id);
   res.json({ user: publicUser(user) });
 });
@@ -247,7 +257,7 @@ api.post("/auth/reset", authLimit, (req, res) => {
   q.deleteResets.run(row.user_id);
   q.deleteUserSessions.run(row.user_id);
   const user = q.userById.get(row.user_id);
-  loginFailures.clear(user.email);
+  loginFailures.clear(loginKey(req, user.email));
   startSession(req, res, row.user_id);
   res.json({ user: publicUser(user) });
 });

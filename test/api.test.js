@@ -131,7 +131,7 @@ test("push: only real push services are accepted; demo cannot subscribe", async 
   assert.match(config.push, /^[A-Za-z0-9_-]{80,}$/);
 });
 
-test("accounts: demo restrictions, login lockout, local-only reset links", async () => {
+test("accounts: demo restrictions, one answer for every failed login, local-only reset links", async () => {
   const demo = client();
   await demo("POST", "/api/auth/demo", {});
   assert.equal((await demo("PATCH", "/api/account", { name: "x" })).status, 403);
@@ -140,11 +140,36 @@ test("accounts: demo restrictions, login lockout, local-only reset links", async
   const c = await signedUp();
   const email = (await c("GET", "/api/auth/me")).data.user.email;
   const other = client();
-  for (let i = 0; i < 10; i++) assert.equal((await other("POST", "/api/auth/login", { email, password: "wrong-one" })).status, 401);
-  assert.equal((await other("POST", "/api/auth/login", { email, password: "password1" })).status, 429);
+  // A wrong password, an address nobody registered and a password too long to hash all answer the same:
+  // none of them tells the caller which accounts exist.
+  const wrong = await other("POST", "/api/auth/login", { email, password: "wrong-one" });
+  const unknown = await other("POST", "/api/auth/login", { email: `nobody${port}@mail.uz`, password: "wrong-one" });
+  const huge = await other("POST", "/api/auth/login", { email, password: "x".repeat(5000) });
+  for (const r of [wrong, unknown, huge]) {
+    assert.equal(r.status, 401);
+    assert.equal(r.data.error, "Email yoki parol noto'g'ri");
+  }
 
   assert.ok((await other("POST", "/api/auth/forgot", { email })).data.devLink);
   assert.equal((await other("POST", "/api/auth/forgot", { email }, { "X-Forwarded-For": "1.2.3.4" })).data.devLink, undefined);
+});
+
+// Failures used to be counted per email and checked before the password, so ten guesses from any stranger
+// locked the owner out for fifteen minutes.
+test("login: guesses against an account never keep its owner out", async () => {
+  const victim = await signedUp();
+  const email = (await victim("GET", "/api/auth/me")).data.user.email;
+  // The guesser is a separate client (own cookie jar) but the same IP — the harness cannot vary that, and it
+  // makes the case harder: attacker and owner share every key the server could rate limit on.
+  const attacker = client();
+  for (let i = 0; i < 10; i++) {
+    assert.equal((await attacker("POST", "/api/auth/login", { email, password: `guess-${i}` })).status, 401);
+  }
+  const owner = client();
+  const signedIn = await owner("POST", "/api/auth/login", { email, password: "password1" });
+  assert.equal(signedIn.status, 200);
+  // A working session, not just a 200.
+  assert.equal((await owner("GET", "/api/auth/me")).data.user.email, email);
 });
 
 test("responses carry security headers; the service worker gets a build fingerprint", async () => {
