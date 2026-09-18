@@ -22,7 +22,9 @@
 
   function route() {
     const raw = location.hash.replace(/^#\/?/, "");
-    const parts = raw.split("/").filter(Boolean).map(decodeURIComponent);
+    // A truncated or hand-edited hash ("#/%") makes decodeURIComponent throw, which would break every
+    // render and key press, so a part that cannot be decoded is kept as typed.
+    const parts = raw.split("/").filter(Boolean).map((p) => { try { return decodeURIComponent(p); } catch { return p; } });
     return { name: parts[0] || "", args: parts.slice(1) };
   }
 
