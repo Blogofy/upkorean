@@ -160,6 +160,17 @@ button.chip:hover { color: var(--ink); }
 /* Progress */
 .prog { height: 6px; border-radius: 4px; background: var(--line); overflow: hidden; }
 .prog > div { height: 100%; border-radius: 4px; background: var(--p); transition: width .3s ease; }
+/* The closing ring: the same track-and-value pair as .prog, bent into a circle so a finished day reads as one
+   shape rather than a number. The svg carries the rotation, the label sits above it as plain text. */
+.ring { position: relative; display: inline-grid; place-items: center; flex: none; }
+.ring svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring circle { fill: none; stroke-width: 4; }
+.ring-t { stroke: var(--line); }
+.ring-v { stroke: var(--pd); stroke-linecap: round; stroke-dasharray: 100; animation: ring-close .6s ease-out; }
+.ring-c { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--pd); }
+.ring-c .ic { stroke-width: 2.6; }
+@keyframes ring-close { from { stroke-dashoffset: 100; } }
+@media (prefers-reduced-motion: reduce) { .ring-v { animation: none; } }
 
 /* ---------- App shell ---------- */
 /* A white sidebar with five places and the profile at its foot; on phones the same places move to a bottom bar. */
@@ -234,6 +245,12 @@ h1, h2, h3, .modal-title { font-family: var(--display); font-optical-sizing: aut
 .big-n { display: flex; align-items: baseline; gap: 8px; }
 .big-n b { font-family: var(--display); font-size: 44px; font-weight: 700; line-height: 1; color: var(--pd); }
 .big-n span { font-size: 15px; color: var(--ink2); }
+/* Today's review goal: the ring beside the number, so the size of the day and the progress through it are read
+   in one glance. Wraps rather than squeezes on a narrow side column. */
+.goal { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.goal-txt { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.goal-done { font-family: var(--display); font-size: 22px; font-weight: 700; line-height: 1.15; color: var(--pd); }
+.goal-sub { font-size: 13px; color: var(--ink2); }
 .side-note { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink3); }
 .week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; font-size: 12px; color: var(--ink3); }
 .week > div { display: flex; flex-direction: column; align-items: center; gap: 6px; }
@@ -436,11 +453,21 @@ button.wtile:hover { border-color: var(--pl2); }
 .rv-top { display: grid; grid-template-columns: 1.4fr repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 20px; }
 .rv-today { border-radius: 20px; padding: 26px; background: #0F3F39; color: #F2FAF8; display: flex; flex-direction: column; gap: 12px; }
 .rv-eyebrow { font-size: 12px; color: #8FD3C8; }
+/* The hero keeps its own fixed dark card in both themes, so its ring is given the same literal colours as the
+   rest of it rather than the theme tokens, which would go dark-on-dark in the light theme. */
+.rv-goal { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.rv-today .ring-t { stroke: rgba(180, 230, 222, .16); }
+.rv-today .ring-v { stroke: #4DC3B3; }
+.rv-today .ring-c { color: #F2FAF8; }
 .rv-big { display: flex; align-items: baseline; gap: 10px; color: #B4E6DE; }
 .rv-big b { font-family: var(--display); font-size: 56px; line-height: 1; color: #F2FAF8; }
 .rv-note { font-size: 13px; color: #B4E6DE; }
 .rv-go { margin-top: auto; background: #4DC3B3; color: #0C1110; }
 .rv-go:hover { filter: brightness(1.05); color: #0C1110; }
+/* The finished day's optional extra round: outlined, not filled, so it reads as an offer under a card that
+   has just said the work is done. #B4E6DE on this card is 8.55:1, the same ink .rv-note already uses. */
+.rv-more { margin-top: auto; background: none; border: 1px solid rgba(180, 230, 222, .35); color: #B4E6DE; }
+.rv-more:hover { border-color: #B4E6DE; color: #F2FAF8; }
 .rv-mode { padding: 22px; display: flex; flex-direction: column; gap: 10px; }
 .rv-n { font-family: var(--display); font-size: 38px; line-height: 1; color: var(--pd); }
 .rv-mode .link, .rv-none { margin-top: auto; align-self: flex-start; font-size: 14px; }

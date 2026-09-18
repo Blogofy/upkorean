@@ -128,7 +128,9 @@
   // hand-picked lists are not goal-bounded — they are whatever the learner marked — so they keep a cap of
   // their own, and the extra round offered once the goal is met is one short sitting, not a second session.
   const PICKED_CAP = 40;
-  const EXTRA_ROUND = 20;
+  // Exposed because the review screens label their own "one more round" button with it, and two copies of the
+  // number would drift apart the first time it is tuned.
+  const EXTRA_ROUND = (X.EXTRA_ROUND = 20);
 
   // Today's goal is met and words are still due. A modal, not a toast: this is a question with two answers,
   // and a toast can only tell. It is the same shape as the exit confirmation in X.exit.

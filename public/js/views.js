@@ -14,6 +14,25 @@
     const label = `O'zlashtirish ${s}/5${weak ? ", zaif" : m ? ", o'zlashtirilgan" : ""}`;
     return `<span class="mbar-wrap"><span class="mbar ${weak ? "weak" : ""} ${sm ? "sm" : ""}" role="img" aria-label="${label}" title="${label}">${[1, 2, 3, 4, 5].map((k) => `<i class="${k <= s ? (m ? "on m" : "on") : ""}"></i>`).join("")}</span>${withCount ? `<span class="mbar-n" aria-hidden="true">${s}/5</span>` : ""}</span>`;
   };
+  // A closing ring. pathLength="100" makes the dash offset the percentage itself, so one piece of markup works
+  // at any size, and the value is clamped here so no caller can ever draw past a full circle.
+  V.ring = (pct, label, size = 64) => {
+    const v = Math.max(0, Math.min(100, Math.round(pct) || 0));
+    return `<span class="ring" style="width:${size}px;height:${size}px" role="img" aria-label="${esc(label)}" title="${esc(label)}">
+      <svg viewBox="0 0 40 40" aria-hidden="true"><circle class="ring-t" cx="20" cy="20" r="17" pathLength="100"/><circle class="ring-v" cx="20" cy="20" r="17" pathLength="100" style="stroke-dashoffset:${100 - v}"/></svg>
+      <span class="ring-c" aria-hidden="true">${v >= 100 ? V.icon("check", Math.round(size * 0.36)) : `${v}%`}</span></span>`;
+  };
+  // Today's share of the day's own size — done out of done + left, which is the only denominator that behaves:
+  // it stays at the day's target while the queue drains, and it shrinks with the queue when the queue is the
+  // smaller of the two. A finished day is exactly 100; an unfinished one is never rounded up into it.
+  const goalPct = (g) => {
+    const total = g.done + g.left;
+    if (!total) return 0;
+    return g.left ? Math.min(99, Math.floor((g.done / total) * 100)) : 100;
+  };
+  // The day's ring, labelled for screen readers. V.ring escapes the label, so it is passed raw.
+  const goalRing = (g, size) => V.ring(goalPct(g), `Bugungi takrorlash: ${g.done + g.left} tadan ${g.done} tasi bajarildi`, size);
+
   // Days 1–30 as one grid, each square a link to its day.
   V.dayWeeks = () => {
     const days = Array.from({ length: S.DAYS }, (_, i) => i + 1).map((d) => {
@@ -54,9 +73,11 @@
   const NAV_OF = { day: "course", quiz: "review", achievements: "progress" };
   V.shell = (active, top, body) => {
     const lv = S.levelInfo();
-    const due = S.dueIds().length;
+    // What today still asks for, not the whole queue: this badge sits on every screen, so the raw due count is
+    // the one number a learner would read as a debt they are losing to. When the day is done the badge is gone.
+    const left = S.reviewGoal().left;
     const place = NAV_OF[active] || active;
-    const extra = (k) => k === "course" ? `<span class="cnt">${S.daysDone()}/${S.DAYS}</span>` : k === "review" && due ? `<span class="badge">${due}</span>` : "";
+    const extra = (k) => k === "course" ? `<span class="cnt">${S.daysDone()}/${S.DAYS}</span>` : k === "review" && left ? `<span class="badge">${esc(left)}</span>` : "";
     const nav = NAV.map(([k, label]) => `<a href="#/${k}" class="${place === k ? "on" : ""}"${place === k ? ` aria-current="page"` : ""}>${V.icon(k)}<span>${label}</span>${extra(k)}</a>`).join("");
     return `<div class="shell">
       <aside class="side">
@@ -104,7 +125,7 @@
   V.dashboard = () => {
     const cd = S.currentDay(), done = S.courseDone();
     const { ds, plan } = nextStage(cd);
-    const due = S.dueIds().length, weak = S.weakIds().length;
+    const g = S.reviewGoal(), weak = S.weakIds().length;
     const learned = S.learnedIds().length;
     const rem = S.state.profile.reminders;
     const check = `<span class="st-dot done">${V.icon("check", 15)}</span>`;
@@ -114,7 +135,7 @@
       today = `<section class="card today">
         <div class="today-head"><div><h2 class="today-h">Kurs tugadi</h2><div class="muted">${S.TOTAL} so'z · ${S.DAYS} kun</div></div></div>
         <p class="muted" style="margin:0;line-height:1.55">Endi asosiy ish — takrorlash. To'liq o'zlashtirilmagan so'zlarni har kuni mustahkamlang.</p>
-        <div class="row wrap">${due ? `<button class="btn btn-p" data-act="review-start" data-mode="due">Takrorlash · ${due}</button>` : ""}<a class="btn btn-sec" href="#/quiz">Mashqlar</a></div>
+        <div class="row wrap">${g.left ? `<button class="btn btn-p" data-act="review-start" data-mode="due">Takrorlash · ${esc(g.left)}</button>` : ""}<a class="btn btn-sec" href="#/quiz">Mashqlar</a></div>
       </section>`;
     } else {
       const steps = plan.stages.map((sg, i) => {
@@ -138,12 +159,33 @@
       </section>`;
     }
 
+    // The queue has three states and they must not be told apart by a number alone. "Bajarildi" is the one the
+    // whole change rests on: the words beyond today's goal are not owed, they are moved into the coming days at
+    // the next rollover (store.js pushForward), so the card says the day is finished and names no leftover count.
+    const goalDone = `<div class="goal">${goalRing(g, 64)}
+        <div class="goal-txt"><b class="goal-done">Bugun bajarildi</b><span class="goal-sub">${esc(g.done)} so'z takrorlandi</span></div></div>`;
+    let reviewBody;
+    if (g.left) {
+      reviewBody = `<div class="goal">${goalRing(g, 64)}
+          <div class="goal-txt"><div class="big-n"><b>${esc(g.left)}</b><span>so'z</span></div>
+            <span class="goal-sub">Bugungi maqsad · ~${esc(g.minutes)} daqiqa</span></div></div>
+        <p class="side-note">${rem.on && rem.reviewOn !== false ? `Kechqurun ${esc(rem.review)} da eslatamiz.` : "Unutilishidan oldin qaytarib oling."}</p>
+        <button class="btn btn-sec btn-block" data-act="review-start" data-mode="due">Hozir takrorlash</button>`;
+    } else if (g.due) {
+      // An offer, never a demand: the day is finished above it, so this stays a quiet link rather than a button.
+      // Without it the extra round has no way in at all, because every "Takrorlash" button is gone in this state.
+      reviewBody = `${goalDone}
+        <p class="side-note">Qolgan so'zlar keyingi kunlarga taqsimlanadi — bugun ularni qilish shart emas.</p>
+        <button class="link" data-act="ex-review-extra" style="align-self:flex-start">Xohlasangiz — yana ${esc(X.EXTRA_ROUND)} ta so'z</button>`;
+    } else if (g.done) {
+      reviewBody = `${goalDone}
+        <p class="side-note">Bugunga takrorlash qolmadi. Ertaga yangilari keladi.</p>`;
+    } else {
+      reviewBody = `<p class="side-note">Hozircha takrorlash yo'q. O'rgangan so'zlaringiz unutilishidan oldin shu yerda chiqadi.</p>`;
+    }
     const reviewCard = `<section class="card side-card">
         <div class="card-title">Takrorlash</div>
-        ${due ? `<div class="big-n"><b>${due}</b><span>so'z kutmoqda</span></div>
-          <p class="side-note">${rem.on && rem.reviewOn !== false ? `Kechqurun ${esc(rem.review)} da eslatamiz.` : "Unutilishidan oldin qaytarib oling."}</p>
-          <button class="btn btn-sec btn-block" data-act="review-start" data-mode="due">Hozir takrorlash</button>`
-        : `<p class="side-note">Hozircha takrorlash yo'q. O'rgangan so'zlaringiz unutilishidan oldin shu yerda chiqadi.</p>`}
+        ${reviewBody}
         ${weak ? `<button class="link" data-act="quiz-weak" style="align-self:flex-start">${weak} ta qiyin so'zni mashq qilish</button>` : ""}
       </section>`;
     const week = S.weekRhythm();
@@ -328,19 +370,45 @@
   // Today's queue first, then the other lists to practise, the coming week and the exercise types.
   V.review = () => {
     const today = U.today();
-    const due = S.dueIds(), learned = S.learnedIds();
-    const late = due.filter((id) => S.ws(id).due < today).length;
+    const g = S.reviewGoal(), learned = S.learnedIds();
+    // The queue the session will actually run, already cut to the goal by the store. Everything on this screen
+    // that describes "today" counts from it. The forecast below is the one place that still reads the raw
+    // schedule — each word's own due date — because there the untouched plan is genuinely what is meant.
+    const queue = S.reviewQueue("due");
+    const late = queue.filter((id) => S.ws(id).due < today).length;
     const week = Array.from({ length: 7 }, (_, i) => {
       const k = U.addDays(today, i);
-      const n = learned.filter((id) => (i ? S.ws(id).due === k : S.ws(id).due <= k)).length;
+      // Today's column is the day's goal. The overflow is not counted here: it is moved into the days to its
+      // right at the next rollover, so adding it to today would show the same words twice.
+      const n = i ? learned.filter((id) => S.ws(id).due === k).length : g.left;
       return { n, today: !i, lbl: i === 0 ? "Bugun" : i === 1 ? "Ertaga" : U.WEEK_SHORT[(U.parseKey(k).getDay() + 6) % 7] };
     });
-    const hero = `<section class="rv-today">
-        <span class="mono rv-eyebrow">BUGUN KUTMOQDA</span>
-        <div class="rv-big"><b>${due.length}</b><span>so'z${due.length ? ` · ~${Math.max(1, Math.round(due.length * 0.37))} daq` : ""}</span></div>
-        <span class="rv-note">${!due.length ? "Bugungi takrorlash tugagan. Ertaga yangi so'zlar keladi." : late ? `${late} tasi kechikkan — avval ular chiqadi.` : "Unutilishidan oldin qaytarib oling."}</span>
-        ${due.length ? `<button class="btn rv-go" data-act="review-start" data-mode="due">Boshlash</button>` : ""}
+    // Three states. The middle one — the goal met while words are still due — is the whole point of the change:
+    // what did not fit is scheduled into the coming days, not owed, so the hero reports a finished day and never
+    // names the leftover as a number to catch up on.
+    let hero;
+    if (g.left) {
+      hero = `<section class="rv-today">
+        <span class="mono rv-eyebrow">BUGUNGI MAQSAD</span>
+        <div class="rv-goal">${goalRing(g, 64)}<div class="rv-big"><b>${esc(g.left)}</b><span>so'z · ~${esc(g.minutes)} daq</span></div></div>
+        <span class="rv-note">${late ? `${esc(late)} tasi kechikkan — avval ular chiqadi.` : "Unutilishidan oldin qaytarib oling."}</span>
+        <button class="btn rv-go" data-act="review-start" data-mode="due">Boshlash</button>
       </section>`;
+    } else if (g.due) {
+      hero = `<section class="rv-today">
+        <span class="mono rv-eyebrow">BUGUN BAJARILDI</span>
+        <div class="rv-goal">${goalRing(g, 64)}<div class="rv-big"><b>${esc(g.done)}</b><span>so'z takrorlandi</span></div></div>
+        <span class="rv-note">Qolgan so'zlar keyingi kunlarga taqsimlanadi — bugun yetarli ish qildingiz.</span>
+        <button class="btn rv-more" data-act="ex-review-extra">Yana ${esc(X.EXTRA_ROUND)} ta so'z</button>
+      </section>`;
+    } else {
+      hero = `<section class="rv-today">
+        <span class="mono rv-eyebrow">${g.done ? "BUGUN BAJARILDI" : "BUGUN TAKRORLASH YO'Q"}</span>
+        ${g.done ? `<div class="rv-goal">${goalRing(g, 64)}<div class="rv-big"><b>${esc(g.done)}</b><span>so'z takrorlandi</span></div></div>
+        <span class="rv-note">Bugunga takrorlash qolmadi. Ertaga yangilari keladi.</span>`
+        : `<span class="rv-note">${learned.length ? "O'rgangan so'zlaringiz muddati kelganda shu yerda chiqadi." : "Birinchi kunni boshlang — o'rgangan so'zlaringiz takrorlash uchun shu yerda chiqadi."}</span>`}
+      </section>`;
+    }
     const mode = (title, ids, desc, m, cta, bad) => `<section class="card rv-mode">
         <span class="card-title">${title}</span><b class="rv-n ${bad && ids.length ? "badc" : ""}">${ids.length}</b><span class="side-note">${desc}</span>
         ${ids.length ? `<button class="link" data-act="review-start" data-mode="${m}">${cta}</button>` : `<span class="side-note rv-none">Hozircha yo'q</span>`}
@@ -349,7 +417,7 @@
       const t = X.QUIZ_TYPES[k];
       return `<button class="card rv-quiz" data-act="quiz-go" data-k="${k}"><b>${t.name}</b><span class="side-note">${t.desc}</span><span class="mono accent">20 savol · ~${Math.max(1, Math.round(20 * t.mins))} daq</span></button>`;
     }).join("");
-    const shown = due.slice(0, 8);
+    const shown = queue.slice(0, 8);
     const list = shown.map((id) => {
       const w = S.word(id), st = S.ws(id), isLate = st.due < today;
       return `<button class="li ${isLate ? "bad" : ""}" style="gap:18px;padding:13px 20px" data-act="word" data-id="${id}">
@@ -370,7 +438,7 @@
       </section>
       <div class="row between rv-h"><span class="card-title">Mashq turlari</span><a class="link" href="#/quiz">Barcha sozlamalar</a></div>
       <div class="rv-quizzes">${quizzes}</div>
-      ${shown.length ? `<div class="row between rv-h"><span class="card-title">Bugungi so'zlar</span>${due.length > shown.length ? `<span class="side-note">yana ${due.length - shown.length} so'z</span>` : ""}</div>
+      ${shown.length ? `<div class="row between rv-h"><span class="card-title">Bugungi so'zlar</span>${queue.length > shown.length ? `<span class="side-note">yana ${esc(queue.length - shown.length)} so'z</span>` : ""}</div>
       <div class="list">${list}</div>` : ""}
     </div>`;
     return V.shell("review", V.topbar("Takrorlash", ""), body);
