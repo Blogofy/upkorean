@@ -70,6 +70,8 @@
     flame: `<path d="M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-4 2.5-5 .5 1.5 1.5 2.5 2.5 2.5C12 8 11 6 12 3z"/>`,
     check: `<path d="m5 12 5 5 9-10"/>`,
     lock: `<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>`,
+    search: `<circle cx="11" cy="11" r="7"/><path d="m16.6 16.6 4.4 4.4"/>`,
+    chev: `<path d="m6 9.5 6 6 6-6"/>`,
   };
   V.icon = (k, size = 20) => `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>`;
   // Reading order: the day, then the material, then the two ways to practise it, then the dictionary, then the
@@ -651,9 +653,40 @@
   Actions["prog-range"] = (el) => { progRange = Number(el.dataset.v); App.render(); };
 
   // ---------- Library (G2) ----------
-  const lib = { status: "all", origin: "all", days: [], sort: "mastery-asc", q: "", page: 1 };
+  // The one screen that is a data table rather than a lesson. Its filters used to be a second `<nav class="filt">`
+  // standing right beside the app's own rail: two vertical columns of `<a>` rows with counters, and nothing in
+  // the shape of either said which one moves you between screens and which one narrows a table. They are
+  // controls now — pressed pills, listbox dropdowns, a day panel — laid out horizontally inside the table's own
+  // card, above the header row, so the toolbar belongs to the thing it filters. A phone gets one row of chrome
+  // (the search box and one door) and the whole panel behind it in a sheet.
+  const lib = { status: "all", origin: "all", days: [], sort: "mastery-asc", q: "", page: 1, daysOpen: false };
   const ORIGIN_ORDER = { sino: 0, native: 1, loan: 2 };
   const PER = 10;
+  // Short labels, because seven of them share one row; the long form is the title.
+  const LIB_STATUS = [
+    ["all", "Hammasi", "O'rganilgan barcha so'zlar"], ["mastered", "O'zlashtirilgan", "5/5 ga yetgan so'zlar"],
+    ["learning", "O'rganilmoqda", "O'rganilgan, lekin hali 5/5 emas"], ["weak", "Zaif", "Ikki martadan ko'p xato qilingan"],
+    ["recent", "Yaqinda", "Eng oxirgi o'rganilgan kun"], ["flag", "Belgilangan", "Qiyin deb belgilangan"],
+    ["unlearned", "Yangi", "Hali o'rganilmagan so'zlar"],
+  ];
+  const LIB_SORT = [["mastery-asc", "O'zlashtirish: kamidan"], ["mastery-desc", "O'zlashtirish: ko'pidan"], ["due", "Keyingi takrorlash"],
+    ["day", "Kun bo'yicha"], ["origin", "Kelib chiqishi (한자어 → 고유어 → 외래어)"], ["alpha", "Alifbo (가나다)"]];
+  const LIB_COLS = [["ko", "So'z"], ["mean", "Ma'nosi"], ["day", "Kun"], ["mast", "O'zlashtirish"], ["seen", "Ko'rishlar"], ["due", "Keyingi"]];
+  // M8: the search romanised the whole corpus on every keystroke — a thousand words for every letter typed.
+  // Each word's searchable text is built once, on first use, and kept for the life of the page; store.js owns
+  // the corpus but is not ours to touch, so the memo lives here. The NUL between the three fields stops a query
+  // from matching across a join the way a plain concatenation would.
+  const HAY = new Map();
+  const hay = (w) => {
+    let h = HAY.get(w.id);
+    if (h === undefined) HAY.set(w.id, (h = `${w.ko}\u0000${w.uz.toLowerCase()}\u0000${U.romanize(w.ko)}`));
+    return h;
+  };
+  // Corpus position: the total order every comparator ends on, so two runs over the same set give the same page.
+  const ord = (id) => { const w = S.word(id); return w.day * 1000 + w.i; };
+  const bads = (id) => (S.ws(id) || {}).bad || 0;
+  const libActive = () => (lib.status !== "all") + (lib.origin !== "all") + (lib.days.length > 0) + (lib.q.trim() !== "");
+
   function libRows() {
     const learned = S.learnedIds();
     const recentDay = learned.length ? Math.max(...learned.map((id) => S.word(id).day)) : 0;
@@ -663,81 +696,188 @@
       unlearned: S.WORDS.filter((w) => !S.isLearned(w.id)).map((w) => w.id),
     };
     let rows = sets[lib.status] || learned;
+    // How many words each day holds inside the chosen status. The panel offers a day the status has nothing on
+    // as disabled rather than as a filter that silently empties the table, and a pick the new status cannot
+    // honour is dropped here — otherwise it would keep filtering from a control that is no longer on screen.
+    const days = {};
+    for (const id of rows) days[S.word(id).day] = (days[S.word(id).day] || 0) + 1;
+    lib.days = lib.days.filter((d) => days[d]);
     if (lib.days.length) rows = rows.filter((id) => lib.days.includes(S.word(id).day));
     // Counts per origin for the current status and days, before the origin filter itself.
     const origins = { all: rows.length, sino: 0, native: 0, loan: 0 };
     for (const id of rows) origins[S.origin(id)]++;
     if (lib.origin !== "all") rows = rows.filter((id) => S.origin(id) === lib.origin);
     const q = lib.q.trim().toLowerCase();
-    if (q) rows = rows.filter((id) => { const w = S.word(id); return w.ko.includes(q) || w.uz.toLowerCase().includes(q) || U.romanize(w.ko).includes(q); });
+    if (q) rows = rows.filter((id) => hay(S.word(id)).includes(q));
+    // L2: the first tiebreak used to be `(S.ws(b) || {}).bad - (S.ws(a) || {}).bad`, which is NaN for two words
+    // nobody has answered yet — on "Yangi" that is every row, and a comparator that returns NaN leaves the
+    // order to whatever path the engine's sort happens to take. Every comparator now ends on ord().
     const cmp = {
-      "mastery-asc": (a, b) => S.mastery(a) - S.mastery(b) || (S.ws(b) || {}).bad - (S.ws(a) || {}).bad,
-      "mastery-desc": (a, b) => S.mastery(b) - S.mastery(a),
-      alpha: (a, b) => S.word(a).ko.localeCompare(S.word(b).ko, "ko"),
-      day: (a, b) => S.word(a).day - S.word(b).day || S.word(a).i - S.word(b).i,
-      due: (a, b) => ((S.ws(a) || {}).due || "9").localeCompare((S.ws(b) || {}).due || "9"),
-      origin: (a, b) => ORIGIN_ORDER[S.origin(a)] - ORIGIN_ORDER[S.origin(b)] || S.word(a).day - S.word(b).day || S.word(a).i - S.word(b).i,
+      "mastery-asc": (a, b) => S.mastery(a) - S.mastery(b) || bads(b) - bads(a) || ord(a) - ord(b),
+      "mastery-desc": (a, b) => S.mastery(b) - S.mastery(a) || ord(a) - ord(b),
+      alpha: (a, b) => S.word(a).ko.localeCompare(S.word(b).ko, "ko") || ord(a) - ord(b),
+      day: (a, b) => ord(a) - ord(b),
+      due: (a, b) => ((S.ws(a) || {}).due || "9").localeCompare((S.ws(b) || {}).due || "9") || ord(a) - ord(b),
+      origin: (a, b) => ORIGIN_ORDER[S.origin(a)] - ORIGIN_ORDER[S.origin(b)] || ord(a) - ord(b),
     }[lib.sort];
-    return { rows: rows.slice().sort(cmp), sets, origins };
+    return { rows: rows.slice().sort(cmp), sets, origins, days };
   }
-  function libTable() {
-    const { rows } = libRows();
-    const pages = Math.max(1, Math.ceil(rows.length / PER));
+
+  // The filter panel, drawn from one function in two places: the bar above the table on a wide screen, and the
+  // "Filtr" sheet on a phone — the nav's one navLink for three surfaces, applied here. Nothing in it is a link.
+  // The seven statuses are pressed buttons rather than a radiogroup: a group of radios owes the keyboard a
+  // roving tabindex and arrow keys, and seven plain buttons are reachable with Tab and pressed with Enter.
+  function libFilters(r) {
+    const n = libActive();
+    const dayLabel = !lib.days.length ? "Hammasi" : lib.days.length === 1 ? `${lib.days[0]}-kun` : `${lib.days.length} ta kun`;
+    // U.dropdown puts `label` on the button as aria-label, where it hides the chosen value from a screen reader.
+    // Naming the subject and the value together is what a sighted learner reads off the button anyway.
+    const origins = [["all", `Hamma turlar (${r.origins.all})`],
+      ...Object.entries(S.ORIGINS).map(([k, o]) => [k, `${o.ko} · ${o.uz} (${r.origins[k]})`])];
+    const named = (list, value) => (list.find(([v]) => v === value) || list[0])[1];
+    return `<div class="lib-line">
+        <span class="upl lib-lbl" aria-hidden="true">Holat</span>
+        <div class="lib-chips" role="group" aria-label="Holat">${LIB_STATUS.map(([k, label, about]) => {
+          const on = lib.status === k, cnt = r.sets[k].length;
+          return `<button class="chip lib-chip${on ? " on" : ""}" data-act="lib-status" data-k="${k}" aria-pressed="${on}" title="${esc(about)}">${esc(label)}<b class="n${k === "weak" && cnt ? " warn" : ""}">${cnt}</b></button>`;
+        }).join("")}</div>
+      </div>
+      <div class="lib-line">
+        <span class="upl lib-lbl" aria-hidden="true">Kelib chiqishi</span>
+        ${U.dropdown({ change: "lib-origin", value: lib.origin, label: `Kelib chiqishi: ${named(origins, lib.origin)}`, options: origins })}
+        <span class="upl lib-lbl" aria-hidden="true">Kun</span>
+        <button class="lib-pick${lib.days.length ? " on" : ""}" data-act="lib-days" aria-expanded="${lib.daysOpen}" aria-label="Kun: ${esc(dayLabel)}"><span>${esc(dayLabel)}</span>${V.icon("chev", 12)}</button>
+        <span class="upl lib-lbl" aria-hidden="true">Saralash</span>
+        ${U.dropdown({ change: "lib-sort", value: lib.sort, label: `Saralash: ${named(LIB_SORT, lib.sort)}`, options: LIB_SORT })}
+        ${n ? `<button class="lib-clear" data-act="lib-reset">Tozalash · ${n}</button>` : ""}
+      </div>
+      ${lib.daysOpen ? `<div class="lib-days" role="group" aria-label="Kun tanlash">${Array.from({ length: S.DAYS }, (_, i) => i + 1).map((d) => {
+        const on = lib.days.includes(d), cnt = r.days[d] || 0;
+        return `<button class="dsq ${on ? "completed" : cnt ? "available" : "locked"}" data-act="lib-day" data-d="${d}" aria-pressed="${on}"${cnt ? "" : " disabled"} title="${d}-kun · ${cnt} so'z">${d}</button>`;
+      }).join("")}</div>` : ""}`;
+  }
+
+  // A real table with its header cells, because that is what this is. The roles are written out rather than left
+  // implicit: the phone lays every row out as a grid, and `display: grid` on a `<tr>` drops the implicit table
+  // roles in every engine, taking the columns with them.
+  function libTable(r) {
+    const rows = r.rows, pages = Math.max(1, Math.ceil(rows.length / PER));
     lib.page = Math.min(lib.page, pages);
-    const slice = rows.slice((lib.page - 1) * PER, lib.page * PER);
+    const from = (lib.page - 1) * PER, slice = rows.slice(from, from + PER);
+    const body = slice.map((id) => {
+      const w = S.word(id), st = S.ws(id), weak = S.isWeak(id), o = S.ORIGINS[S.origin(id)];
+      const late = st && st.learned && st.due < U.today();
+      const tone = !st || !st.learned ? "" : late ? " late" : st.due <= U.today() ? " now" : "";
+      return `<tr role="row" class="lbr${weak ? " weak" : ""}">
+        <td role="cell" class="c-ko"><button class="lbr-go" data-act="word" data-id="${esc(id)}" aria-label="${esc(w.ko)} — ${esc(w.uz)}">${esc(w.ko)}</button><span class="otag o-${S.origin(id)}" role="img" aria-label="${esc(o.uz)}" title="${esc(o.desc)}">${esc(o.ko)}</span></td>
+        <td role="cell" class="c-mean">${esc(w.uz)}</td>
+        <td role="cell" class="c-day">${w.day}<span class="c-unit">-kun</span></td>
+        <td role="cell" class="c-mast">${st && st.learned ? V.mbar(id, true, true) : `<span class="faint">—</span>`}</td>
+        <td role="cell" class="c-seen">${st ? `${st.seen} · ${st.ok}✓` : "0"}</td>
+        <td role="cell" class="c-due${tone}">${st && st.learned ? U.dueLabel(st.due) : "yangi"}</td></tr>`;
+    }).join("");
     const pg = [];
     for (let p = Math.max(1, lib.page - 2); p <= Math.min(pages, lib.page + 2); p++) pg.push(p);
-    return `<div class="list"><div class="li head" style="gap:18px">
-        <span style="min-width:100px">So'z</span><span class="grow">Ma'nosi</span><span style="min-width:44px">Kun</span>
-        <span style="min-width:124px" class="hide-sm">O'zlashtirish</span><span style="min-width:72px" class="hide-sm hide-lg">Ko'rishlar</span><span style="min-width:72px;text-align:right">Keyingi</span></div>
-      ${slice.length ? slice.map((id) => {
-        const w = S.word(id), st = S.ws(id), weak = S.isWeak(id), late = st && st.learned && st.due < U.today();
-        return `<button class="li ${weak ? "bad" : ""}" style="gap:18px;padding:12px 20px" data-act="word" data-id="${id}">
-          <span class="kw" style="min-width:100px">${esc(w.ko)} <span class="otag o-${S.origin(id)}" title="${esc(S.ORIGINS[S.origin(id)].uz)}">${S.ORIGINS[S.origin(id)].ko}</span></span><span class="mean" style="${weak ? "color:var(--badd)" : ""}">${esc(w.uz)}</span>
-          <span class="mono faint" style="font-size:12px;min-width:44px">D${w.day}</span>
-          <span class="hide-sm" style="min-width:124px">${st && st.learned ? V.mbar(id, true, true) : `<span class="faint" style="font-size:12px">—</span>`}</span>
-          <span class="mono muted hide-sm hide-lg" style="font-size:12px;min-width:72px">${st ? `${st.seen} · ${st.ok}✓` : "0"}</span>
-          <span class="mono" style="font-size:12px;min-width:72px;text-align:right;color:${!st || !st.learned ? "var(--ink3)" : late ? "var(--bad)" : st.due <= U.today() ? "var(--pd)" : "var(--ink3)"}">${st && st.learned ? U.dueLabel(st.due) : "yangi"}</span></button>`; }).join("")
-      : `<div class="empty">Hech narsa topilmadi.</div>`}</div>
-      <div class="row between" style="margin-top:16px">
-        <span class="mono faint" style="font-size:12px">${rows.length ? `${(lib.page - 1) * PER + 1}–${Math.min(lib.page * PER, rows.length)} / ${rows.length}` : "0"}</span>
-        <div class="row" style="gap:6px">${pg.map((p) => `<button class="dsq ${p === lib.page ? "completed" : "available"}" style="width:30px;height:30px;font-size:12px" data-act="lib-page" data-p="${p}">${p}</button>`).join("")}
-          ${lib.page < pages ? `<button class="dsq available" style="width:30px;height:30px;font-size:12px" data-act="lib-page" data-p="${lib.page + 1}" aria-label="Keyingi sahifa">›</button>` : ""}</div>
+    // Both arrows keep their place at either end instead of disappearing, so the row of pages does not shift
+    // under the finger that is walking through it.
+    const step = (rel, to, label, name) => `<button class="lib-pg" data-act="lib-page" data-rel="${rel}" data-p="${to}" aria-label="${name}"${to >= 1 && to <= pages ? "" : " disabled"}>${label}</button>`;
+    const table = rows.length
+      ? `<table class="lbt" role="table">
+          <caption class="sr-only">So'zlar: ${rows.length} ta, ${lib.page}-sahifa</caption>
+          <thead role="rowgroup"><tr role="row">${LIB_COLS.map(([c, l]) => `<th role="columnheader" scope="col" class="c-${c}">${l}</th>`).join("")}</tr></thead>
+          <tbody role="rowgroup">${body}</tbody></table>`
+      : `<div class="empty">${lib.q.trim() ? `«${esc(lib.q.trim())}» bo'yicha hech narsa topilmadi.` : "Bu filtrlarga mos so'z yo'q."}
+          ${libActive() ? `<button class="lib-clear" data-act="lib-reset">Filtrlarni tozalash</button>` : ""}</div>`;
+    return `${table}<div class="lib-foot">
+        <span class="lib-count">${rows.length ? `${from + 1}–${Math.min(from + PER, rows.length)} / ${rows.length}` : "0"} so'z</span>
+        ${pages > 1 ? `<nav class="lib-pages" aria-label="Sahifalar">${step("prev", lib.page - 1, "‹", "Oldingi sahifa")}
+          ${pg.map((p) => `<button class="lib-pg${p === lib.page ? " on" : ""}" data-act="lib-page" data-p="${p}"${p === lib.page ? ` aria-current="page"` : ""} aria-label="${p}-sahifa">${p}</button>`).join("")}
+          ${step("next", lib.page + 1, "›", "Keyingi sahifa")}</nav>` : ""}
       </div>`;
   }
+
   V.library = () => {
-    const { sets, origins } = libRows();
-    const og = [["all", "Hammasi", ""], ...Object.entries(S.ORIGINS).map(([k, o]) => [k, o.uz, o.ko])];
-    const learnedDays = [...new Set(S.learnedIds().map((id) => S.word(id).day))].sort((a, b) => a - b);
-    const st = [["all", "Hammasi"], ["mastered", "O'zlashtirilgan"], ["learning", "O'rganilmoqda"], ["weak", "Zaif"], ["recent", "Yaqinda o'rganilgan"], ["flag", "Belgilanganlar"], ["unlearned", "Hali o'rganilmagan"]];
-    const body = `<div class="page collapse-md" style="display:grid;grid-template-columns:220px minmax(0,1fr);gap:32px">
-      <div class="stack" style="gap:22px">
-        <div><div class="upl" style="margin-bottom:10px">Holat</div>
-          <div class="nav filt">${st.map(([k, l]) => `<a href="javascript:void 0" class="${lib.status === k ? "on" : ""}" data-act="lib-status" data-k="${k}" style="padding:9px 12px">${l}<span class="cnt" style="${k === "weak" && sets.weak.length ? "color:var(--bad)" : ""}">${sets[k].length}</span></a>`).join("")}</div></div>
-        <div><div class="upl" style="margin-bottom:10px">Kelib chiqishi</div>
-          <div class="nav filt">${og.map(([k, l, ko]) => `<a href="javascript:void 0" class="${lib.origin === k ? "on" : ""}" data-act="lib-origin" data-k="${k}" style="padding:9px 12px" title="${k === "all" ? "" : esc(S.ORIGINS[k].desc)}">${ko ? `<span class="ko" style="font-weight:700">${ko}</span>` : ""}${l}<span class="cnt">${origins[k]}</span></a>`).join("")}</div></div>
-        <div><div class="upl" style="margin-bottom:10px">Kun</div>
-          <div class="days">${(lib.status === "unlearned" ? Array.from({ length: S.DAYS }, (_, i) => i + 1) : learnedDays).map((d) => `<button class="dsq ${lib.days.includes(d) ? "completed" : "available"}" style="width:28px;height:28px" data-act="lib-day" data-d="${d}">${d}</button>`).join("") || `<span class="faint" style="font-size:12px">—</span>`}</div></div>
-        <div><div class="upl" style="margin-bottom:10px">Saralash</div>
-          ${U.dropdown({ change: "lib-sort", value: lib.sort, label: "Saralash", block: true, options: [["mastery-asc", "O'zlashtirish: kamidan"], ["mastery-desc", "O'zlashtirish: ko'pidan"], ["due", "Keyingi takrorlash"], ["day", "Kun bo'yicha"], ["origin", "Kelib chiqishi (한자어 → 고유어 → 외래어)"], ["alpha", "Alifbo (가나다)"]] })}</div>
-      </div>
-      <div style="min-width:0">
-        <div class="row wrap" style="gap:10px;margin-bottom:18px">
-          <input class="input grow" style="padding:13px 16px;font-size:14px;background:var(--sf);min-width:200px" placeholder="한국어 yoki o'zbekcha izlash…" value="${esc(lib.q)}" data-input="lib-search" aria-label="Qidirish">
-          <button class="btn btn-sec btn-sm" style="padding:13px 20px;font-size:14px" data-act="lib-export">Eksport</button>
-          <button class="btn btn-p btn-sm" style="padding:13px 20px;font-size:14px" data-act="lib-practice">Shu ro'yxatni mashq qilish</button>
+    const r = libRows(); // one pass: the counts in the panel and the rows in the table are two readings of it
+    const body = `<div class="page wide lib">
+      <div class="card">
+        <div class="lib-top">
+          <div class="lib-find">${V.icon("search", 18)}
+            <input class="input" type="search" placeholder="한국어, o'zbekcha yoki lotin yozuvida izlang…" value="${esc(lib.q)}" data-input="lib-search" aria-label="So'z izlash"></div>
+          <button class="btn btn-sec lib-door" data-act="lib-sheet" aria-haspopup="dialog">Filtr<span class="lib-n" id="lib-n">${libActive() || ""}</span></button>
+          <button class="btn btn-sec lib-do" data-act="lib-export">Eksport</button>
+          <button class="btn btn-p lib-do" data-act="lib-practice">Mashq qilish</button>
         </div>
-        <div id="lib-table">${libTable()}</div>
+        <div class="lib-bar lib-region lib-filters">${libFilters(r)}</div>
+        <div class="lib-region" id="lib-table">${libTable(r)}</div>
+      </div>
+      <div class="lib-more">
+        <button class="btn btn-p btn-block" data-act="lib-practice">Shu ro'yxatni mashq qilish</button>
+        <button class="btn btn-sec btn-block" data-act="lib-export">Eksport (CSV)</button>
       </div></div>`;
-    return V.shell("library", V.topbar("So'zlar", `${S.learnedIds().length} so'z o'rganilgan · ${S.TOTAL} jami`), body);
+    return V.shell("library", V.topbar("So'zlar", `${r.sets.all.length} so'z o'rganilgan · ${S.TOTAL} jami`), body);
   };
-  const refreshLib = () => { const el = document.getElementById("lib-table"); if (el) el.innerHTML = libTable(); };
-  Actions["lib-status"] = (el) => { lib.status = el.dataset.k; lib.page = 1; App.render(); };
-  Actions["lib-origin"] = (el) => { lib.origin = el.dataset.k; lib.page = 1; App.render(); };
-  Actions["lib-day"] = (el) => { const d = Number(el.dataset.d); const i = lib.days.indexOf(d); if (i >= 0) lib.days.splice(i, 1); else lib.days.push(d); lib.page = 1; App.render(); };
-  Actions["lib-page"] = (el) => { lib.page = Number(el.dataset.p); refreshLib(); };
-  Changes["lib-sort"] = (el) => { lib.sort = el.value; lib.page = 1; refreshLib(); };
-  Inputs["lib-search"] = (el) => { lib.q = el.value; lib.page = 1; refreshLib(); };
+
+  // The two regions redraw themselves; the shell, the search box and the scroll position are never touched. One
+  // libRows() pass feeds both, and every copy of the panel is refreshed — on a phone the sheet holds a second
+  // one over the first.
+  const keyOf = (el) => el.dataset.rel || el.dataset.k || el.dataset.d || el.dataset.p || "";
+  function refreshLib(from) {
+    const r = libRows();
+    // The control that was pressed is about to be replaced by its own copy, and the focus would fall to <body>
+    // with the next Tab starting at the top of the page. It follows the copy — but only when the press really is
+    // where the focus is: app.js's rule is that a redraw never moves the caret, and a keystroke reaches this
+    // function with the caret in the search box.
+    const home = from && document.activeElement === from ? from.closest(".lib-region") : null;
+    const act = home ? from.dataset.act : "", key = home ? keyOf(from) : "";
+    const table = document.getElementById("lib-table");
+    if (table) table.innerHTML = libTable(r);
+    document.querySelectorAll(".lib-filters").forEach((box) => { box.innerHTML = libFilters(r); });
+    const count = document.getElementById("lib-n");
+    if (count) count.textContent = libActive() || "";
+    const seen = document.getElementById("lib-seen");
+    if (seen) seen.textContent = `${r.rows.length} so'z`;
+    if (!home) return;
+    const back = [...home.querySelectorAll("[data-act]")].find((b) => b.dataset.act === act && keyOf(b) === key);
+    // A press the redraw retires (the last "next" arrow) hands the focus to the page it landed on instead.
+    const land = back && !back.disabled ? back : home.querySelector("[aria-current]");
+    if (land) land.focus();
+  }
+  // A dropdown gives the focus back to its own button before the change runs (app.js, dd-pick), and the redraw
+  // replaces that button; its copy is found inside the same panel, which matters while the sheet holds a second.
+  function refreshFromDd(name, apply) {
+    const dd = document.activeElement && document.activeElement.closest ? document.activeElement.closest(".dd") : null;
+    const home = dd && dd.dataset.dd === name ? dd.closest(".lib-region") : null;
+    apply();
+    refreshLib();
+    const back = home && home.querySelector(`[data-dd="${name}"] .dd-btn`);
+    if (back) back.focus();
+  }
+  Actions["lib-status"] = (el) => { lib.status = el.dataset.k; lib.page = 1; refreshLib(el); };
+  Actions["lib-day"] = (el) => { const d = Number(el.dataset.d), i = lib.days.indexOf(d); if (i >= 0) lib.days.splice(i, 1); else lib.days.push(d); lib.page = 1; refreshLib(el); };
+  Actions["lib-days"] = (el) => { lib.daysOpen = !lib.daysOpen; refreshLib(el); };
+  Actions["lib-page"] = (el) => { lib.page = Number(el.dataset.p); refreshLib(el); };
+  Actions["lib-reset"] = (el) => {
+    Object.assign(lib, { status: "all", origin: "all", days: [], q: "", page: 1 });
+    const box = document.querySelector("[data-input='lib-search']");
+    if (box) box.value = ""; // the box sits outside both regions, so a redraw cannot clear it
+    // Tozalash leaves together with the filters it cleared: the focus goes to the search box, not to <body>.
+    const move = box && document.activeElement === el;
+    refreshLib();
+    if (move) box.focus();
+  };
+  // M8: ~150ms of quiet before a thousand rows are filtered and sorted again, so a fast typist pays for one
+  // render instead of one per letter. lib.q itself is set at once — export and practice never lag the box.
+  let typing = 0;
+  Inputs["lib-search"] = (el) => { lib.q = el.value; lib.page = 1; clearTimeout(typing); typing = setTimeout(refreshLib, 150); };
+  Changes["lib-sort"] = (el) => refreshFromDd("lib-sort", () => { lib.sort = el.value; lib.page = 1; });
+  Changes["lib-origin"] = (el) => refreshFromDd("lib-origin", () => { lib.origin = el.value; lib.page = 1; });
+  // The phone's one door: the same panel, in the dialog U.modal already owns — its Tab trap, Escape, scroll lock
+  // and focus restore, exactly as the nav's "Ko'proq" sheet uses it. Focus lands on the first filter, not on ✕.
+  Actions["lib-sheet"] = () => {
+    const r = libRows();
+    U.modal("Filtrlar", `<div class="lib-region lib-filters">${libFilters(r)}</div>
+      <button class="btn btn-p btn-block lib-see" data-act="modal-close">Ro'yxatni ko'rish · <span id="lib-seen">${r.rows.length} so'z</span></button>`, { sheet: true });
+  };
   Actions["lib-export"] = () => {
     const { rows } = libRows();
     const csv = ["korean,romanization,uzbek,origin,hanja,day,mastery,seen,correct,wrong,next_review"].concat(rows.map((id) => {
@@ -747,11 +887,10 @@
     })).join("\n");
     U.download(`upkorean-sozlar-${U.today()}.csv`, "﻿" + csv, "text/csv;charset=utf-8");
   };
+  // N10: the early return used to come after a full pass over a thousand rows that it then threw away.
   Actions["lib-practice"] = () => {
-    const { rows } = libRows();
-    const ids = rows.filter((id) => S.isLearned(id) || lib.status === "unlearned");
     if (lib.status === "unlearned") { U.toast("Yangi so'zlarni kunlik darsda o'rganing"); return; }
-    X.startQuiz({ type: "mixed", ids, count: 20, title: "So'zlar bazasidan" });
+    X.startQuiz({ type: "mixed", ids: libRows().rows.filter((id) => S.isLearned(id)), count: 20, title: "So'zlar bazasidan" });
   };
 
   // ---------- Word modal ----------

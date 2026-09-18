@@ -196,9 +196,6 @@ button.chip:hover { color: var(--ink); }
 .nav .cnt { margin-left: auto; font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--ink3); }
 .nav a.on .cnt { color: var(--pd); }
 .nav .badge { margin-left: auto; font-family: var(--mono); font-size: 12px; font-weight: 500; color: #fff; background: var(--pdb); padding: 2px 7px; border-radius: 6px; }
-.nav.filt { gap: 2px; }
-.nav.filt a { min-height: 0; font-weight: 500; }
-.nav.filt a.on { font-weight: 700; }
 .me { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 12px; color: var(--ink); }
 .me:hover, .me.on { background: var(--bg); color: var(--ink); }
 .me .avatar { width: 36px; height: 36px; border-radius: 99px; }
@@ -348,6 +345,89 @@ button.wtile:hover { border-color: var(--pl2); }
 .ocard.dim { background: var(--sf2); border-style: dashed; border-width: 1px; cursor: not-allowed; }
 .ocard.dim .t { color: var(--ink2); }
 .ocard.dim .d { color: var(--ink3); }
+
+/* ---------- Library (So'zlar) ---------- */
+/* A toolbar bolted onto the table it filters, never a second rail. The filters used to be a `.nav.filt` column
+   standing beside the app's own sidebar, and two vertical lists of links gave the eye nothing to tell the
+   navigation from the filter. Here they run across, inside the table's card and above its header row, and every
+   one of them is a button or a listbox. */
+.lib-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.lib-find { position: relative; display: flex; align-items: center; flex: 1; min-width: 220px; }
+.lib-find .ic { position: absolute; left: 14px; color: var(--ink3); stroke-width: 2.2; pointer-events: none; }
+.lib-find .input { min-height: 44px; padding: 12px 14px 12px 42px; font-size: 14px; -webkit-appearance: none; appearance: none; }
+.lib-do { min-height: 44px; padding: 10px 18px; font-size: 14px; }
+.lib-door, .lib-more { display: none; }
+.lib-n { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--pd); }
+.lib-n:not(:empty) { min-width: 20px; height: 20px; padding: 0 5px; border-radius: 99px; background: var(--pl); display: inline-flex; align-items: center; justify-content: center; }
+
+.lib-filters { display: flex; flex-direction: column; gap: 10px; }
+.lib-bar { padding: 12px 16px 14px; border-bottom: 1px solid var(--line); }
+.lib-line { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+.lib-lbl { flex: none; }
+.lib-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+/* 44px like every other target in the app: this row is the main control of the screen. The chosen one is a ring
+   and a weight as well as a tint, because --pl and --bg are 1.1:1 apart and a tint alone is not a state. */
+.lib-chip { min-height: 44px; padding: 8px 14px; gap: 8px; }
+.lib-chip.on { box-shadow: inset 0 0 0 1.5px var(--pd); }
+.lib-chip .n { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--ink3); }
+.lib-chip.on .n { color: var(--pd); }
+.lib-chip .n.warn { color: var(--bad); }
+.lib-filters .dd-btn { min-height: 44px; }
+.lib-pick { display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding: 8px 12px 8px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--sf); font-size: 14px; font-weight: 600; color: var(--ink); }
+.lib-pick:hover { border-color: var(--pl2); }
+.lib-pick:focus-visible { border-color: var(--p); box-shadow: 0 0 0 3px color-mix(in srgb, var(--p) 18%, transparent); outline: none; }
+.lib-pick.on { border-color: var(--pd); }
+.lib-pick .ic { color: var(--ink3); stroke-width: 2.6; transition: transform .15s; }
+.lib-pick[aria-expanded="true"] .ic { transform: rotate(180deg); color: var(--pd); }
+.lib-clear { margin-left: auto; min-height: 44px; padding: 0 12px; border-radius: 10px; font-size: 13px; font-weight: 700; color: var(--pd); }
+.lib-clear:hover { background: var(--pl); }
+.lib-days { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 6px; }
+.lib-days .dsq { width: auto; height: 44px; font-size: 13px; }
+
+/* The table proper. Fixed layout so the columns hold still from page to page; the word is a button whose ::after
+   covers the whole row, so the row opens on a click anywhere and still costs the keyboard one stop. */
+.lbt { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.lbt th { padding: 11px 16px; text-align: left; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--ink3); background: var(--sf2); border-bottom: 1px solid var(--line); }
+.lbt td { padding: 11px 16px; border-bottom: 1px solid var(--line); }
+.lbt tbody tr:last-child td { border-bottom: 0; }
+.lbr { position: relative; }
+.lbr:hover { background: var(--sf2); }
+.lbr.weak { background: var(--badl); }
+.lbr.weak:hover { filter: brightness(.98); }
+.lbr-go { font-family: var(--ko); font-size: 18px; font-weight: 700; color: var(--ink); }
+.lbr-go::after { content: ""; position: absolute; inset: 0; cursor: pointer; }
+.lbr-go:focus-visible { outline: none; }
+.lbr-go:focus-visible::after { outline: 2px solid var(--p); outline-offset: -2px; border-radius: 4px; }
+.c-ko { width: 22%; }
+.c-mean { font-size: 14px; color: var(--ink2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.c-day, .c-seen, .c-due { font-family: var(--mono); font-size: 12px; color: var(--ink3); }
+.c-day { width: 64px; }
+.c-mast { width: 132px; }
+.c-seen { width: 92px; }
+.c-due { width: 96px; text-align: right; }
+.c-due.late { color: var(--bad); }
+.c-due.now { color: var(--pd); }
+.c-unit { display: none; }
+/* --ink3 on the weak row's tint is 4.11:1, so the quiet columns step up one tone there. */
+.lbr.weak .c-mean { color: var(--badd); }
+.lbr.weak .c-day, .lbr.weak .c-seen, .lbr.weak .c-due { color: var(--ink2); }
+.lbr.weak .c-due.late { color: var(--bad); }
+.lbr.weak .c-due.now { color: var(--pd); }
+
+.lib-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-top: 1px solid var(--line); }
+.lib-count { font-family: var(--mono); font-size: 12px; color: var(--ink3); padding-left: 4px; }
+.lib-pages { display: flex; gap: 4px; flex-wrap: wrap; }
+.lib-pg { min-width: 44px; height: 44px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--ink2); }
+.lib-pg:hover { background: var(--bg); color: var(--ink); }
+.lib-pg.on { background: var(--pl); color: var(--on-pl); }
+.lib-pg:disabled { color: var(--locked2); pointer-events: none; }
+.lib .empty .lib-clear { display: block; margin: 10px auto 0; }
+/* In the sheet the same panel becomes a form: one control per line, each the width of the thumb that taps it. */
+.sheet .lib-filters { gap: 18px; padding: 4px 4px 2px; }
+.sheet .lib-line { flex-direction: column; align-items: stretch; gap: 8px; }
+.sheet .lib-line .dd, .sheet .lib-line .dd-btn, .sheet .lib-pick { width: 100%; }
+.sheet .lib-clear { margin: 0; }
+.sheet .lib-see { margin-top: 14px; }
 
 /* ---------- Auth ---------- */
 /* Sign-in, sign-up and password reset: one narrow column on the page background, a faint 한 behind it. */
@@ -801,6 +881,10 @@ table.tbl { width: 100%; border-collapse: collapse; }
 /* ---------- Responsive ---------- */
 @media (max-width: 1180px) {
   .hide-lg { display: none !important; }
+  /* The seen/correct tally is the first column the table can spare; both of its cells go, so the fixed layout
+     keeps counting the same number of columns. Named through .lbt, because the phone below gives every cell
+     `display: block` and would otherwise bring this one back. */
+  .lbt .c-seen { display: none; }
 }
 @media (max-width: 960px) {
   .shell { grid-template-columns: minmax(0,1fr); }
@@ -901,4 +985,24 @@ table.tbl { width: 100%; border-collapse: collapse; }
   .bub { max-width: 92%; }
   .hide-sm { display: none !important; }
   .two-sm { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+  /* A phone opens this screen to look a word up, so the words start one row down: the search box and one door
+     to the panel, and that is the whole of the chrome. Below it the row becomes two lines and the Uzbek
+     meaning — the content itself — gets the full width, instead of the ~95px of ellipsis it was cut to. */
+  .lib-top { padding: 12px; gap: 8px; }
+  .lib-find { min-width: 0; }
+  .lib-door { display: inline-flex; flex: none; gap: 6px; min-height: 44px; padding: 10px 14px; font-size: 14px; }
+  .lib-do, .lib-bar { display: none; }
+  .lib-more { display: grid; gap: 10px; margin-top: 14px; }
+  .lbt thead { display: none; }
+  .lbt tbody { display: block; }
+  .lbr { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "ko day due" "mean mean mean"; align-items: center; gap: 3px 10px; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+  .lbt tbody tr:last-child { border-bottom: 0; }
+  .lbt td { display: block; width: auto; padding: 0; border-bottom: 0; }
+  .c-ko { grid-area: ko; }
+  .c-mean { grid-area: mean; white-space: normal; overflow: visible; line-height: 1.45; }
+  .c-day { grid-area: day; }
+  .c-due { grid-area: due; }
+  .lbt .c-mast { display: none; }
+  .c-unit { display: inline; }
+  .lib-foot { padding: 10px; }
 }
