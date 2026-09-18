@@ -310,11 +310,21 @@
         <div class="row"><button class="btn btn-p" data-act="modal-close">Davom etish</button><button class="btn btn-ghost" data-act="ex-exit-force">Chiqish</button></div>`);
       return;
     }
-    stopTimer();
-    if (!s.finished) { trackTime(); saveMinutes(s); }
     const back = s.kind === "learn" ? `#/day/${s.day}` : s.kind === "review" ? "#/review" : "#/quiz";
-    X.session = null;
+    X.leave();
     App.go(back);
+  };
+
+  // Ends the session wherever the learner left it. App.render calls this for every page that is not the
+  // session: the browser Back button and a reminder tap leave no other way out, and a session left running
+  // keeps writing into the page the learner is now on — the question timer answers "wrong" on its own, and
+  // the matching timeouts redraw. Dropping X.session also disarms those timeouts (they check X.session === s).
+  X.leave = () => {
+    const s = X.session;
+    stopTimer();
+    if (!s) return;
+    if (!s.finished) { trackTime(); saveMinutes(s); }
+    X.session = null;
   };
 
   function saveMinutes(s) {

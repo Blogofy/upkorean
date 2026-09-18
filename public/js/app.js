@@ -70,6 +70,9 @@
       }
       // Nobody is signed in on these pages yet, so there is no theme setting to honour: they stay light.
       S.forceLight(isPublic);
+      // Any page other than the session ends it. A redraw inside the session renders "session" and never gets
+      // here, so a running question timer is safe; X.afterRender starts it again after every session render.
+      if (r.name !== "session") X.leave();
 
       let html = null;
       if (r.name === "login") html = V.login();
