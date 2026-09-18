@@ -90,7 +90,9 @@
   // ---------- Dashboard (B1) ----------
   function nextStage(d) {
     const ds = S.dayState(d), plan = S.dayPlan(d);
-    return { ds, plan, stage: ds.done ? null : plan.stages[ds.stage] };
+    // A day record saved without a pace follows the profile pace, so its stage can point past the end of the
+    // plan (33 words per block gives 2 stages where 11 gives 6) — clamped, the page shows the last stage.
+    return { ds, plan, stage: ds.done ? null : plan.stages[Math.min(ds.stage, plan.stages.length - 1)] };
   }
   const ORD = ["Birinchi", "Ikkinchi", "Uchinchi"];
   const stageName = (plan, sg) => {

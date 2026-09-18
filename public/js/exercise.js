@@ -103,7 +103,9 @@
     const ds = st.days[day];
     if (ds.done) { X.startQuiz({ type: "mixed", ids: S.DAY_WORDS[day - 1].map((w) => w.id), count: 20, title: `${day}-kun takrori` }); return; }
     const plan = S.dayPlan(day);
-    const stage = plan.stages[ds.stage];
+    // A day record saved without a pace follows the profile pace, so its stage can point past the end of the
+    // plan (33 words per block gives 2 stages where 11 gives 6). Run the last stage instead of crashing.
+    const stage = plan.stages[Math.min(ds.stage, plan.stages.length - 1)];
     let items;
     const guided = S.guidedDay(day);
     if (stage.kind === "learn") {
@@ -327,21 +329,31 @@
     const gained = () => S.state.xp - s.xpStart;
     if (s.kind === "learn") {
       const ds = S.state.days[s.day];
+      // A merge from another device can land mid-session and keeps the higher stage, so the day may already be
+      // past the stage we ran: move to the one after ours instead of incrementing whatever is there now (that
+      // would skip a stage). The plan is re-read because the merge can bring another pace with it.
+      const plan = S.dayPlan(s.day);
+      // That merge took the whole day record from the device that was ahead, so this same stage's ok/bad/min/xp
+      // are already counted in it and ours would count the work twice.
+      const already = ds.stage > s.stageIdx;
       if (s.guided && s.stage.kind === "learn") S.settleIntroduced(s.items.filter((i) => i.type === "intro").map((i) => i.id), s.mistakes);
-      ds.stage++;
-      ds.ok = (ds.ok || 0) + s.ok; ds.bad = (ds.bad || 0) + s.bad; ds.min = (ds.min || 0) + s.activeMs / 60000;
-      if (ds.stage >= s.plan.stages.length) {
-        ds.done = true; ds.doneAt = U.today();
-        S.addXP(50);
-        ds.xp = (ds.xp || 0) + gained();
-        S.log(`${s.day}-kun tugatildi — ${s.plan.words.length} so'z`, "ok");
+      ds.stage = Math.max(ds.stage, s.stageIdx + 1);
+      if (!already) { ds.ok = (ds.ok || 0) + s.ok; ds.bad = (ds.bad || 0) + s.bad; ds.min = (ds.min || 0) + s.activeMs / 60000; }
+      if (ds.stage >= plan.stages.length) {
+        // The other device may have finished the day already: its bonus and log line stay, ours would double them.
+        if (!ds.done) {
+          ds.done = true; ds.doneAt = U.today();
+          S.addXP(50);
+          S.log(`${s.day}-kun tugatildi — ${plan.words.length} so'z`, "ok");
+        }
+        if (!already) ds.xp = (ds.xp || 0) + gained();
         S.save();
         X.session = null;
         App.go(`#/complete/${s.day}`);
         return;
       }
-      ds.xp = (ds.xp || 0) + gained();
-      s.nextStage = s.plan.stages[ds.stage];
+      if (!already) ds.xp = (ds.xp || 0) + gained();
+      s.nextStage = plan.stages[Math.min(ds.stage, plan.stages.length - 1)];
     } else if (s.kind === "review") {
       S.state.reviewSessions++;
       S.addXP(20);
