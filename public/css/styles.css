@@ -16,6 +16,9 @@
   --shadow-card: 0 18px 44px -28px rgba(16,34,33,.28);
   --shadow-p: 0 8px 20px -8px rgba(32,127,115,.55);
   --shadow-sel: 0 8px 24px -14px rgba(32,127,115,.55);
+  /* Upwards, for the bar docked to the bottom edge: a surface and a page differ by 1.08:1, so the lift is what
+     separates them and says the content carries on underneath. */
+  --shadow-foot: 0 -14px 32px -22px rgba(16,34,33,.34);
   /* Headings: a warm serif gives titles their own voice next to the sans-serif interface. */
   --display: "Fraunces", "Noto Sans KR", Georgia, serif;
   --ko: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
@@ -37,6 +40,7 @@
   --shadow-card: 0 18px 44px -28px rgba(0,0,0,.6);
   --shadow-p: 0 8px 20px -8px rgba(42,157,143,.45);
   --shadow-sel: 0 8px 24px -14px rgba(42,157,143,.45);
+  --shadow-foot: 0 -14px 32px -22px rgba(0,0,0,.7);
   color-scheme: dark;
 }
 
@@ -547,27 +551,54 @@ button.wtile:hover { border-color: var(--pl2); }
 .ob-rem-row.off .t, .ob-rem-row.off .d { opacity: .5; }
 
 /* ---------- Exercise / learning flow ---------- */
-.ex { min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); }
+/* --foot is claimed twice: the docked bar is that tall, and .ex-body leaves exactly that much room for it. */
+.ex { min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); --foot: 68px; }
 /* viewport-fit=cover: the bar grows by the notch inset instead of sitting under it. */
-.ex-top { height: auto; min-height: 60px; border-bottom: 1px solid var(--line); background: var(--sf); display: flex; align-items: center; gap: 20px; padding: env(safe-area-inset-top) 28px 0; position: sticky; top: 0; z-index: 5; }
-.ex-top .exit { font-size: 14px; font-weight: 600; color: var(--ink2); white-space: nowrap; }
+.ex-top { height: auto; min-height: calc(56px + env(safe-area-inset-top)); border-bottom: 1px solid var(--line); background: var(--sf); display: flex; align-items: center; gap: 16px; padding: env(safe-area-inset-top) 28px 0; position: sticky; top: 0; z-index: 5; }
+/* A thumb has to hit this one: the glyph keeps its size, the box around it is 44px and starts at the gutter. */
+.ex-top .exit { display: flex; align-items: center; gap: 8px; min-width: 44px; min-height: 44px; margin: 0 0 0 -10px; padding: 0 10px; font-size: 14px; font-weight: 600; color: var(--ink2); white-space: nowrap; }
+.ex-top .exit .x { font-size: 18px; line-height: 1; }
 .ex-top .exit:hover { color: var(--ink); }
 .ex-top .lbl { font-family: var(--mono); font-size: 12px; color: var(--ink3); white-space: nowrap; }
 .ex-top .prog { flex: 1; max-width: 520px; margin: 0 auto; }
 .ex-top .cnt { font-family: var(--mono); font-size: 12px; color: var(--ink2); white-space: nowrap; }
+/* Width held in advance, so the bar beside it stops resizing the moment the first ✓ or ✕ appears. */
+.ex-tally { display: flex; align-items: center; justify-content: flex-end; gap: 6px; min-width: 86px; }
 .badge-ok, .badge-bad { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 8px; font-family: var(--mono); font-size: 12px; }
-.badge-ok { background: var(--okl); color: var(--ok); }
+.badge-ok { background: var(--okl); color: var(--okd); }
 .badge-bad { background: var(--badl); color: var(--bad); }
 /* Top-aligned, not centred: feedback appears under the answer, and centring would shove the whole card up on every check. */
 .ex-body { flex: 1; display: flex; align-items: flex-start; justify-content: center; padding: 32px 40px 40px; }
+/* The room the docked bar needs, the way .main leaves room for the tab bar — held for the whole item, not only
+   for the phase that fills the bar, so the verdict's button slides into space nothing else was using. */
+.ex.foot .ex-body { padding-bottom: calc(var(--foot) + env(safe-area-inset-bottom) + 24px); }
 .ex-cap { font-family: var(--mono); font-size: 12px; color: var(--ink3); }
+/* Text links inside a session are thumb targets like everything else here. */
+.ex .link { display: inline-flex; align-items: center; min-height: 44px; }
+
+/* The forward action, always in the same place. Fixed, not sticky: a learner halfway down a long intro card
+   reaches "Tushundim →" without scrolling to the end of it. */
+.ex-foot { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; min-height: calc(var(--foot) + env(safe-area-inset-bottom)); background: var(--sf); border-top: 1px solid var(--line); box-shadow: var(--shadow-foot); padding: 10px 40px calc(10px + env(safe-area-inset-bottom)); }
+.ex-foot.in { animation: foot-up .18s ease; }
+.ex-foot-in { max-width: 880px; margin: 0 auto; display: flex; align-items: center; gap: 16px; }
+.ex-verdict { font-size: 15px; font-weight: 700; white-space: nowrap; }
+.ex-act { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.ex-act .btn { min-height: 48px; }
+/* Grading a flash card is the action, so all four sit in the bar; the keys stay for the keyboard that has them. */
+.ex-foot-in > .ex-act:only-child { flex: 1; }
+.ex-act .grades { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; width: 100%; }
+.ex-act .grade { justify-content: center; min-height: 48px; }
+@keyframes foot-up { from { transform: translateY(100%); } }
+@media (prefers-reduced-motion: reduce) { .ex-foot.in { animation: none; } }
 
 .fc { background: var(--sf); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow-card); }
 .fc-front { padding: 64px 56px; }
 .fc .word { font-family: var(--ko); font-weight: 700; letter-spacing: -.03em; line-height: 1.1; }
 .fc .rom { font-family: var(--mono); color: var(--ink3); }
 .audio-pill { display: inline-flex; align-items: center; gap: 10px; padding: 12px 22px; border-radius: 99px; background: var(--pl); color: var(--pd); font-size: 14px; font-weight: 700; }
-.audio-dot { width: 38px; height: 38px; border-radius: 99px; background: var(--pl); color: var(--pd); display: inline-flex; align-items: center; justify-content: center; font-size: 15px; flex: none; }
+.audio-dot { position: relative; width: 38px; height: 38px; border-radius: 99px; background: var(--pl); color: var(--pd); display: inline-flex; align-items: center; justify-content: center; font-size: 15px; flex: none; }
+/* The dot is drawn at 38px, and inline next to a sentence at 28px; the thumb gets 44px either way. */
+.audio-dot::after { content: ""; position: absolute; top: 50%; left: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
 .fc-back { display: grid; grid-template-columns: minmax(0,1fr) 300px; overflow: hidden; }
 .fc-back .l { padding: 40px 44px; border-right: 1px solid var(--line); }
 .fc-back .r { padding: 32px 26px; background: var(--sf2); display: flex; flex-direction: column; gap: 22px; }
@@ -597,7 +628,12 @@ button.wtile:hover { border-color: var(--pl2); }
 .choice.wrong { background: var(--badl); border-color: var(--bad); color: var(--bad); }
 .choice.wrong .n { background: var(--bad); color: #fff; }
 .choice.fade { opacity: .55; }
-.feedback { display: flex; align-items: center; gap: 20px; padding: 20px 24px; border-radius: 14px; background: var(--sf); border: 1px solid var(--line); }
+/* The feedback slot: empty while the question stands, but already the height the verdict will need, so the
+   answer lands without pushing the options up the screen. It carries no border until it has something to say. */
+.ex-slot { min-height: 96px; }
+.ex-slot.on { padding: 18px 20px; border-radius: 14px; background: var(--sf); border: 1px solid var(--line); }
+.ex-slot.bad { border-color: color-mix(in srgb, var(--bad) 35%, transparent); }
+.ex-slot .s { font-family: var(--ko); font-size: 19px; font-weight: 500; line-height: 1.5; margin-bottom: 6px; }
 
 .typebox { padding: 18px 22px; border-radius: 16px; background: var(--sf); border: 1.5px solid var(--line); display: flex; align-items: center; gap: 14px; }
 .typebox:focus-within { border-color: var(--p); }
@@ -634,7 +670,9 @@ button.wtile:hover { border-color: var(--pl2); }
 .intro-card { padding: 34px 38px; }
 .intro-top { text-align: center; padding-bottom: 24px; margin-bottom: 26px; border-bottom: 1px solid var(--line); }
 .intro-top .word { font-size: 64px; }
-.intro-top .rom { font-size: 15px; margin-top: 8px; }
+/* The reading and the origin share one line: both say where the word comes from, and the badge on a row of its
+   own cost 36px above the fold on a phone. */
+.intro-top .rom { font-size: 15px; }
 .intro-top .mean { font-size: 26px; font-weight: 800; letter-spacing: -.02em; line-height: 1.25; margin-top: 12px; }
 .intro-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 30px; }
 .isec { margin-bottom: 22px; }
@@ -659,6 +697,11 @@ button.wtile:hover { border-color: var(--pl2); }
 .rel .okc { color: var(--ok); font-weight: 700; }
 .rel .via { margin-left: 8px; font-family: var(--mono); font-size: 12px; color: var(--ink3); white-space: nowrap; }
 .note-in { font-size: 14px; }
+/* A first meeting has nothing to note yet, and an open text field mid-session summons the phone keyboard, so
+   the field waits behind its own summary and opens only for a learner who asks — or who already wrote one. */
+.inote > summary { padding: 14px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--ink3); cursor: pointer; }
+.inote > summary:hover { color: var(--ink2); }
+.inote[open] > summary { padding-bottom: 8px; }
 /* Word origin: 한자어 · 고유어 · 외래어 */
 .origin { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 99px; font-size: 12px; font-weight: 700; }
 .origin .ko { font-size: 13px; }
@@ -810,6 +853,7 @@ table.tbl { width: 100%; border-collapse: collapse; }
   .ob-body, .ex-body { padding: 24px 16px; }
   .ex-top { padding: env(safe-area-inset-top) 16px 0; gap: 12px; }
   .ex-top .lbl { display: none; }
+  .ex-foot { padding-left: 16px; padding-right: 16px; }
 }
 @media (max-width: 640px) {
   .topbar .right:has(.seg) .pill.streak { display: none; }
@@ -839,6 +883,18 @@ table.tbl { width: 100%; border-collapse: collapse; }
   .mt { min-height: 56px; padding: 12px; font-size: 14px; }
   .mt.ko { font-size: 20px; }
   .fc .word { font-size: 56px !important; }
+  /* Keyboard hints are noise on a phone that has no keyboard, and they were sitting above the fold. */
+  .ex .kbd-hint { display: none; }
+  .ex-top { gap: 10px; }
+  .ex-top .exit .t { display: none; }
+  /* Two pills cost more width than the bar has; the counts read the same as plain figures and hold still. */
+  .ex-tally { min-width: 62px; }
+  .ex-tally .badge-ok, .ex-tally .badge-bad { padding: 0; gap: 3px; background: none; }
+  .ex-foot-in > .ex-act { flex: 1; }
+  .ex-act .btn-p, .ex-act .btn-soft { flex: 1; }
+  .ex-act .grade { padding: 12px 6px; font-size: 13px; }
+  .ex-act .grade .k { display: none; }
+  .ex-slot .s { font-size: 17px; }
   .cloze { padding: 28px 20px; }
   .cloze .s { font-size: 24px; }
   .chat-log, .chat-foot { padding-left: 16px; padding-right: 16px; }

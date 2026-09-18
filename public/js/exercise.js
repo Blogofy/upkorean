@@ -211,7 +211,10 @@
     // thing that has to be spoken. Short — the screen carries the example sentence and the rest. A wrong answer
     // names the right one, because the learner has no other way to hear it without hunting for the feedback.
     U.say(correct ? "To'g'ri" : `Noto'g'ri — ${it.answer || S.word(it.id).ko}`);
-    App.render();
+    // The verdict is the same question redrawn, not a new page: redraw() swaps .ex in place and keeps the
+    // scroll position, where App.render() rebuilds the whole app root. Nothing X.afterRender does is owed to
+    // the answer phase — the question timer is already stopped above, and no phase past "q" starts audio.
+    redraw();
   }
 
   X.next = () => {
@@ -518,14 +521,40 @@
     else lbl = `MASHQ · ${esc(s.title).toUpperCase()}`;
     const badges = it && it.type !== "card"
       ? `${s.ok ? `<span class="badge-ok">${s.ok} ✓</span>` : ""}${s.bad ? `<span class="badge-bad">${s.bad} ✕</span>` : ""}` : "";
+    // The tally sits in a box of its own width so the progress bar stops resizing every time the first ✓ or ✕
+    // appears; the ✕ carries a 44px box around a glyph that used to be a ~20px target, and drops the word on
+    // phones, where the bar has no room for it.
     return `<div class="ex-top">
-      <button class="exit" data-act="ex-exit">✕ Chiqish</button>
+      <button class="exit" data-act="ex-exit" aria-label="Sessiyadan chiqish" title="Sessiyadan chiqish"><span class="x" aria-hidden="true">✕</span><span class="t">Chiqish</span></button>
       <span class="lbl">${lbl}</span>
       <div class="prog" role="progressbar" aria-valuenow="${done}" aria-valuemax="${total}"><div style="width:${U.pct(done, total)}%"></div></div>
       <span class="cnt">${Math.min(s.idx + 1, total)} / ${total}</span>
       ${s.timer && !s.finished ? `<span class="badge-bad" style="background:var(--pl);color:var(--pd)" id="ex-timer">${s.timer}s</span>` : ""}
-      ${badges}
+      <span class="ex-tally">${badges}</span>
     </div>`;
+  }
+
+  // ---------- The docked action bar ----------
+  // One place for the forward action, pinned to the bottom edge, so the button a learner presses 25+ times a
+  // sitting never moves and never needs a scroll to reach. .ex keeps the height free whether or not the bar has
+  // anything in it yet (hasFoot), so the verdict's button slides into space that was already held: zero reflow.
+  const GRADES = [[1, "Bilmadim"], [2, "Qiyin"], [3, "Bildim"], [4, "Oson"]];
+  const hasFoot = (s, it) => !!it && !s.finished && it.type !== "match";
+  function footer(s, it) {
+    if (!hasFoot(s, it)) return "";
+    let act = "";
+    if (it.type === "intro") act = `<button class="btn btn-p" data-act="ex-intro-next" data-primary>Tushundim →</button>`;
+    else if (it.type === "card") act = s.phase === "front"
+      ? `<button class="btn btn-soft" data-act="ex-reveal" data-primary>Ma'nosini ko'rsatish</button>`
+      : `<div class="grades">${GRADES.map(([g, t]) => `<button class="grade g${g}" data-act="ex-grade" data-g="${g}">${t}<span class="k">${g}</span></button>`).join("")}</div>`;
+    else if (s.phase === "a") act = `<button class="btn btn-p" data-act="ex-next" data-primary>Keyingi →</button>`;
+    else if (it.type === "sent") act = `<button class="btn btn-ghost" data-act="ex-skip">O'tkazib yuborish</button><button class="btn ${s.chosen === null ? "btn-soft" : "btn-p"}" data-act="ex-check" ${s.chosen === null ? "disabled" : ""} data-primary>Tekshirish</button>`;
+    // A multiple-choice question answers itself when an option is tapped, and the typing question keeps its own
+    // buttons next to the field, under the phone keyboard that would hide a docked bar. Both leave it empty.
+    else return "";
+    const verdict = s.phase === "a" && s.correct !== null
+      ? `<span class="ex-verdict ${s.correct ? "okc" : "badc"}">${s.correct ? "✓ To'g'ri" : "✕ Noto'g'ri"}</span>` : "";
+    return `<div class="ex-foot${s.phase === "a" ? " in" : ""}"><div class="ex-foot-in">${verdict}<div class="ex-act">${act}</div></div></div>`;
   }
 
   function cardFront(it) {
@@ -538,8 +567,7 @@
         <div class="rom" style="font-size:17px;margin-bottom:34px">${rom(w.ko)}</div>
         <button class="audio-pill" data-act="ex-play"><span style="font-size:15px">▸</span> Talaffuzni eshitish</button>
       </div>
-      <button class="btn btn-soft" style="margin-top:34px;padding:16px 26px;font-size:16px" data-act="ex-reveal">Ma'nosini ko'rsatish</button>
-      <div class="kbd-hint" style="margin-top:22px">Space · ochish &nbsp;·&nbsp; → keyingi &nbsp;·&nbsp; S · audio</div>
+      <div class="kbd-hint" style="margin-top:28px">Space · ochish &nbsp;·&nbsp; → keyingi &nbsp;·&nbsp; S · audio</div>
     </div>`;
   }
 
@@ -547,7 +575,6 @@
     const w = S.word(it.id);
     const ex = S.example(it.id);
     const days = S.previewInterval(it.id, 3);
-    const grades = [[1, "Bilmadim"], [2, "Qiyin"], [3, "Bildim"], [4, "Oson"]];
     return `<div style="width:100%;max-width:880px"><div class="fc fc-back">
       <div class="l">
         <div class="row" style="align-items:baseline;gap:18px;margin-bottom:6px">
@@ -568,13 +595,6 @@
       </div>
       <div class="r">
         <div>
-          <div class="upl" style="margin-bottom:10px">Qanchalik bildingiz?</div>
-          <div class="stack" style="gap:8px">
-            ${grades.map(([g, t]) => `<button class="grade g${g}" data-act="ex-grade" data-g="${g}">${t}<span class="k">${g}</span></button>`).join("")}
-          </div>
-        </div>
-        <div class="sep"></div>
-        <div>
           <div class="upl" style="margin-bottom:10px">Keyingi takrorlash</div>
           <div style="font-size:15px;font-weight:700;margin-bottom:4px">${days === 1 ? "Ertaga" : `${days} kundan keyin`}</div>
           <div style="font-size:13px;color:var(--ink2);line-height:1.45">«Bildim» uchun. Javobingizga qarab keyingi takrorlash vaqti o'zgaradi</div>
@@ -591,9 +611,9 @@
     return `<span class="origin o-${o}" title="${esc(info.desc)}"><span class="ko">${info.ko}</span> ${esc(info.uz)}</span>`;
   };
 
-  // How the word is built and what to remember: parts and idea, memory hook, warning, related words.
+  // How the word is built and what to remember: parts and idea, memory hook, warning, related words. The intro
+  // card and the word modal each order these themselves, so they are handed back as pieces.
   // linkWords: related course words open their own word card (in the word modal).
-  X.rootsHtml = (wordId, opts) => { const s = X.rootsSections(wordId, opts); return s.build + s.hint + s.note + s.related; };
   X.rootsSections = (wordId, { linkWords = false } = {}) => {
     const r = S.roots(wordId) || {};
     const pieces = (r.parts || []).filter((p) => !p.space);
@@ -631,9 +651,16 @@
     };
   };
 
+  // A phone shows one column, so this order is the order the learner meets the word in: the word, how it is
+  // said, what it means, then the sentence that proves it — and only then the hanja layer, which is the reason
+  // this is not a flashcard app and stays whole. What follows it is depth a curious learner scrolls to: the
+  // look-alike warning, which taught a confusion before the word itself had landed, and the learner's own note,
+  // which had a keyboard-summoning field sitting between the card and its button. "Tushundim →" is docked.
   function introView(it) {
     const w = S.word(it.id);
     const ex = S.example(it.id);
+    const r = X.rootsSections(it.id);
+    const note = S.note(it.id);
     return `<div class="intro">
       <div class="ex-cap center" style="margin-bottom:18px">YANGI SO'Z · ${it.pos + 1} / ${it.size}</div>
       <div class="fc intro-card">
@@ -642,28 +669,31 @@
             <span class="word">${esc(w.ko)}</span>
             <button class="audio-dot" data-act="ex-play" aria-label="Talaffuz">▸</button>
           </div>
-          <div class="rom">${rom(w.ko)}</div>
+          <div class="row" style="justify-content:center;align-items:center;gap:10px;margin-top:8px">
+            <span class="rom">${rom(w.ko)}</span>${X.originBadge(it.id)}
+          </div>
           <div class="mean">${esc(w.uz)}</div>
-          <div style="margin-top:12px">${X.originBadge(it.id)}</div>
         </div>
         <div class="intro-grid">
-          <div>${X.rootsHtml(it.id)}</div>
           <div>
             ${ex ? `<div class="isec"><div class="row" style="gap:10px;align-items:center"><span class="upl">Misol</span>${sentBtn}</div>
               <div class="example" style="margin:10px 0 0">
                 <div class="s">${hlSentence(ex)}</div>
                 <div style="font-size:15px;color:var(--ink2);line-height:1.5">${uzPlain(ex)}</div>
               </div></div>` : ""}
-            <div class="isec"><label class="upl" for="note-in">O'z eslatmangiz</label>
+            ${r.build}${r.hint}
+          </div>
+          <div>
+            ${r.related}${r.note}
+            <details class="isec inote"${note ? " open" : ""}>
+              <summary>O'z eslatmangiz</summary>
               <input class="input note-in" id="note-in" data-input="word-note" data-id="${esc(it.id)}" maxlength="140" autocomplete="off"
-                placeholder="O'zingizga tushunarli bog'lanish yozing…" value="${esc(S.note(it.id))}"></div>
+                aria-label="O'z eslatmangiz" placeholder="O'zingizga tushunarli bog'lanish yozing…" value="${esc(note)}">
+            </details>
           </div>
         </div>
       </div>
-      <div class="center" style="margin-top:24px">
-        <button class="btn btn-p" style="padding:16px 34px;font-size:16px" data-act="ex-intro-next" data-primary>Tushundim →</button>
-        <div class="kbd-hint" style="margin-top:14px">⏎ · keyingi &nbsp;·&nbsp; S · audio</div>
-      </div>
+      <div class="kbd-hint center" style="margin-top:20px">⏎ · keyingi &nbsp;·&nbsp; S · audio</div>
     </div>`;
   }
 
@@ -689,18 +719,27 @@
     if (i === s.chosen) return "wrong";
     return "fade";
   }
+  // The cloze options used to be swapped for the feedback, which moved the whole card; now they are marked up
+  // in place like the multiple-choice options, and the feedback lands in the slot that was already waiting.
+  // The untouched options are left at full strength rather than faded the way .choice.fade fades them: the
+  // faded text measures 3.72:1 in the light theme, and one more marked-up state is not worth a new near-miss.
+  function optClass(s, it, i) {
+    if (s.phase !== "a") return s.chosen === i ? " on" : "";
+    return it.opts[i] === it.answer ? " right" : i === s.chosen ? " wrong" : "";
+  }
 
-  function feedbackRow(it, s) {
+  // The feedback slot. It is rendered while the question is still unanswered, empty but already its full
+  // height, so the verdict arriving moves nothing above it — the options stay exactly where the eye left them,
+  // and the button it used to carry is docked in the bar instead.
+  function feedbackSlot(s, it) {
+    if (s.phase !== "a") return `<div class="ex-slot"></div>`;
     const w = S.word(it.id);
     const ex = S.example(it.id);
     const body = ex
-      ? `<div class="ko" style="font-size:19px;font-weight:500;line-height:1.5;margin-bottom:6px">${hlSentence(ex)} ${sentBtn}</div><div style="font-size:14px;color:var(--ink2)">${uzPlain(ex)}</div>`
+      ? `<div class="s">${hlSentence(ex)} ${sentBtn}</div><div style="font-size:14px;color:var(--ink2)">${uzPlain(ex)}</div>`
       : `<div class="row" style="gap:12px;align-items:baseline;margin-bottom:4px"><span class="ko" style="font-size:20px;font-weight:700">${esc(w.ko)}</span><span class="mono faint" style="font-size:13px">${rom(w.ko)}</span></div><div style="font-size:14px;color:var(--ink2)">${esc(w.uz)}</div>`;
     const again = s.requeued ? `<div class="upl" style="color:var(--bad);margin-top:10px">Bu so'z birozdan keyin yana chiqadi</div>` : "";
-    return `<div class="feedback" style="${s.correct ? "" : "border-color:rgba(201,72,60,.3)"}">
-      <div class="grow">${body}${again}</div>
-      <button class="btn btn-p btn-sm" style="padding:13px 24px;font-size:15px" data-act="ex-next" data-primary>Keyingi</button>
-    </div>`;
+    return `<div class="ex-slot on${s.correct ? "" : " bad"}">${body}${again}</div>`;
   }
 
   function mcView(s, it) {
@@ -712,11 +751,11 @@
         ${ko2uz ? `<div class="ko" style="font-size:${w.ko.length > 6 ? 56 : 76}px;font-weight:700;letter-spacing:-.03em;line-height:1.1">${esc(w.ko)}</div>`
           : `<div style="font-size:40px;font-weight:800;letter-spacing:-.035em;line-height:1.15">${esc(w.uz)}</div>`}
       </div>
-      <div class="choices" style="margin-bottom:26px">
+      <div class="choices" style="margin-bottom:22px">
         ${it.opts.map((o, i) => `<button class="choice ${ko2uz ? "" : "ko"} ${choiceClass(s, it, i)}" data-act="ex-choose" data-i="${i}" ${s.phase === "a" ? "disabled" : ""}>
           <span class="n">${i + 1}</span><span class="txt">${esc(o)}</span>${s.phase === "a" && o === it.answer ? `<span style="font-size:15px;color:var(--ok)">✓</span>` : ""}</button>`).join("")}
       </div>
-      ${s.phase === "a" ? feedbackRow(it, s) : ""}
+      ${feedbackSlot(s, it)}
       <div class="kbd-hint center" style="margin-top:20px">1–4 · javob &nbsp;·&nbsp; ⏎ · keyingi</div>
     </div>`;
   }
@@ -726,6 +765,8 @@
     const ex = S.example(it.id);
     let body;
     if (s.phase === "q") {
+      // These two stay next to the field on purpose: the phone keyboard is already up (afterRender focuses the
+      // input) and it would cover a bar docked to the bottom edge.
       body = `<form data-form="ex-type" autocomplete="off">
         <div class="typebox" style="margin-bottom:14px">
           <input id="type-in" name="v" placeholder="한국어로 yozing…" autocomplete="off" autocapitalize="off" spellcheck="false" lang="ko" aria-label="Koreyscha javob">
@@ -750,9 +791,8 @@
       body = `${s.correct ? "" : `<div class="typebox wrong" style="margin-bottom:14px"><span class="val">${esc(s.typed)}</span><span style="font-size:20px;color:var(--bad)">✕</span></div>`}
         ${okPanel}
         <div class="row wrap" style="gap:12px">
-          <button class="btn btn-p" data-act="ex-next" data-primary>Keyingi so'z</button>
           <button class="btn btn-sec" data-act="ex-flag">${flagged ? "Belgilangan ✓" : "Bu so'zni belgilash"}</button>
-          ${s.correct ? "" : `<span class="kbd-hint" style="margin-left:auto">${s.requeued ? "Bu so'z birozdan keyin yana chiqadi" : "Bu so'z ertaga yana chiqadi"}</span>`}
+          ${s.correct ? "" : `<span class="faint" style="font-size:13px;margin-left:auto">${s.requeued ? "Bu so'z birozdan keyin yana chiqadi" : "Bu so'z ertaga yana chiqadi"}</span>`}
         </div>`;
     }
     return `<div style="width:100%;max-width:700px">
@@ -773,11 +813,11 @@
         <button class="chip" style="background:var(--sf);border:1px solid var(--line)" data-act="ex-play-slow">Sekin 0.7×</button>
         <button class="chip" style="background:var(--sf);border:1px solid var(--line)" data-act="ex-play">Qayta eshitish</button>
       </div>
-      <div class="choices" style="margin-bottom:24px">
+      <div class="choices" style="margin-bottom:22px">
         ${it.opts.map((o, i) => `<button class="choice ko ${choiceClass(s, it, i)}" data-act="ex-choose" data-i="${i}" ${s.phase === "a" ? "disabled" : ""}><span class="txt">${esc(o)}</span></button>`).join("")}
       </div>
-      ${s.phase === "a" ? `<div style="text-align:left">${feedbackRow(it, s)}</div>`
-        : `${s.hint ? `<div style="font-size:15px;font-weight:700;margin-bottom:8px">Ma'nosi: ${esc(w.uz)}</div>` : `<button class="link" style="font-size:14px;color:var(--ink3);margin-bottom:8px" data-act="ex-hint">Tushunmadim — ma'nosini ko'rsat</button>`}
+      <div style="text-align:left">${feedbackSlot(s, it)}</div>
+      ${s.phase === "a" ? "" : `${s.hint ? `<div style="font-size:15px;font-weight:700;margin-top:8px">Ma'nosi: ${esc(w.uz)}</div>` : `<button class="link" style="font-size:14px;color:var(--ink3)" data-act="ex-hint">Tushunmadim — ma'nosini ko'rsat</button>`}
       <div class="kbd-hint">Space · takrorlash &nbsp;·&nbsp; 1–4 · javob</div>`}
     </div>`;
   }
@@ -797,13 +837,10 @@
         <div class="s">${esc(before)}${blank}${esc(after)}</div>
         <div style="font-size:16px;color:var(--ink2);text-align:center;line-height:1.5">${s.phase === "a" ? uzPlain(ex) : uzBlank(ex)}</div>
       </div>
-      ${s.phase === "q" ? `<div class="opts" style="margin-bottom:32px">
-        ${it.opts.map((o, i) => `<button class="optk ${s.chosen === i ? "on" : ""}" data-act="ex-choose" data-i="${i}">${esc(o)}</button>`).join("")}
+      <div class="opts" style="margin-bottom:22px">
+        ${it.opts.map((o, i) => `<button class="optk${optClass(s, it, i)}" data-act="ex-choose" data-i="${i}" ${s.phase === "a" ? "disabled" : ""}>${esc(o)}</button>`).join("")}
       </div>
-      <div class="row" style="justify-content:center;gap:12px">
-        <button class="btn ${s.chosen === null ? "btn-soft" : "btn-p"}" style="padding:14px 30px" data-act="ex-check" ${s.chosen === null ? "disabled" : ""}>Tekshirish</button>
-        <button class="btn btn-ghost" data-act="ex-skip">O'tkazib yuborish</button>
-      </div>` : feedbackRow(it, s)}
+      ${feedbackSlot(s, it)}
     </div>`;
   }
 
@@ -861,7 +898,7 @@
     else if (it.type === "type") body = typeView(s, it);
     else if (it.type === "listen") body = listenView(s, it);
     else body = sentView(s, it);
-    return `<div class="ex">${header(s)}<div class="ex-body">${body}</div></div>`;
+    return `<div class="ex${hasFoot(s, it) ? " foot" : ""}">${header(s)}<div class="ex-body">${body}</div>${footer(s, it)}</div>`;
   };
 
   window.X = X;
