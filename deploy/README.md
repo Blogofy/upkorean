@@ -42,14 +42,26 @@ Faqat commit qilingan kod ketadi. `.env`, `data/`, `audio/` va `node_modules/` s
 45 MB, 2000 ta `.mp3` — kod bilan birga o'zgarmaydi, shuning uchun git'da kuzatilmaydi va har
 yangilashda qayta uzatilmaydi. Ular faqat klip qo'shilganda yoki almashtirilganda alohida ko'chiriladi:
 
-```sh
-rsync -az --delete audio/ root@109.205.177.244:/opt/upkorean/audio/
+Bu kompyuterda `rsync` yo'q (faqat `ssh` va `scp`), shuning uchun tar quvuri ishlatiladi — 2000 ta
+kichik fayl uchun `scp -r` dan ancha tez, chunki ulanish bitta:
+
+```powershell
+cd D:\UPKOREAN
+cmd /c "tar -cf - audio | ssh root@109.205.177.244 tar -xf - -C /opt/upkorean"
 ssh root@109.205.177.244 "chown -R upkorean:upkorean /opt/upkorean/audio && systemctl restart upkorean"
 ```
 
-Restart kerak: server ishga tushganda bo'laklarni sanaydi (`/api/config` dagi `clips`).
-Windows'da `rsync` bo'lmasa `scp -r audio/. root@...:/opt/upkorean/audio/` ham bo'ladi, faqat u
-serverdagi ortiqcha fayllarni o'chirmaydi.
+`cmd /c` shart: PowerShell quvur orqali o'tgan tar arxivini buzadi (deploy buyrug'idagi bilan bir xil sabab).
+
+Restart kerak: server bo'laklarni **faqat ishga tushganda** sanaydi (`/api/config` dagi `clips`). Fayllar
+joyida bo'lsa ham, restart bo'lmasa ilova "Diktor audiosi mavjud emas" deydi va tinglash mashqlarini
+umuman ko'rsatmaydi. Tekshirish:
+
+```powershell
+ssh root@109.205.177.244 "journalctl -u upkorean -n 8 --no-pager | grep Audio"
+```
+
+Tar quvuri serverdagi ortiqcha fayllarni o'chirmaydi — faqat ustiga yozadi.
 
 **Audio — yagona nusxa.** U git'da ham, `git archive` deploy'ida ham yo'q, ya'ni faqat shu
 kompyuterda va serverda turibdi. Ikkalasining birortasi yo'qolsa qayta yozdirish kerak bo'ladi —
