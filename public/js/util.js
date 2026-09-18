@@ -168,7 +168,8 @@
   // ---------- Toast & modal ----------
   U.toast = (msg, ms = 2600) => {
     let wrap = document.querySelector(".toast-wrap");
-    if (!wrap) { wrap = document.createElement("div"); wrap.className = "toast-wrap"; document.body.appendChild(wrap); }
+    // The wrapper stays in the page and is the live region, so every appended toast is announced.
+    if (!wrap) { wrap = document.createElement("div"); wrap.className = "toast-wrap"; wrap.setAttribute("role", "status"); wrap.setAttribute("aria-live", "polite"); document.body.appendChild(wrap); }
     const t = document.createElement("div");
     t.className = "toast"; t.textContent = msg;
     wrap.appendChild(t);
