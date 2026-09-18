@@ -1,6 +1,7 @@
 // Exercise engine: learning stages (flash cards or the guided meet → match → recall flow), review sessions and quizzes.
 (function () {
   const U = window.U, S = window.S, esc = U.esc;
+  const Actions = (window.Actions = window.Actions || {});
   const X = { session: null };
 
   const TYPE_LABEL = { mc: "FAOL ESLASH", mcr: "FAOL ESLASH", type: "YOZIB ESLASH", listen: "TINGLASH", sent: "GAPNI TO'LDIRISH" };
@@ -123,15 +124,35 @@
     App.go("#/session");
   };
 
-  X.startReview = (mode = "due") => {
-    const src = { due: S.dueIds(), weak: S.weakIds(), flag: S.flaggedIds(), forgot: S.forgottenIds() }[mode] || [];
-    const ids = src.slice(0, 40);
+  // The "due" queue is cut to the day's goal by S.reviewQueue, so this no longer decides a length. The
+  // hand-picked lists are not goal-bounded — they are whatever the learner marked — so they keep a cap of
+  // their own, and the extra round offered once the goal is met is one short sitting, not a second session.
+  const PICKED_CAP = 40;
+  const EXTRA_ROUND = 20;
+
+  // Today's goal is met and words are still due. A modal, not a toast: this is a question with two answers,
+  // and a toast can only tell. It is the same shape as the exit confirmation in X.exit.
+  function offerExtraRound(g) {
+    U.modal("Bugungi maqsad bajarildi", `<p class="muted" style="margin:0 0 20px;line-height:1.55">Bugun ${g.done} ta so'z takrorlandi — kunlik maqsad bajarildi. Navbatdagi ${g.due} ta so'z keyingi kunlarga taqsimlanadi, shuning uchun bugun to'xtasangiz ham hech narsa yo'qolmaydi.</p>
+      <div class="row"><button class="btn btn-p" data-act="ex-review-extra" autofocus>Yana ${EXTRA_ROUND} ta so'z</button><button class="btn btn-ghost" data-act="modal-close">Bugunga yetarli</button></div>`);
+  }
+
+  X.startReview = (mode = "due", extra) => {
+    if (mode === "due" && !extra) {
+      const g = S.reviewGoal();
+      // Two empty queues that mean opposite things: nothing is due at all, or the day's goal is already met.
+      // One message for both would read as "you have nothing" on the very day the learner did the work.
+      if (!g.due) { U.toast("Hozircha takrorlash uchun so'z yo'q"); return; }
+      if (!g.left) { offerExtraRound(g); return; }
+    }
+    const ids = mode === "due" ? S.reviewQueue("due", extra ? EXTRA_ROUND : undefined) : S.reviewQueue(mode, PICKED_CAP);
     if (!ids.length) { U.toast("Hozircha takrorlash uchun so'z yo'q"); return; }
     const wts = { mc: 3, mcr: 3, type: 2, listen: U.canListen() ? 2 : 0, sent: 1 };
     const items = ids.map((id) => makeItem(chooseType(id, wts), id));
     X.session = newSession("review", items, { mode, cat: "review" });
     App.go("#/session");
   };
+  Actions["ex-review-extra"] = () => { U.closeModal(); X.startReview("due", true); };
 
   // opts: {type, ids, count, timer, instant, title}
   X.startQuiz = (opts) => {
@@ -190,6 +211,7 @@
   X.next = () => {
     const s = X.session;
     if (!s) return;
+    if (restDue(s)) { showRest(s); return; }
     s.idx++;
     s.chosen = null; s.typed = ""; s.correct = null; s.hint = false; s.requeued = false; s.matched = []; s.sel = {}; s.flash = null; s.itemStart = Date.now();
     if (s.idx >= s.items.length) { finish(); return; }
@@ -202,6 +224,36 @@
     const el = document.querySelector(".ex");
     if (el && X.session) el.outerHTML = X.render(); else App.render();
   }
+
+  // ---------- Resting point ----------
+  // A review session runs to the day's goal now — 90 items at pace 17, 140 at pace 33 — where it used to hand
+  // back 40. A wall that size with no visible end is its own reason to quit, so every REST_EVERY answers it
+  // says how far along the learner is and offers a way out that keeps the work, instead of an exit that
+  // reads as giving up. Only review: a learning stage or a quiz is short and already has its own end.
+  const REST_EVERY = 20;
+  // Read before s.idx moves, so dismissing the modal (Escape, the backdrop, the Back button) leaves the
+  // session exactly where it stood and the ordinary "Keyingi" carries on; restAt offers each stop once.
+  function restDue(s) { return s.kind === "review" && (s.idx + 1) % REST_EVERY === 0 && s.idx + 1 < s.items.length && s.restAt !== s.idx; }
+  function showRest(s) {
+    s.restAt = s.idx;
+    const done = s.idx + 1, left = s.items.length - done;
+    U.modal("Nafas rostlang", `<p class="muted" style="margin:0 0 20px;line-height:1.55">${done} / ${s.items.length} so'z takrorlandi — ${s.ok} ta to'g'ri. Yana ${left} ta qoldi, taxminan ${Math.max(1, Math.round(left * 0.3))} daqiqa.<br>Hozir to'xtasangiz, javob berilgan ${done} ta so'z saqlanib qoladi.</p>
+      <div class="row"><button class="btn btn-p" data-act="ex-rest-go" autofocus>Davom etish</button><button class="btn btn-ghost" data-act="ex-rest-stop">Shu yerda to'xtash</button></div>`);
+  }
+  // Stopping ends the session where it stands: the answered items become the whole session, so the summary,
+  // the log line and the XP all read its real length. Nothing is lost — record() wrote every answer as it
+  // happened and trackTime closed the last one — and nothing is counted twice: finish() banks the minutes
+  // through saveMinutes, whose minutesSaved flag and s.finished are exactly what X.leave checks afterwards.
+  X.restStop = () => {
+    const s = X.session;
+    if (!s || s.finished) return;
+    s.items.length = s.idx + 1;
+    s.idx = s.items.length; // as a session that simply ran out: cur() is empty and the header reads 20 / 20
+    finish();
+  };
+  // These two buttons live in a modal this file opens, so this file registers them (app.js owns the rest).
+  Actions["ex-rest-go"] = () => { U.closeModal(); X.next(); };
+  Actions["ex-rest-stop"] = () => { U.closeModal(); X.restStop(); };
 
   X.introNext = () => {
     const s = X.session, it = cur();
