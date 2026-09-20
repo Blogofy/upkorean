@@ -45,18 +45,36 @@ export const hasSession = () => !!token;
 // For anything fetch() cannot do for us — an audio player that takes its own headers.
 export const authHeaders = () => (token ? { Authorization: `Bearer ${token}`, "X-UK-Client": CLIENT } : { "X-UK-Client": CLIENT });
 
-async function request(method, path, body, { auth = true, signal } = {}) {
+// A phone loses the network mid-request more often than it refuses one outright, and a fetch that is
+// never answered never rejects either. Without a deadline the app sits on a spinner forever, which is
+// the one failure a learner cannot act on.
+const TIMEOUT_MS = 20000;
+
+async function request(method, path, body, { auth = true, signal, timeout = TIMEOUT_MS } = {}) {
   const headers = { Accept: "application/json", "X-UK-Client": CLIENT };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (auth && token) headers.Authorization = `Bearer ${token}`;
 
+  const deadline = new AbortController();
+  const timer = setTimeout(() => deadline.abort(), timeout);
+  if (signal) signal.addEventListener("abort", () => deadline.abort(), { once: true });
+
   let res;
   try {
-    res = await fetch(`${API_URL}${path}`, { method, headers, signal, body: body === undefined ? undefined : JSON.stringify(body) });
+    res = await fetch(`${API_URL}${path}`, { method, headers, signal: deadline.signal, body: body === undefined ? undefined : JSON.stringify(body) });
   } catch (cause) {
-    const offline = new ApiError("Serverga ulanib bo'lmadi. Internetni tekshiring.", 0, null);
+    const timedOut = deadline.signal.aborted && !(signal && signal.aborted);
+    const offline = new ApiError(
+      timedOut
+        ? `Server javob bermadi (${API_URL}). Manzil to'g'rimi va internet bormi?`
+        : `Serverga ulanib bo'lmadi (${API_URL}). Internetni tekshiring.`,
+      0,
+      null,
+    );
     offline.cause = cause;
     throw offline;
+  } finally {
+    clearTimeout(timer);
   }
 
   if (res.status === 204) return null;
@@ -77,7 +95,12 @@ async function request(method, path, body, { auth = true, signal } = {}) {
 // Auth responses carry { user, token, expiresAt }; the token is kept here and never returned to a screen.
 async function signIn(path, body) {
   const data = await request("POST", path, body, { auth: false });
-  if (data && data.token) await keepSession(data.token);
+  // A server old enough to ignore X-UK-Client answers with a cookie instead, which this client has
+  // nowhere to keep. Signing in would look like it worked and every later request would be signed out.
+  if (!data || !data.token) {
+    throw new ApiError(`Bu server ilovani hali qo'llab-quvvatlamaydi (${API_URL}). Serverni yangilang.`, 0, null);
+  }
+  await keepSession(data.token);
   return data;
 }
 
@@ -123,7 +146,7 @@ export const api = {
   leaderboard: () => request("GET", `/api/leaderboard?tz=${tz()}`),
 
   contentManifest: () => request("GET", "/api/content", undefined, { auth: false }),
-  contentPart: (name, version) => request("GET", `/api/content/${name}${version ? `?v=${version}` : ""}`, undefined, { auth: false }),
+  contentPart: (name, version) => request("GET", `/api/content/${name}${version ? `?v=${version}` : ""}`, undefined, { auth: false, timeout: 60000 }),
 
   // Narrator audio. Signed-in only, so the player has to send authHeaders() with it.
   clipUrl: (kind, wordId) => `${API_URL}/media/clip/${kind}/${wordId}.mp3`,

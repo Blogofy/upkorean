@@ -43,9 +43,10 @@ npm install
 npx expo start
 ```
 
-Telefondagi ilova uchun `localhost` — telefonning o'zi. Kompyuteringizdagi serverga ulanish uchun
-`apps/mobile/app.json` dagi `expo.extra.apiUrl` ni kompyuteringizning tarmoqdagi manziliga qo'ying,
-masalan `http://192.168.1.5:3000`.
+Dev rejimida ilova API manzilini o'zi topadi: bundle'ni qaysi kompyuterdan yuklagan bo'lsa,
+`http://<shu IP>:3000` ga boradi. Shuning uchun kompyuterda `npm run dev` ishlab tursa kifoya — IP
+yozish kerak emas. Telefon yetolmasa, Windows Firewall'da 3000-portni oching yoki
+`npx expo start --tunnel` ishlating.
 
 ## Buyruqlar
 

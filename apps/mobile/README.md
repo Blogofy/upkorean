@@ -37,21 +37,26 @@ ildizidan topilmaydi.
 
 ## Server manzili
 
-`app.json` da:
+**Dev rejimida hech nima yozish shart emas.** Ilova bundle'ni qaysi kompyuterdan yuklagan bo'lsa,
+API'ni ham o'shanda deb hisoblaydi (`Constants.expoConfig.hostUri` dan olinadi) va `http://<shu IP>:3000`
+ga murojaat qiladi. Ya'ni kompyuterda `npm run dev` ishlab tursa, kifoya.
 
-```json
-{ "expo": { "extra": { "apiUrl": "https://upkorean.uz" } } }
-```
+`localhost` hech qachon yaramaydi — telefon uchun u telefonning o'zi.
 
-Kompyuteringizdagi serverga ulanish uchun `localhost` yaramaydi — telefon uchun u telefonning o'zi.
-Kompyuteringizning tarmoqdagi manzilini qo'ying:
+`app.json` dagi `extra` kalitlari:
 
-```json
-{ "expo": { "extra": { "apiUrl": "http://192.168.1.5:3000" } } }
-```
+| Kalit | Qachon ishlaydi | Nima uchun |
+| --- | --- | --- |
+| `apiUrl` | release build | Do'kondagi ilova qaysi serverga boradi |
+| `devApiUrl` | dev, hammasidan ustun | Dev ilovani jonli serverga qaratish kerak bo'lsa |
+| `devApiPort` | dev | Server 3000 dan boshqa portda bo'lsa |
 
-Manzilni `ipconfig` (Windows) yoki `ifconfig` (macOS/Linux) ko'rsatadi. Server `npm run dev` bilan
-ishlab turgan bo'lsin va telefon bilan bitta Wi-Fi'da bo'lsin.
+Telefon serverga yetolmasa, ko'pincha aybdor **Windows Firewall**: 3000-portga kiruvchi ulanishga
+ruxsat bering yoki `npx expo start --tunnel` bilan ishga tushiring.
+
+> `upkorean.uz` da hozir **eski kod** turibdi — u yerda `/api/content` yo'q va token bilan kirish
+> ishlamaydi. Ilova bunday serverda "Bu server ilovani hali qo'llab-quvvatlamaydi" deb aytadi.
+> Yangi backend chiqarilgunga qadar faqat dev server bilan sinang.
 
 ## Nega bu papka npm workspace emas
 

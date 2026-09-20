@@ -6,6 +6,7 @@ import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, T
 import { StatusBar } from "expo-status-bar";
 
 import { api, ApiError, restoreSession } from "./src/api";
+import { API_URL } from "./src/config";
 import { loadContent } from "./src/content";
 
 const TEAL = "#207F73";
@@ -35,11 +36,11 @@ export default function App() {
   useEffect(() => { boot(); }, [boot]);
 
   if (booting) return <Center><ActivityIndicator color={TEAL} size="large" /></Center>;
-  if (!user) return <SignIn config={config} error={error} onSignedIn={setUser} />;
+  if (!user) return <SignIn config={config} error={error} onRetry={boot} onSignedIn={setUser} />;
   return <Home user={user} onSignedOut={() => setUser(null)} />;
 }
 
-function SignIn({ config, error: bootError, onSignedIn }) {
+function SignIn({ config, error: bootError, onRetry, onSignedIn }) {
   const [mode, setMode] = useState("login"); // "login" | "register"
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -72,6 +73,11 @@ function SignIn({ config, error: bootError, onSignedIn }) {
       <Field label="Parol" value={password} onChangeText={setPassword} secureTextEntry />
 
       {!!(error || bootError) && <Text style={styles.error}>{error || bootError}</Text>}
+      {!!bootError && (
+        <Pressable onPress={onRetry}>
+          <Text style={styles.link}>Qayta urinish</Text>
+        </Pressable>
+      )}
 
       <Button
         label={registering ? "Ro’yxatdan o’tish" : "Kirish"}
@@ -86,6 +92,7 @@ function SignIn({ config, error: bootError, onSignedIn }) {
           <Text style={styles.link}>Demo hisob bilan ko’rish</Text>
         </Pressable>
       )}
+      {!!bootError && <Text style={styles.footnote}>{API_URL}</Text>}
     </ScrollView>
   );
 }
@@ -99,7 +106,16 @@ function Home({ user, onSignedOut }) {
     loadContent().then(setContent).catch((e) => setError(e.message));
   }, []);
 
-  if (error) return <Center><Text style={styles.error}>{error}</Text></Center>;
+  if (error) {
+    return (
+      <Center>
+        <Text style={styles.error}>{error}</Text>
+        <Pressable onPress={() => { setError(""); loadContent().then(setContent).catch((e) => setError(e.message)); }}>
+          <Text style={styles.link}>Qayta urinish</Text>
+        </Pressable>
+      </Center>
+    );
+  }
   if (!content) return <Center><ActivityIndicator color={TEAL} size="large" /><Text style={styles.muted}>Kurs yuklanmoqda…</Text></Center>;
 
   const words = content.dayWords[day] || [];
@@ -170,6 +186,7 @@ const styles = StyleSheet.create({
   link: { color: TEAL, fontSize: 14, fontWeight: "600", textAlign: "center", marginTop: 16 },
   error: { color: "#b3261e", fontSize: 14, marginBottom: 8 },
   muted: { color: "#5b7671", fontSize: 13 },
+  footnote: { color: "#9bb0ab", fontSize: 12, textAlign: "center", marginTop: 24 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", paddingHorizontal: 24 },
   hello: { fontSize: 22, fontWeight: "800", color: INK },
   dayRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 20, paddingVertical: 16 },
