@@ -4,8 +4,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 globalThis.window = {};
-await import("../public/js/vocab.js");
-await import("../public/js/examples.js");
+await import("../packages/shared/vocab.js");
+await import("../packages/shared/examples.js");
 
 const days = window.UK_VOCAB;
 const examples = window.UK_EXAMPLES || [];

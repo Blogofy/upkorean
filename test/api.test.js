@@ -5,7 +5,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { localTime } from "../server/progress.js";
+import { localTime } from "../apps/api/progress.js";
 
 const root = path.resolve(import.meta.dirname, "..");
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "upkorean-api-"));
@@ -14,7 +14,7 @@ const BASE = `http://127.0.0.1:${port}`;
 let server;
 
 before(async () => {
-  server = spawn(process.execPath, ["--no-warnings", "server/index.js", "--dev"], {
+  server = spawn(process.execPath, ["--no-warnings", "apps/api/index.js", "--dev"], {
     cwd: root,
     env: { ...process.env, PORT: String(port), DATA_DIR: dataDir, BACKUP_HOURS: "0", DEMO: "1", NODE_ENV: "test", SMTP_HOST: "", GOOGLE_CLIENT_ID: "" },
     stdio: ["ignore", "pipe", "pipe"],
@@ -223,4 +223,119 @@ test("responses carry security headers; the service worker gets a build fingerpr
   assert.match(r.headers.get("content-security-policy"), /default-src 'self'/);
   const js = await fetch(`${BASE}/js/examples.js`, { headers: { "Accept-Encoding": "gzip" } });
   assert.equal(js.headers.get("content-encoding"), "gzip");
+});
+
+// ---------- The mobile app's side of the API ----------
+
+// A native app: no cookie jar, the session travels as a bearer token.
+function appClient() {
+  let token = "";
+  const call = async (method, url, body, headers = {}) => {
+    const res = await fetch(BASE + url, {
+      method,
+      headers: {
+        "X-UK-Client": "mobile/1.0.0",
+        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...headers,
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+    const text = await res.text();
+    let data = null;
+    try { data = JSON.parse(text); } catch { data = text; }
+    if (data && data.token) token = data.token;
+    return { status: res.status, data, headers: res.headers };
+  };
+  call.token = () => token;
+  call.forget = () => { token = ""; };
+  return call;
+}
+
+test("an app signs in with a bearer token and a browser still signs in with a cookie", async () => {
+  const app = appClient();
+  const email = `app1-${port}@mail.uz`;
+  const up = await app("POST", "/api/auth/register", { name: "App User", email, password: "password1" });
+  assert.equal(up.status, 201);
+  // The token is in the body, and no cookie was set: an app has nowhere to keep one.
+  assert.match(up.data.token, /^[\w-]{20,}$/);
+  assert.ok(up.data.expiresAt > Date.now());
+  assert.equal(up.headers.get("set-cookie"), null);
+
+  // That token really is a session.
+  assert.equal((await app("GET", "/api/auth/me")).data.user.email, email);
+  assert.equal((await app("PUT", "/api/progress", { state: { xp: 7 }, baseAt: null, rev: "m1" })).status, 200);
+  assert.deepEqual((await app("GET", "/api/progress")).data.state, { xp: 7 });
+  // Audio is behind the same session.
+  assert.equal((await fetch(`${BASE}/media/clip/words/1-0.mp3`)).status, 401);
+  assert.equal((await fetch(`${BASE}/media/clip/words/1-0.mp3`, { headers: { Authorization: `Bearer ${app.token()}` } })).status, 200);
+
+  // The same account from a browser: a cookie, and no token handed to page script.
+  const browser = client();
+  const signedIn = await browser("POST", "/api/auth/login", { email, password: "password1" });
+  assert.equal(signedIn.status, 200);
+  assert.equal(signedIn.data.token, undefined);
+  assert.match(signedIn.headers.get("set-cookie"), /uk_sid=/);
+
+  // Logging out ends the bearer session only — the browser's cookie session survives.
+  assert.equal((await app("POST", "/api/auth/logout", {})).status, 200);
+  const dead = await fetch(`${BASE}/api/auth/me`, { headers: { Authorization: `Bearer ${app.token()}`, "X-UK-Client": "mobile/1.0.0" } });
+  assert.equal(dead.status, 401);
+  assert.equal((await browser("GET", "/api/auth/me")).status, 200);
+});
+
+test("changing the password hands the app a new token and drops the old one", async () => {
+  const app = appClient();
+  const email = `app2-${port}@mail.uz`;
+  await app("POST", "/api/auth/register", { name: "App User", email, password: "password1" });
+  const before = app.token();
+  const changed = await app("POST", "/api/account/password", { current: "password1", next: "password2" });
+  assert.equal(changed.status, 200);
+  assert.notEqual(changed.data.token, before);
+  assert.equal((await app("GET", "/api/auth/me")).status, 200); // the new token works
+  const old = await fetch(`${BASE}/api/auth/me`, { headers: { Authorization: `Bearer ${before}` } });
+  assert.equal(old.status, 401); // the old one does not
+});
+
+test("course content is served as JSON, versioned and revalidatable", async () => {
+  const manifest = await (await fetch(`${BASE}/api/content`)).json();
+  assert.match(manifest.version, /^[0-9a-f]{12}$/);
+  assert.equal(manifest.days, 30);
+  assert.equal(manifest.words, 1000);
+  assert.deepEqual(manifest.parts.map((p) => p.name), ["vocab", "examples", "roots"]);
+
+  const config = await (await fetch(`${BASE}/api/config`)).json();
+  assert.equal(config.contentVersion, manifest.version);
+
+  // No sign-in: the course is the same public payload the browser gets as /js/vocab.js.
+  const vocab = await fetch(`${BASE}/api/content/vocab?v=${manifest.version}`);
+  assert.equal(vocab.status, 200);
+  assert.match(vocab.headers.get("cache-control"), /immutable/);
+  const data = await vocab.json();
+  assert.equal(data.words.length, 1000);
+  assert.deepEqual(Object.keys(data.words[0]).sort(), ["day", "i", "id", "ko", "uz"]);
+  assert.equal(data.words[0].id, "1-0");
+
+  // Asked for without the version, an unchanged part comes back as a 304 with no body.
+  const etag = vocab.headers.get("etag");
+  const again = await fetch(`${BASE}/api/content/vocab`, { headers: { "If-None-Match": etag } });
+  assert.equal(again.status, 304);
+
+  assert.equal((await fetch(`${BASE}/api/content/passwords`)).status, 404);
+});
+
+// A page on another site may reach the API, but only signed out: no Allow-Credentials, and the session
+// cookie is SameSite=Lax, so the browser never attaches it to a cross-site request.
+test("the API answers other origins, but never with credentials", async () => {
+  const preflight = await fetch(`${BASE}/api/progress`, {
+    method: "OPTIONS",
+    headers: { Origin: "http://evil.example", "Access-Control-Request-Method": "PUT" },
+  });
+  assert.equal(preflight.status, 204);
+  assert.equal(preflight.headers.get("access-control-allow-origin"), "*");
+  assert.equal(preflight.headers.get("access-control-allow-credentials"), null);
+  assert.match(preflight.headers.get("access-control-allow-headers"), /Authorization/);
+
+  const plain = await fetch(`${BASE}/api/config`);
+  assert.equal(plain.headers.get("access-control-allow-origin"), null); // same-origin requests are untouched
 });

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import "../public/js/sync.js";
+import "../packages/shared/sync.js";
 
 const { diffState, applyChanges, mergeStates } = globalThis.UKSync;
 const clone = (v) => JSON.parse(JSON.stringify(v));

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { tzOf, localTime, leaderboardXp, DAY_XP_CAP, XP_PER_MIN, XP_PER_WORD } from "../server/progress.js";
+import { tzOf, localTime, leaderboardXp, DAY_XP_CAP, XP_PER_MIN, XP_PER_WORD } from "../apps/api/progress.js";
 
 const TASHKENT = -300; // UTC+5
 const SEOUL = -540; // UTC+9

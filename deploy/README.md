@@ -37,6 +37,26 @@ cmd /c "git archive --format=tar HEAD | ssh root@109.205.177.244 sh /opt/upkorea
 
 Faqat commit qilingan kod ketadi. `.env`, `data/`, `audio/` va `node_modules/` serverda saqlanib qoladi.
 
+### Bir martalik: `server/` → `apps/api/` ko'chishi
+
+Repo monorepo'ga bo'lindi (`apps/api`, `apps/web`, `apps/mobile` va `packages/shared`), ya'ni
+serverning kirish nuqtasi endi `apps/api/index.js`. `deploy/upkorean.service` shunga moslandi, lekin
+systemd unit'i faylni serverga **qo'lda** qo'yiladi — u `update.sh` bilan ko'chmaydi. Shuning uchun shu
+o'zgarishni olib boradigan yangilashda unit'ni ham almashtiring, aks holda `systemctl restart upkorean`
+endi yo'q fayl (`server/index.js`) ni ishga tushirmoqchi bo'lib xato beradi:
+
+```sh
+ssh root@109.205.177.244
+cp /opt/upkorean/deploy/upkorean.service /etc/systemd/system/upkorean.service
+systemctl daemon-reload
+systemctl restart upkorean
+systemctl is-active upkorean
+```
+
+Eski `server/` va `public/` papkalari serverda `rsync --delete` bilan o'chadi. Web ilovaning manzillari
+o'zgarmadi (`/js/vocab.js` hamon o'sha joyda), shuning uchun brauzerdagi keshlangan nusxalar ham
+ishlayveradi.
+
 ## Diktor bo'laklari (`audio/`)
 
 45 MB, 2000 ta `.mp3` — kod bilan birga o'zgarmaydi, shuning uchun git'da kuzatilmaydi va har
@@ -70,8 +90,8 @@ uchinchi nusxasini tashqi diskda yoki bulutda saqlang.
 ## Asset kesh (build id)
 
 Loyihada build step yo'q, shuning uchun fayl nomlarida content-hash ham yo'q. Uning o'rniga server
-ishga tushganda `public/` ni bir marta yurib chiqib **build id** hisoblaydi (`publicFingerprint()`,
-`server/index.js`) va uni ikki joyga qo'yadi:
+ishga tushganda `apps/web/` va `packages/shared/` ni bir marta yurib chiqib **build id** hisoblaydi
+(`publicFingerprint()`, `apps/api/index.js`) va uni ikki joyga qo'yadi:
 
 - `sw.js` dagi `VERSION` — service worker keshining nomi;
 - `index.html` dagi har bir `<script src>` va `<link href>` oxiridagi `?v=…`.
@@ -90,7 +110,7 @@ Shu sababli kesh sarlavhalari quyidagicha:
 **Muhim:** bir yillik `immutable` faqat URL'da shu deploy'ning build id'si bo'lsa beriladi. Fayl
 nomi o'zgarmagani uchun id'siz so'rovga uzoq kesh berish xavfli bo'lardi — eski sahifa yangilanmay
 qolardi. `npm run dev` da build id har so'rovda qayta hisoblanadi va uzoq kesh umuman berilmaydi,
-shuning uchun `public/` ni tahrirlab, sahifani yangilash kifoya.
+shuning uchun `apps/web/` ni tahrirlab, sahifani yangilash kifoya.
 
 Deploy'dan keyin tekshirish:
 
@@ -119,7 +139,7 @@ uchun keyinga qoldirildi:
    to'plami cheklangan. `pyftsubset` bilan faqat shu gliflarga qisqartirilgan bitta `.woff2`
    (og'irlik boshiga ~30–60 KB) 496 ta `@font-face` ni **4 tasiga** tushiradi va uchinchi tomon
    ulanishini (DNS + TLS) butunlay yo'q qiladi. Buning uchun font fayllarini generatsiya qilish
-   kerak — bu repoda build step yo'q, shuning uchun fayllar qo'lda tayyorlanib `public/fonts/` ga
+   kerak — bu repoda build step yo'q, shuning uchun fayllar qo'lda tayyorlanib `apps/web/fonts/` ga
    qo'yiladi, `styles.css` ga `@font-face` (`font-display: swap`) yoziladi va `index.html` dagi
    Google Fonts havolasi bilan CSP'dagi `fonts.googleapis.com` / `fonts.gstatic.com` olib tashlanadi.
 
@@ -127,12 +147,12 @@ uchun keyinga qoldirildi:
 
 Funksiya **butunlay o'chirilgan**: mijoz tarafi payload'da yo'q, `#/tutor` route'i yo'q, kirish
 nuqtalari olib tashlangan (audit M7 va 8.3 — doimiy "tez kunda" tugmasi mahsulot va'dalarini
-shartli qilib ko'rsatadi). **Server tarafi saqlangan:** `server/tutor.js` — Claude chaqiruvi,
+shartli qilib ko'rsatadi). **Server tarafi saqlangan:** `apps/api/tutor.js` — Claude chaqiruvi,
 javob sxemasi va prompt — o'z holicha turibdi va `ANTHROPIC_API_KEY` bilan ishlaydi.
 
 Yoqish uchun:
 
-1. `git show 4a243e9:public/js/tutor.js > public/js/tutor.js` — mijoz ekranlari (start + chat).
+1. `git show 4a243e9:public/js/tutor.js > apps/web/js/tutor.js` — mijoz ekranlari (start + chat).
 2. **Avval `highlight()` ni tuzating** (o'sha fayl, ~202-209-qatorlar). U placeholder sifatida
    yalang'och butun sondan foydalanadi, ya'ni javobdagi **har qanday raqam** placeholder deb
    o'qiladi:
@@ -140,12 +160,12 @@ Yoqish uchun:
    `TypeError: Cannot destructure property 'w' of 'found[i]'`. Qo'shni placeholder'lar ham
    birikib ketadi (`"1"+"2"` → `12`). Raqamsiz sentinel kerak (masalan `U+0000 <i> U+0000`).
 3. `index.html` ga `<script src="/js/tutor.js?v=__BUILD__">` (views.js dan **oldin**) va
-   `public/sw.js` dagi `SHELL` ro'yxatiga `"/js/tutor.js"` qo'shing.
-4. `public/js/app.js`: `const T = window.T`, `TITLES.tutor`, `#/tutor` → `V.tutorStart()` tarmog'i,
+   `apps/web/sw.js` dagi `SHELL` ro'yxatiga `"/js/tutor.js"` qo'shing.
+4. `apps/web/js/app.js`: `const T = window.T`, `TITLES.tutor`, `#/tutor` → `V.tutorStart()` tarmog'i,
    `keydown` da `T.onKey`, `MID_TASK` ga `"tutor"`, va `#chat-input` balandligini moslashtiruvchi
    `input` handler'i — hammasi shu commit'da olib tashlangan, `git show` bilan qaytariladi.
-5. `public/js/store.js`: `S.tutor = (payload) => api("POST", "/tutor", payload);`.
-6. `server/index.js`: `tutorLimit` va `POST /api/tutor` route'i (endi `tutorReply` ni haqiqatdan
+5. `apps/web/js/store.js`: `S.tutor = (payload) => api("POST", "/tutor", payload);`.
+6. `apps/api/index.js`: `tutorLimit` va `POST /api/tutor` route'i (endi `tutorReply` ni haqiqatdan
    chaqirsin — ilgari u faqat 503 qaytarardi va `tutorReply` import ham qilinmagan edi), hamda
    `/api/config` da `tutor: true`. **`/api/config` kalitlari o'zgarmasin** — eski keshdagi mijoz
    shu obyektni o'qiydi.
@@ -224,7 +244,7 @@ turganda olinadigan butun nusxa) va oxirgi **14** tasini saqlaydi. Ular jonli ba
 diskda** turibdi, ya'ni server yoki disk yo'qolsa zaxiralar ham u bilan ketadi.
 
 `vapid.json` ham o'sha papkada: u yo'qolsa server push uchun **yangi kalit** yaratadi va hamma
-brauzer eslatmalarni qaytadan yoqishi kerak bo'ladi (`server/push.js`, `loadKeys`).
+brauzer eslatmalarni qaytadan yoqishi kerak bo'ladi (`apps/api/push.js`, `loadKeys`).
 
 ### Avtomatik tortish (`deploy/backup-offsite.ps1`)
 

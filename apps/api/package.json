@@ -1,0 +1,19 @@
+{
+  "name": "@upkorean/api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "UpKorean backend — JSON API for the web app and the mobile app, and the static host for the web app",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node --no-warnings=ExperimentalWarning index.js",
+    "dev": "node --no-warnings=ExperimentalWarning --watch index.js --dev"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.125.0",
+    "compression": "^1.8.2",
+    "express": "^5.2.1",
+    "nodemailer": "^10.0.10",
+    "web-push": "^3.6.7"
+  }
+}

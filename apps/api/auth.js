@@ -1,4 +1,4 @@
-// Password hashing (scrypt), cookie sessions and small helpers.
+// Password hashing (scrypt), sessions (cookie for the browser, bearer token for the apps) and small helpers.
 import crypto from "node:crypto";
 import { q } from "./db.js";
 
@@ -31,22 +31,38 @@ function parseCookies(header = "") {
   return out;
 }
 
+// A native app announces itself with `X-UK-Client: mobile/<version>`. It has no cookie jar, and no
+// same-site rule to lean on, so it carries the session as a bearer token instead.
+const APP_CLIENTS = new Set(["mobile", "app", "desktop"]);
+export const isAppClient = (req) =>
+  APP_CLIENTS.has(String(req.headers["x-uk-client"] || "").split("/")[0].trim().toLowerCase());
+
+const bearerToken = (req) => {
+  const header = String(req.headers.authorization || "");
+  return header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+};
+
+// Returns what the response body should carry: nothing for a browser (its token is in an HttpOnly cookie
+// that page script must never be able to read), the token itself for an app.
 export function startSession(req, res, userId) {
   const token = randomToken();
-  const expires = Date.now() + SESSION_DAYS * 86400000;
-  q.insertSession.run(sha256(token), userId, expires);
+  const expiresAt = Date.now() + SESSION_DAYS * 86400000;
+  q.insertSession.run(sha256(token), userId, expiresAt);
+  if (isAppClient(req)) return { token, expiresAt };
   const secure = req.secure || req.headers["x-forwarded-proto"] === "https";
   res.setHeader("Set-Cookie", `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_DAYS * 86400}${secure ? "; Secure" : ""}`);
+  return {};
 }
 
+// Ends whichever session made this request, and clears the cookie in case it was the cookie's.
 export function endSession(req, res) {
-  const token = parseCookies(req.headers.cookie)[COOKIE];
+  const token = bearerToken(req) || parseCookies(req.headers.cookie)[COOKIE];
   if (token) q.deleteSession.run(sha256(token));
   res.setHeader("Set-Cookie", `${COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
 }
 
 export function currentUser(req) {
-  const token = parseCookies(req.headers.cookie)[COOKIE];
+  const token = bearerToken(req) || parseCookies(req.headers.cookie)[COOKIE];
   if (!token) return null;
   return q.sessionUser.get(sha256(token), Date.now()) || null;
 }

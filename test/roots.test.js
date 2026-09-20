@@ -2,8 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 globalThis.window = globalThis;
-await import("../public/js/vocab.js");
-await import("../public/js/roots.js");
+await import("../packages/shared/vocab.js");
+await import("../packages/shared/roots.js");
 
 const WORDS = {};
 globalThis.UK_VOCAB.forEach((list, d) => list.forEach(([ko, uz], i) => { WORDS[`${d + 1}-${i}`] = { ko, uz, day: d + 1 }; }));

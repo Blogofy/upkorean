@@ -1,4 +1,4 @@
-// The server fills in the build fingerprint of public/ below, so each deploy gets a fresh shell cache.
+// The server fills in the build fingerprint of the web payload below, so each deploy gets a fresh shell cache.
 const VERSION = "upkorean-__BUILD__";
 // The three corpus files stay in the shell even though index.html no longer loads them: S.loadCorpus()
 // asks for them after sign-in, and offline they have to come from here.

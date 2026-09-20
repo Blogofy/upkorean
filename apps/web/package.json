@@ -1,0 +1,7 @@
+{
+  "name": "@upkorean/web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "UpKorean web app (PWA) — plain HTML, CSS and JavaScript, served by @upkorean/api. No build step.",
+  "type": "module"
+}

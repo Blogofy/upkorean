@@ -6,6 +6,8 @@ import crypto from "node:crypto";
 import express from "express";
 import compression from "compression";
 import { q, backupDb, lastBackupAt, BACKUP_DIR } from "./db.js";
+import { WEB_DIR, SHARED_DIR, AUDIO_DIR } from "./paths.js";
+import { manifest as contentManifest, partBody, VERSION as CONTENT_VERSION } from "./content.js";
 import {
   hashPassword, verifyPassword, startSession, endSession, currentUser, requireAuth,
   publicUser, rateLimit, counter, randomToken, sha256, DEMO_EMAIL, isDemo,
@@ -14,7 +16,7 @@ import { tutorEnabled } from "./tutor.js";
 import { mailEnabled, sendResetEmail } from "./mail.js";
 import { tzOf, localTime, leaderboardXp } from "./progress.js";
 import { PUSH_PUBLIC_KEY, PUSH_CONTACT, sendToUser, reminderTimes, runReminders } from "./push.js";
-import "../public/js/sync.js"; // defines globalThis.UKSync, shared with the browser
+import "../../packages/shared/sync.js"; // defines globalThis.UKSync, shared with the browser and the app
 
 const { UKSync } = globalThis;
 
@@ -24,8 +26,11 @@ const PROD = process.env.NODE_ENV === "production";
 // Development conveniences are opt-in (`npm run dev`), so a server started without NODE_ENV is still safe.
 const DEV = !PROD && process.argv.includes("--dev");
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
+// The mobile app signs in with its own OAuth clients, so a token issued to any of them is ours as well.
+const GOOGLE_ANDROID_ID = process.env.GOOGLE_CLIENT_ID_ANDROID || "";
+const GOOGLE_IOS_ID = process.env.GOOGLE_CLIENT_ID_IOS || "";
+const GOOGLE_AUDIENCES = new Set([GOOGLE_CLIENT_ID, GOOGLE_ANDROID_ID, GOOGLE_IOS_ID].filter(Boolean));
 const DEMO = process.env.DEMO ? process.env.DEMO === "1" : DEV;
-const AUDIO_DIR = path.resolve("audio");
 // Narrator clips: audio/words/<id>.mp3 = word, audio/sentences/<id>.mp3 = example sentence.
 const CLIP_DIR = AUDIO_DIR;
 const clipCount = (kind) => {
@@ -34,7 +39,8 @@ const clipCount = (kind) => {
 };
 const WORD_CLIPS = clipCount("words"), SENTENCE_CLIPS = clipCount("sentences");
 const HAS_CLIPS = WORD_CLIPS >= 1000 && SENTENCE_CLIPS >= 1000;
-const PUBLIC_DIR = path.resolve("public");
+// The oldest app build this server still serves; /api/config hands it to every app at startup.
+const MIN_APP_VERSION = process.env.MIN_APP_VERSION || "1.0.0";
 const BACKUP_HOURS = process.env.BACKUP_HOURS === undefined ? 24 : Number(process.env.BACKUP_HOURS) || 0;
 const BACKUP_KEEP = Number(process.env.BACKUP_KEEP) || 14;
 
@@ -77,7 +83,25 @@ app.use((req, res, next) => {
 });
 app.use(compression());
 
-app.get("/media/clip/:kind/:file", requireAuth, (req, res) => {
+// A native app is not a browser and CORS never applies to it, but Expo's web target, the dev client and any
+// future desktop build are, so the API and the audio it serves answer any origin. What makes that safe is
+// that Access-Control-Allow-Credentials is never sent and the session cookie is SameSite=Lax: a page on
+// another site can reach these routes, but never carrying a visitor's cookie, so it reaches them signed out.
+// An app sends its session as `Authorization: Bearer`, which a third-party page has no way to obtain.
+function cors(req, res, next) {
+  if (req.headers.origin) {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Vary", "Origin");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-UK-Client");
+    res.setHeader("Access-Control-Max-Age", "600");
+  }
+  if (req.method === "OPTIONS") return res.status(204).end();
+  next();
+}
+
+app.options("/media/clip/:kind/:file", cors);
+app.get("/media/clip/:kind/:file", cors, requireAuth, (req, res) => {
   const { kind, file } = req.params;
   if (!/^(words|sentences)$/.test(kind) || !/^\d{1,2}-\d{1,2}\.mp3$/.test(file)) return res.status(404).json({ error: "Audio topilmadi" });
   res.setHeader("Cache-Control", "private, max-age=604800");
@@ -85,6 +109,7 @@ app.get("/media/clip/:kind/:file", requireAuth, (req, res) => {
 });
 
 const api = express.Router();
+api.use(cors); // before the JSON check below, so a preflight is answered rather than refused as non-JSON
 api.use(express.json({ limit: "3mb" }));
 // Mutating requests must be JSON: browsers can't send that cross-site without a CORS preflight.
 api.use((req, res, next) => {
@@ -117,7 +142,37 @@ const noDemo = (req, res, next) => (isDemo(req.user) ? res.status(403).json({ er
 // a cached copy of the old front-end reads this object, and a missing key is not the same as a false one.
 api.get("/config", (req, res) => {
   res.setHeader("Cache-Control", "no-store");
-  res.json({ google: GOOGLE_CLIENT_ID || null, tutor: false, tutorComingSoon: false, demo: DEMO, clips: HAS_CLIPS, mail: mailEnabled(), push: PUSH_PUBLIC_KEY });
+  res.json({
+    google: GOOGLE_CLIENT_ID || null,
+    googleAndroid: GOOGLE_ANDROID_ID || null,
+    googleIos: GOOGLE_IOS_ID || null,
+    tutor: false, tutorComingSoon: false, demo: DEMO, clips: HAS_CLIPS, mail: mailEnabled(), push: PUSH_PUBLIC_KEY,
+    contentVersion: CONTENT_VERSION,
+    // The oldest app build this server still answers. Raise it only for a change the app cannot be made to
+    // survive; every app checks it at startup and asks the learner to update.
+    minAppVersion: MIN_APP_VERSION,
+  });
+});
+
+// ---------- Course content ----------
+// Public, exactly as /js/vocab.js has always been for the browser: this is the course, not anyone's
+// progress. The app asks for the manifest, compares the version with what it has stored, and downloads
+// only the parts that moved.
+api.get("/content", (req, res) => {
+  res.setHeader("Cache-Control", "no-cache");
+  res.json(contentManifest());
+});
+
+api.get("/content/:part", (req, res) => {
+  const body = partBody(req.params.part);
+  if (!body) return res.status(404).json({ error: "Topilmadi" });
+  const tag = `"${CONTENT_VERSION}-${req.params.part}"`;
+  res.setHeader("ETag", tag);
+  // `?v=<version>` can only ever name this content, so it is cached for a year. Asked for without one, the
+  // app revalidates instead and an unchanged part comes back as a 304 with no body at all.
+  res.setHeader("Cache-Control", req.query.v === CONTENT_VERSION ? `public, max-age=${YEAR}, immutable` : "public, max-age=300");
+  if (req.headers["if-none-match"] === tag) return res.status(304).end();
+  res.type("application/json").send(body);
 });
 
 // ---------- Auth ----------
@@ -129,8 +184,8 @@ api.post("/auth/register", authLimit, (req, res) => {
   if (email === DEMO_EMAIL || q.userByEmail.get(email)) return res.status(409).json({ error: "Bu email bilan hisob allaqachon mavjud", field: "email" });
   const { lastInsertRowid } = q.insertUser.run(email, name, hashPassword(pw), null);
   const user = q.userById.get(lastInsertRowid);
-  startSession(req, res, user.id);
-  res.status(201).json({ user: publicUser(user) });
+  const session = startSession(req, res, user.id);
+  res.status(201).json({ user: publicUser(user), ...session });
 });
 
 api.post("/auth/login", authLimit, async (req, res) => {
@@ -153,8 +208,8 @@ api.post("/auth/login", authLimit, async (req, res) => {
     return res.status(401).json({ error: "Email yoki parol noto'g'ri" });
   }
   loginFailures.clear(key);
-  startSession(req, res, user.id);
-  res.json({ user: publicUser(user) });
+  const session = startSession(req, res, user.id);
+  res.json({ user: publicUser(user), ...session });
 });
 
 api.post("/auth/logout", (req, res) => { endSession(req, res); res.json({ ok: true }); });
@@ -178,13 +233,13 @@ async function googleIdentity({ credential, accessToken }) {
     if (accessToken) {
       const t = await getJson(`https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(accessToken)}`);
       // The token must have been issued to this app, or any site's Google token could sign in here.
-      if (t.aud !== GOOGLE_CLIENT_ID || t.azp !== GOOGLE_CLIENT_ID || !(Number(t.exp) * 1000 > Date.now())) return null;
+      if (!GOOGLE_AUDIENCES.has(t.aud) || !GOOGLE_AUDIENCES.has(t.azp) || !(Number(t.exp) * 1000 > Date.now())) return null;
       const who = await getJson("https://openidconnect.googleapis.com/v1/userinfo", { Authorization: `Bearer ${accessToken}` }).catch(() => ({}));
       return { sub: t.sub, email: t.email, email_verified: t.email_verified, given_name: who.given_name, name: who.name };
     }
     const info = await getJson(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
     const issOk = info.iss === "accounts.google.com" || info.iss === "https://accounts.google.com";
-    if (info.aud !== GOOGLE_CLIENT_ID || !issOk || !(Number(info.exp) * 1000 > Date.now())) return null;
+    if (!GOOGLE_AUDIENCES.has(info.aud) || !issOk || !(Number(info.exp) * 1000 > Date.now())) return null;
     return info;
   } catch {
     return null;
@@ -192,7 +247,7 @@ async function googleIdentity({ credential, accessToken }) {
 }
 
 api.post("/auth/google", authLimit, async (req, res) => {
-  if (!GOOGLE_CLIENT_ID) return res.status(400).json({ error: "Google orqali kirish sozlanmagan" });
+  if (!GOOGLE_AUDIENCES.size) return res.status(400).json({ error: "Google orqali kirish sozlanmagan" });
   const credential = str(req.body.credential), accessToken = str(req.body.accessToken);
   if (!credential && !accessToken) return res.status(400).json({ error: "Google tokeni yo'q" });
   const info = await googleIdentity({ credential, accessToken });
@@ -223,8 +278,8 @@ api.post("/auth/google", authLimit, async (req, res) => {
       user = q.userById.get(lastInsertRowid);
     }
   }
-  startSession(req, res, user.id);
-  res.json({ user: publicUser(q.userById.get(user.id)), passwordCleared });
+  const session = startSession(req, res, user.id);
+  res.json({ user: publicUser(q.userById.get(user.id)), passwordCleared, ...session });
 });
 
 api.post("/auth/forgot", authLimit, (req, res) => {
@@ -258,8 +313,8 @@ api.post("/auth/reset", authLimit, (req, res) => {
   q.deleteUserSessions.run(row.user_id);
   const user = q.userById.get(row.user_id);
   loginFailures.clear(loginKey(req, user.email));
-  startSession(req, res, row.user_id);
-  res.json({ user: publicUser(user) });
+  const session = startSession(req, res, row.user_id);
+  res.json({ user: publicUser(user), ...session });
 });
 
 api.post("/auth/demo", authLimit, (req, res) => {
@@ -271,8 +326,8 @@ api.post("/auth/demo", authLimit, (req, res) => {
   }
   // Every visitor starts from the sample progress instead of whatever the previous visitor left behind.
   q.deleteProgress.run(user.id);
-  startSession(req, res, user.id);
-  res.json({ user: publicUser(user) });
+  const session = startSession(req, res, user.id);
+  res.json({ user: publicUser(user), ...session });
 });
 
 // ---------- Account ----------
@@ -291,8 +346,8 @@ api.post("/account/password", requireAuth, noDemo, authLimit, (req, res) => {
   }
   q.setPassword.run(hashPassword(next), req.user.id);
   q.deleteUserSessions.run(req.user.id);
-  startSession(req, res, req.user.id);
-  res.json({ ok: true, user: publicUser(q.userById.get(req.user.id)) });
+  const session = startSession(req, res, req.user.id);
+  res.json({ ok: true, user: publicUser(q.userById.get(req.user.id)), ...session });
 });
 
 api.delete("/account", requireAuth, noDemo, (req, res) => {
@@ -445,7 +500,8 @@ function publicFingerprint() {
       else { const st = fs.statSync(full); hash.update(`${full}:${st.size}:${st.mtimeMs};`); }
     }
   };
-  walk(PUBLIC_DIR);
+  walk(WEB_DIR);
+  walk(SHARED_DIR); // vocab.js, examples.js, roots.js and sync.js are part of the payload too
   return hash.digest("hex").slice(0, 12);
 }
 // Walked once, at startup, instead of on every /sw.js request. `npm run dev` edits public/ without
@@ -457,24 +513,33 @@ const buildId = () => (DEV ? publicFingerprint() : BUILD);
 // they must never be cached hard: they are what tells a browser that everything else has changed.
 const stamped = (file, type) => (req, res) => {
   res.setHeader("Cache-Control", "no-cache");
-  res.type(type).send(fs.readFileSync(path.join(PUBLIC_DIR, file), "utf8").replaceAll("__BUILD__", buildId()));
+  res.type(type).send(fs.readFileSync(path.join(WEB_DIR, file), "utf8").replaceAll("__BUILD__", buildId()));
 };
 app.get("/sw.js", stamped("sw.js", "application/javascript"));
 app.get(["/", "/index.html"], stamped("index.html", "html"));
 
 const YEAR = 31536000;
-app.use(express.static(PUBLIC_DIR, {
+function assetHeaders(res, filePath) {
+  // A year of immutable caching is only safe for a URL that changes when the file does — that is, one
+  // carrying this build's id. The same file asked for without it (an old cached page, a hand-typed URL)
+  // gets a short cache and a revalidation instead.
+  const versioned = !DEV && res.req && res.req.query && res.req.query.v === BUILD;
+  if (DEV || /\.html$/i.test(filePath)) res.setHeader("Cache-Control", "no-cache");
+  else if (/\.(?:js|css|woff2?)$/i.test(filePath)) res.setHeader("Cache-Control", versioned ? `public, max-age=${YEAR}, immutable` : "public, max-age=300");
+  else res.setHeader("Cache-Control", "public, max-age=86400"); // icons, manifest — small, and named for their content
+}
+
+// packages/shared lives outside apps/web but is served from the same /js path the browser has always
+// used, so index.html, the service worker's cache list and every cached copy out there keep working
+// unchanged. Named one by one: the package also holds its own manifest and entry point, and those are
+// not part of what a browser downloads. Anything else falls through to apps/web/js below.
+const SHARED_WEB_FILES = new Set(["/sync.js", "/vocab.js", "/examples.js", "/roots.js"]);
+const sharedFiles = express.static(SHARED_DIR, { index: false, setHeaders: assetHeaders });
+app.use("/js", (req, res, next) => (SHARED_WEB_FILES.has(req.path) ? sharedFiles(req, res, next) : next()));
+app.use(express.static(WEB_DIR, {
   extensions: ["html"],
   index: false, // "/" is rendered above
-  setHeaders(res, filePath) {
-    // A year of immutable caching is only safe for a URL that changes when the file does — that is, one
-    // carrying this build's id. The same file asked for without it (an old cached page, a hand-typed URL)
-    // gets a short cache and a revalidation instead.
-    const versioned = !DEV && res.req && res.req.query && res.req.query.v === BUILD;
-    if (DEV || /\.html$/i.test(filePath)) res.setHeader("Cache-Control", "no-cache");
-    else if (/\.(?:js|css|woff2?)$/i.test(filePath)) res.setHeader("Cache-Control", versioned ? `public, max-age=${YEAR}, immutable` : "public, max-age=300");
-    else res.setHeader("Cache-Control", "public, max-age=86400"); // icons, manifest — small, and named for their content
-  },
+  setHeaders: assetHeaders,
 }));
 
 q.purgeSessions.run(Date.now());

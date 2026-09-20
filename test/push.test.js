@@ -9,8 +9,8 @@ import { createRequire } from "node:module";
 // A throwaway database and VAPID keys for this test file.
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "upkorean-push-"));
 process.env.DATA_DIR = dataDir;
-const { q, db } = await import("../server/db.js");
-const { reminderFor, reminderTimes, runReminders, PUSH_PUBLIC_KEY } = await import("../server/push.js");
+const { q, db } = await import("../apps/api/db.js");
+const { reminderFor, reminderTimes, runReminders, PUSH_PUBLIC_KEY } = await import("../apps/api/push.js");
 after(() => { db.close(); fs.rmSync(dataDir, { recursive: true, force: true }); });
 
 const require = createRequire(import.meta.url);

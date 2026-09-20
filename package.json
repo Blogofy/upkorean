@@ -2,15 +2,20 @@
   "name": "upkorean",
   "version": "1.0.0",
   "private": true,
-  "description": "UpKorean — 30 kunlik TOPIK II vocabulary platformasi",
+  "description": "UpKorean — 30 kunlik TOPIK II vocabulary platformasi (API + web + mobil)",
   "type": "module",
-  "main": "server/index.js",
+  "workspaces": [
+    "apps/api",
+    "apps/web",
+    "packages/shared"
+  ],
   "scripts": {
-    "start": "node --no-warnings=ExperimentalWarning server/index.js",
-    "dev": "node --no-warnings=ExperimentalWarning --watch server/index.js --dev",
+    "start": "node --no-warnings=ExperimentalWarning apps/api/index.js",
+    "dev": "node --no-warnings=ExperimentalWarning --watch apps/api/index.js --dev",
     "check:content": "node scripts/validate-content.js",
     "backup": "node --no-warnings=ExperimentalWarning scripts/backup-db.js",
-    "test": "node --no-warnings=ExperimentalWarning --test --test-reporter=spec \"test/**/*.test.js\""
+    "test": "node --no-warnings=ExperimentalWarning --test --test-reporter=spec \"test/**/*.test.js\"",
+    "mobile": "npm --prefix apps/mobile run start"
   },
   "engines": {
     "node": ">=22.13"

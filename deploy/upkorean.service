@@ -8,8 +8,8 @@ Type=simple
 User=upkorean
 Group=upkorean
 WorkingDirectory=/opt/upkorean
-# .env in WorkingDirectory is loaded by server/env.js
-ExecStart=/usr/bin/node --no-warnings=ExperimentalWarning server/index.js
+# .env in WorkingDirectory is loaded by apps/api/env.js
+ExecStart=/usr/bin/node --no-warnings=ExperimentalWarning apps/api/index.js
 Environment=NODE_ENV=production
 Restart=always
 RestartSec=5

@@ -1,0 +1,15 @@
+{
+  "name": "@upkorean/shared",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Course data and progress-sync logic used by the API, the web app and the mobile app",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./sync.js": "./sync.js",
+    "./vocab.js": "./vocab.js",
+    "./examples.js": "./examples.js",
+    "./roots.js": "./roots.js"
+  }
+}

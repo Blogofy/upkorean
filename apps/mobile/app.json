@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "UpKorean",
+    "slug": "upkorean",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "upkorean",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "android": {
+      "package": "uz.upkorean.app"
+    },
+    "ios": {
+      "bundleIdentifier": "uz.upkorean.app",
+      "supportsTablet": true
+    },
+    "extra": {
+      "apiUrl": "https://upkorean.uz"
+    }
+  }
+}

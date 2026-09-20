@@ -5,7 +5,7 @@
 
 .DESCRIPTION
     Server har 24 soatda /opt/upkorean/data/backups/ ga nusxa oladi va faqat oxirgi 14 tasini
-    saqlaydi (server/db.js, backupDb). Ular jonli baza bilan bitta diskda turibdi, ya'ni disk
+    saqlaydi (apps/api/db.js, backupDb). Ular jonli baza bilan bitta diskda turibdi, ya'ni disk
     yoki server yo'qolsa ular ham yo'qoladi. Shu skript ularni boshqa mashinaga ko'chiradi va
     serverda o'chirib yuborilganlarini ham saqlab qoladi.
 
@@ -56,7 +56,7 @@ param(
 # $LASTEXITCODE orqali tekshiriladi - ular xatoni stderr ga yozadi, exception tashlamaydi.
 $ErrorActionPreference = 'Stop'
 
-# Server fayllarni shu nom bilan yozadi: upkorean-<UTC vaqt>.db (server/db.js, backupDb).
+# Server fayllarni shu nom bilan yozadi: upkorean-<UTC vaqt>.db (apps/api/db.js, backupDb).
 # Nomdagi vaqt - serverning nusxa olgan payti. Tekshiruv aynan shunga suyanadi, chunki
 # faylning lokal mtime'i faqat qachon ko'chirib olinganini bildiradi: server bir oy oldin
 # to'xtab qolgan bo'lsa ham u "bugungi" bo'lib ko'rinaveradi.
