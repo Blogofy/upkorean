@@ -51,8 +51,14 @@ ga murojaat qiladi. Ya'ni kompyuterda `npm run dev` ishlab tursa, kifoya.
 | `devApiUrl` | dev, hammasidan ustun | Dev ilovani jonli serverga qaratish kerak bo'lsa |
 | `devApiPort` | dev | Server 3000 dan boshqa portda bo'lsa |
 
-Telefon serverga yetolmasa, ko'pincha aybdor **Windows Firewall**: 3000-portga kiruvchi ulanishga
-ruxsat bering yoki `npx expo start --tunnel` bilan ishga tushiring.
+**Telefon va kompyuter bitta Wi-Fi'da bo'lishi shart.** Telefon mobil internetda bo'lsa, Metro'ning
+`192.168.x.x` manziliga yetolmaydi va Expo Go "Something went wrong" deb to'xtaydi — bu ilovaning emas,
+Expo Go'ning xatosi: u loyihani umuman yuklay olmagan. Telefon ham serverga yetolmasa, keyingi gumondor
+**Windows Firewall** (3000-portga kiruvchi ulanishga ruxsat).
+
+`--tunnel` rejimi faqat bundle'ni tashqariga chiqaradi, API'ni emas. Shuning uchun tunnel'da ilova
+`extra.apiUrl` ga qaytadi — serverni ham tashqariga chiqarib, `extra.devApiUrl` ga o'sha manzilni
+yozmasangiz, dev server bilan ishlamaydi. Bitta Wi-Fi ancha osonroq.
 
 > `upkorean.uz` da hozir **eski kod** turibdi — u yerda `/api/content` yo'q va token bilan kirish
 > ishlamaydi. Ilova bunday serverda "Bu server ilovani hali qo'llab-quvvatlamaydi" deb aytadi.
