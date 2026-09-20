@@ -7,7 +7,7 @@ import { StatusBar } from "expo-status-bar";
 
 import { api, ApiError, restoreSession } from "./src/api";
 import { API_URL } from "./src/config";
-import { loadContent } from "./src/content";
+import { loadLevel } from "./src/content";
 
 const TEAL = "#207F73";
 const INK = "#16302c";
@@ -103,14 +103,14 @@ function Home({ user, onSignedOut }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    loadContent().then(setContent).catch((e) => setError(e.message));
+    loadLevel(user.level || "b").then(setContent).catch((e) => setError(e.message));
   }, []);
 
   if (error) {
     return (
       <Center>
         <Text style={styles.error}>{error}</Text>
-        <Pressable onPress={() => { setError(""); loadContent().then(setContent).catch((e) => setError(e.message)); }}>
+        <Pressable onPress={() => { setError(""); loadLevel(user.level || "b").then(setContent).catch((e) => setError(e.message)); }}>
           <Text style={styles.link}>Qayta urinish</Text>
         </Pressable>
       </Center>
@@ -118,7 +118,7 @@ function Home({ user, onSignedOut }) {
   }
   if (!content) return <Center><ActivityIndicator color={TEAL} size="large" /><Text style={styles.muted}>Kurs yuklanmoqda…</Text></Center>;
 
-  const words = content.dayWords[day] || [];
+  const words = content.dayWords(day);
   return (
     <View style={styles.screenTop}>
       <StatusBar style="auto" />
@@ -126,7 +126,7 @@ function Home({ user, onSignedOut }) {
         <View>
           <Text style={styles.hello}>Salom, {user.name}</Text>
           <Text style={styles.muted}>
-            {content.days} kun · {content.words.length} so’z{content.offline ? " · oflayn nusxa" : ""}
+            {content.dayCount} kun · {content.words.length} so’z{content.offline ? " · oflayn nusxa" : ""}
           </Text>
         </View>
         <Pressable onPress={() => api.logout().then(onSignedOut)}>
@@ -137,7 +137,7 @@ function Home({ user, onSignedOut }) {
       <View style={styles.dayRow}>
         <Pressable style={styles.step} onPress={() => setDay((d) => Math.max(1, d - 1))}><Text style={styles.stepText}>‹</Text></Pressable>
         <Text style={styles.dayLabel}>{day}-kun</Text>
-        <Pressable style={styles.step} onPress={() => setDay((d) => Math.min(content.days, d + 1))}><Text style={styles.stepText}>›</Text></Pressable>
+        <Pressable style={styles.step} onPress={() => setDay((d) => Math.min(content.dayCount, d + 1))}><Text style={styles.stepText}>›</Text></Pressable>
       </View>
 
       <FlatList

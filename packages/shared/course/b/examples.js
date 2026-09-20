@@ -8,7 +8,7 @@
 // cloze — the part of `ko` blanked out in sentence-completion (a noun or a 하다/되다-stem); omitted when ambiguous
 // uz    — the Uzbek translation; {braces} mark the translated target word
 // note  — optional usage note shown on the card and after a wrong answer
-window.UK_EXAMPLES = [
+export default [
   // Day 1
   { id: "1-0", w: "필요하다", ko: "호텔에 계시면서 필요한 것이 있으면 바로 전화 주세요.", hl: "필요한", cloze: "필요", uz: "Mehmonxonada turganingizda biror narsa {kerak} bo'lsa, darhol qo'ng'iroq qiling." },
   { id: "1-1", w: "방법", ko: "세탁기 사용하는 방법 좀 알려 줄래요?", hl: "방법", cloze: "방법", uz: "Kir yuvish mashinasidan foydalanish {usulini} aytib bera olasizmi?" },

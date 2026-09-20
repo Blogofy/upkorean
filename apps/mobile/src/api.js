@@ -145,9 +145,11 @@ export const api = {
 
   leaderboard: () => request("GET", `/api/leaderboard?tz=${tz()}`),
 
+  // What levels exist, how big each is, and which are still locked.
   contentManifest: () => request("GET", "/api/content", undefined, { auth: false }),
-  contentPart: (name, version) => request("GET", `/api/content/${name}${version ? `?v=${version}` : ""}`, undefined, { auth: false, timeout: 60000 }),
+  contentPart: (level, name, version) =>
+    request("GET", `/api/content/${level}/${name}${version ? `?v=${version}` : ""}`, undefined, { auth: false, timeout: 60000 }),
 
-  // Narrator audio. Signed-in only, so the player has to send authHeaders() with it.
+  // Narrator audio, named by word id ("b-1-0"). Signed-in only, so the player has to send authHeaders().
   clipUrl: (kind, wordId) => `${API_URL}/media/clip/${kind}/${wordId}.mp3`,
 };

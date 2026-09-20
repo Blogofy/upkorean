@@ -37,13 +37,14 @@ cmd /c "git archive --format=tar HEAD | ssh root@109.205.177.244 sh /opt/upkorea
 
 Faqat commit qilingan kod ketadi. `.env`, `data/`, `audio/` va `node_modules/` serverda saqlanib qoladi.
 
-### Bir martalik: `server/` → `apps/api/` ko'chishi
+### Bir martalik: monorepo va web ilovaning olib tashlanishi
 
-Repo monorepo'ga bo'lindi (`apps/api`, `apps/web`, `apps/mobile` va `packages/shared`), ya'ni
-serverning kirish nuqtasi endi `apps/api/index.js`. `deploy/upkorean.service` shunga moslandi, lekin
-systemd unit'i faylni serverga **qo'lda** qo'yiladi — u `update.sh` bilan ko'chmaydi. Shuning uchun shu
-o'zgarishni olib boradigan yangilashda unit'ni ham almashtiring, aks holda `systemctl restart upkorean`
-endi yo'q fayl (`server/index.js`) ni ishga tushirmoqchi bo'lib xato beradi:
+Ikki narsa bir vaqtda o'zgardi va ikkalasi ham serverda qo'lda qadam talab qiladi.
+
+**1. Kirish nuqtasi.** Repo `apps/api`, `apps/mobile`, `apps/landing` va `packages/shared` ga
+bo'lindi, ya'ni server endi `apps/api/index.js` dan ishga tushadi. `deploy/upkorean.service` shunga
+moslandi, lekin systemd unit'i `update.sh` bilan ko'chmaydi — uni o'zingiz qo'yasiz, aks holda
+`systemctl restart upkorean` endi yo'q faylni (`server/index.js`) ishga tushirmoqchi bo'ladi:
 
 ```sh
 ssh root@109.205.177.244
@@ -53,9 +54,22 @@ systemctl restart upkorean
 systemctl is-active upkorean
 ```
 
-Eski `server/` va `public/` papkalari serverda `rsync --delete` bilan o'chadi. Web ilovaning manzillari
-o'zgarmadi (`/js/vocab.js` hamon o'sha joyda), shuning uchun brauzerdagi keshlangan nusxalar ham
-ishlayveradi.
+**2. Diktor audiosi nomlari.** So'z id'lari darajani oladi (`1-0` → `b-1-0`), audio esa so'z id'si
+bo'yicha beriladi. `audio/` git'da yo'q, shuning uchun serverdagi 2000 ta fayl o'z nomi bilan
+qolgan va ularni bir marta qayta nomlash kerak:
+
+```sh
+cd /opt/upkorean
+sudo -u upkorean node scripts/rename-audio.js          # nima o'zgarishini aytadi
+sudo -u upkorean node scripts/rename-audio.js --write  # o'zgartiradi
+systemctl restart upkorean                             # klip sanog'i qaytadan o'qiladi
+```
+
+Qayta ishga tushirsa ham xavfsiz: darajali nomga ega fayllarga tegilmaydi.
+
+**Sayt yopildi.** `upkorean.uz` endi bitta landing sahifa ko'rsatadi: brauzer ilovasi olib
+tashlandi, mobil ilova uning o'rnini oladi. Hisoblar, progress va push obunalari bazada turibdi.
+Eski `server/`, `public/` va `apps/web/` papkalari serverda `rsync --delete` bilan o'chadi.
 
 ## Diktor bo'laklari (`audio/`)
 
@@ -87,93 +101,48 @@ Tar quvuri serverdagi ortiqcha fayllarni o'chirmaydi — faqat ustiga yozadi.
 kompyuterda va serverda turibdi. Ikkalasining birortasi yo'qolsa qayta yozdirish kerak bo'ladi —
 uchinchi nusxasini tashqi diskda yoki bulutda saqlang.
 
-## Asset kesh (build id)
+## Kesh sarlavhalari
 
-Loyihada build step yo'q, shuning uchun fayl nomlarida content-hash ham yo'q. Uning o'rniga server
-ishga tushganda `apps/web/` va `packages/shared/` ni bir marta yurib chiqib **build id** hisoblaydi
-(`publicFingerprint()`, `apps/api/index.js`) va uni ikki joyga qo'yadi:
-
-- `sw.js` dagi `VERSION` — service worker keshining nomi;
-- `index.html` dagi har bir `<script src>` va `<link href>` oxiridagi `?v=…`.
-
-Shu sababli kesh sarlavhalari quyidagicha:
+Brauzer ilovasi olib tashlangandan keyin serverda generatsiya qilinadigan narsa qolmadi — build id
+ham, service worker ham yo'q. Qolgani: bitta landing sahifa, kurs JSON'i va diktor audiosi.
 
 | Nima | `Cache-Control` |
 | --- | --- |
-| `/` va `/index.html` | `no-cache` — har tashrifda tekshiriladi, aks holda deploy hech kimga yetib bormaydi |
-| `/sw.js` | `no-cache` |
-| `?v=<build>` bilan so'ralgan `.js` / `.css` / `.woff2` | `public, max-age=31536000, immutable` |
-| `?v=` siz (yoki eski `v=`) so'ralgan o'sha fayl | `public, max-age=300` |
-| `.png`, `.svg`, `.webmanifest` | `public, max-age=86400` |
+| `/` va `/privacy.html` | `no-cache` — har tashrifda tekshiriladi |
+| `.png`, `.svg` | `public, max-age=86400` |
+| `/api/content/<daraja>/<qism>?v=<version>` | `public, max-age=31536000, immutable` |
+| o'sha qism `?v=` siz | `public, max-age=300` + `ETag` (o'zgarmagan bo'lsa `304`) |
+| `/api/config`, `/api/content` | `no-store` / `no-cache` |
 | `/media/clip/...` (diktor mp3) | `private, max-age=604800` |
 
-**Muhim:** bir yillik `immutable` faqat URL'da shu deploy'ning build id'si bo'lsa beriladi. Fayl
-nomi o'zgarmagani uchun id'siz so'rovga uzoq kesh berish xavfli bo'lardi — eski sahifa yangilanmay
-qolardi. `npm run dev` da build id har so'rovda qayta hisoblanadi va uzoq kesh umuman berilmaydi,
-shuning uchun `apps/web/` ni tahrirlab, sahifani yangilash kifoya.
+Kurs versiyasi — `packages/shared/course/` dagi fayllarning fingerprint'i. Kontent o'zgarsa versiya
+o'zgaradi va har bir qurilma qayta yuklab oladi; o'zgarmasa hech kim hech nima yuklamaydi.
 
 Deploy'dan keyin tekshirish:
 
 ```sh
-curl -sI https://upkorean.uz/ | grep -i cache-control              # no-cache
-curl -s  https://upkorean.uz/ | grep -o 'v=[0-9a-f]\{12\}' | head -1
-curl -sI "https://upkorean.uz/js/views.js?v=<yuqoridagi id>" | grep -i cache-control   # immutable
+curl -sI https://upkorean.uz/ | grep -i cache-control                     # no-cache
+curl -s  https://upkorean.uz/api/content | head -c 120                    # version + darajalar
+curl -sI https://upkorean.uz/api/content/b/vocab | grep -i etag           # ETag bor
 ```
 
-### Keyingi qadam — fontlarni o'zida hosting qilish
+## AI ustoz
 
-Hozir to'rt oila Google Fonts'dan olinadi va to'rttasi ham ishlatiladi (`Fraunces` → sarlavhalar,
-`Plus Jakarta Sans` → asosiy matn, `JetBrains Mono` → raqam/teg, `Noto Sans KR` → koreyscha).
-O'lchangan: o'sha bitta stylesheet **394 795 bayt (gzip 93 974)** va 537 ta `@font-face` qoidasi,
-shundan **496 tasi Noto Sans KR** (4 ta og'irlik × ~124 unicode-range bo'lagi).
+Funksiya o'chirilgan. **Server tarafi saqlangan:** `apps/api/tutor.js` — Claude chaqiruvi, javob
+sxemasi va prompt — o'z holicha turibdi va `ANTHROPIC_API_KEY` bilan ishlaydi.
 
-U endi `media="print"` bilan so'raladi va `app.js` uni yuklab bo'lgandan keyin yoqadi, ya'ni
-birinchi chizishni bloklamaydi. Qolgan ikki yaxshilanish fayl tayyorlashni talab qiladi, shuning
-uchun keyinga qoldirildi:
+Mijoz tarafi endi brauzerda emas, mobil ilovada yoziladi, shuning uchun eski web ekranlarini
+qaytarishning ma'nosi yo'q (ular `git show 4a243e9:public/js/tutor.js` da qolgan — `highlight()`
+dagi placeholder xatosi bilan birga: u yalang'och butun sondan foydalangani uchun javobdagi har
+qanday raqamni placeholder deb o'qiydi va qo'shni placeholder'lar birikib ketadi. Qayta yozilsa,
+raqamsiz sentinel kerak).
 
-1. **Kerak bo'lmagan og'irlikni olib tashlash.** Noto Sans KR 900 faqat dekorativ vodiy belgisida
-   (`.hero .wm`, `.auth-wm`) ishlatiladi. Uni 700 ga o'tkazib, URL'dan `900` ni olib tashlash
-   stylesheet'ni **283 215 baytga (gzip 69 720)** tushiradi — 23 KB gzip tejov.
-   (400 — oddiy matn, 500 — `.example .s` / `.cloze .s`, 700 — so'z sarlavhalari; uchalasi kerak.)
-2. **O'zida hosting + subset.** Kursda ~1000 so'z va ularning gaplari bor, ya'ni koreyscha glif
-   to'plami cheklangan. `pyftsubset` bilan faqat shu gliflarga qisqartirilgan bitta `.woff2`
-   (og'irlik boshiga ~30–60 KB) 496 ta `@font-face` ni **4 tasiga** tushiradi va uchinchi tomon
-   ulanishini (DNS + TLS) butunlay yo'q qiladi. Buning uchun font fayllarini generatsiya qilish
-   kerak — bu repoda build step yo'q, shuning uchun fayllar qo'lda tayyorlanib `apps/web/fonts/` ga
-   qo'yiladi, `styles.css` ga `@font-face` (`font-display: swap`) yoziladi va `index.html` dagi
-   Google Fonts havolasi bilan CSP'dagi `fonts.googleapis.com` / `fonts.gstatic.com` olib tashlanadi.
-
-## AI ustozni qaytarish
-
-Funksiya **butunlay o'chirilgan**: mijoz tarafi payload'da yo'q, `#/tutor` route'i yo'q, kirish
-nuqtalari olib tashlangan (audit M7 va 8.3 — doimiy "tez kunda" tugmasi mahsulot va'dalarini
-shartli qilib ko'rsatadi). **Server tarafi saqlangan:** `apps/api/tutor.js` — Claude chaqiruvi,
-javob sxemasi va prompt — o'z holicha turibdi va `ANTHROPIC_API_KEY` bilan ishlaydi.
-
-Yoqish uchun:
-
-1. `git show 4a243e9:public/js/tutor.js > apps/web/js/tutor.js` — mijoz ekranlari (start + chat).
-2. **Avval `highlight()` ni tuzating** (o'sha fayl, ~202-209-qatorlar). U placeholder sifatida
-   yalang'och butun sondan foydalanadi, ya'ni javobdagi **har qanday raqam** placeholder deb
-   o'qiladi:
-   `highlight("하루에 30분 공부해요", {words:[{id:"1-0",ko:"공부하다"},{id:"1-1",ko:"시간"}]})` →
-   `TypeError: Cannot destructure property 'w' of 'found[i]'`. Qo'shni placeholder'lar ham
-   birikib ketadi (`"1"+"2"` → `12`). Raqamsiz sentinel kerak (masalan `U+0000 <i> U+0000`).
-3. `index.html` ga `<script src="/js/tutor.js?v=__BUILD__">` (views.js dan **oldin**) va
-   `apps/web/sw.js` dagi `SHELL` ro'yxatiga `"/js/tutor.js"` qo'shing.
-4. `apps/web/js/app.js`: `const T = window.T`, `TITLES.tutor`, `#/tutor` → `V.tutorStart()` tarmog'i,
-   `keydown` da `T.onKey`, `MID_TASK` ga `"tutor"`, va `#chat-input` balandligini moslashtiruvchi
-   `input` handler'i — hammasi shu commit'da olib tashlangan, `git show` bilan qaytariladi.
-5. `apps/web/js/store.js`: `S.tutor = (payload) => api("POST", "/tutor", payload);`.
-6. `apps/api/index.js`: `tutorLimit` va `POST /api/tutor` route'i (endi `tutorReply` ni haqiqatdan
-   chaqirsin — ilgari u faqat 503 qaytarardi va `tutorReply` import ham qilinmagan edi), hamda
-   `/api/config` da `tutor: true`. **`/api/config` kalitlari o'zgarmasin** — eski keshdagi mijoz
-   shu obyektni o'qiydi.
-7. Kirish nuqtalari: `views.js` da kun tugash ekranidagi tugma va Natijalar sahifasidagi vaqt
-   taqsimotida "AI ustoz" qatori.
+Yoqish uchun serverda: `apps/api/index.js` ga `tutorLimit` va `POST /api/tutor` route'ini qo'shing
+(`tutorReply` ni haqiqatdan chaqirsin), `/api/config` da `tutor: true` qiling. **`/api/config`
+kalitlari o'zgarmasin** — eski ilovalar shu obyektni o'qiydi.
 
 Holat maydonlari (`state.tutor`, `act[...].min.tutor`) **o'chirilmagan** — `sync.js` ularni hamon
-merge qiladi, ya'ni eski qurilmalardagi progress buzilmaydi va qaytarganda joyida turadi.
+merge qiladi, ya'ni eski progress buzilmaydi.
 
 ## Birinchi o'rnatish (bajarilgan, 2026-09-16)
 

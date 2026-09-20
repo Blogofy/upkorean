@@ -2,12 +2,11 @@
 import "./env.js";
 import fs from "node:fs";
 import path from "node:path";
-import crypto from "node:crypto";
 import express from "express";
 import compression from "compression";
 import { q, backupDb, lastBackupAt, BACKUP_DIR } from "./db.js";
-import { WEB_DIR, SHARED_DIR, AUDIO_DIR } from "./paths.js";
-import { manifest as contentManifest, partBody, VERSION as CONTENT_VERSION } from "./content.js";
+import { LANDING_DIR, AUDIO_DIR } from "./paths.js";
+import { manifest as contentManifest, partBody, VERSION as CONTENT_VERSION, defaultLevel } from "./content.js";
 import {
   hashPassword, verifyPassword, startSession, endSession, currentUser, requireAuth,
   publicUser, rateLimit, counter, randomToken, sha256, DEMO_EMAIL, isDemo,
@@ -16,7 +15,7 @@ import { tutorEnabled } from "./tutor.js";
 import { mailEnabled, sendResetEmail } from "./mail.js";
 import { tzOf, localTime, leaderboardXp } from "./progress.js";
 import { PUSH_PUBLIC_KEY, PUSH_CONTACT, sendToUser, reminderTimes, runReminders } from "./push.js";
-import "../../packages/shared/sync.js"; // defines globalThis.UKSync, shared with the browser and the app
+import "../../packages/shared/sync.js"; // defines globalThis.UKSync, shared with the mobile app
 
 const { UKSync } = globalThis;
 
@@ -31,35 +30,34 @@ const GOOGLE_ANDROID_ID = process.env.GOOGLE_CLIENT_ID_ANDROID || "";
 const GOOGLE_IOS_ID = process.env.GOOGLE_CLIENT_ID_IOS || "";
 const GOOGLE_AUDIENCES = new Set([GOOGLE_CLIENT_ID, GOOGLE_ANDROID_ID, GOOGLE_IOS_ID].filter(Boolean));
 const DEMO = process.env.DEMO ? process.env.DEMO === "1" : DEV;
-// Narrator clips: audio/words/<id>.mp3 = word, audio/sentences/<id>.mp3 = example sentence.
+// Narrator clips: audio/words/<id>.mp3 = word, audio/sentences/<id>.mp3 = example sentence,
+// where <id> is the word id, level and all: "b-1-0.mp3".
+const CLIP_FILE = /^[bma]-\d{1,2}-\d{1,2}\.mp3$/;
 const CLIP_DIR = AUDIO_DIR;
 const clipCount = (kind) => {
   const dir = path.join(CLIP_DIR, kind);
-  return fs.existsSync(dir) ? fs.readdirSync(dir).filter((name) => /^\d{1,2}-\d{1,2}\.mp3$/.test(name)).length : 0;
+  return fs.existsSync(dir) ? fs.readdirSync(dir).filter((name) => CLIP_FILE.test(name)).length : 0;
 };
 const WORD_CLIPS = clipCount("words"), SENTENCE_CLIPS = clipCount("sentences");
 const HAS_CLIPS = WORD_CLIPS >= 1000 && SENTENCE_CLIPS >= 1000;
 // The oldest app build this server still serves; /api/config hands it to every app at startup.
 const MIN_APP_VERSION = process.env.MIN_APP_VERSION || "1.0.0";
+const YEAR = 31536000;
 const BACKUP_HOURS = process.env.BACKUP_HOURS === undefined ? 24 : Number(process.env.BACKUP_HOURS) || 0;
 const BACKUP_KEEP = Number(process.env.BACKUP_KEEP) || 14;
 
 // Everything the page may load. Google Sign-In needs its script, button iframe and stylesheet.
+// The landing page is one static file with no script of its own, so nothing needs to be allowed to run.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' https://accounts.google.com/gsi/client",
-  // Views set style="" attributes throughout, so inline styles stay allowed; inline scripts do not.
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style",
+  "script-src 'none'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data:",
-  "media-src 'self'",
-  "connect-src 'self' https://accounts.google.com/gsi/",
-  "frame-src https://accounts.google.com/gsi/",
-  "worker-src 'self'",
-  "manifest-src 'self'",
+  "connect-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",
-  "form-action 'self'",
+  "form-action 'none'",
   "frame-ancestors 'none'",
 ].join("; ");
 
@@ -103,7 +101,7 @@ function cors(req, res, next) {
 app.options("/media/clip/:kind/:file", cors);
 app.get("/media/clip/:kind/:file", cors, requireAuth, (req, res) => {
   const { kind, file } = req.params;
-  if (!/^(words|sentences)$/.test(kind) || !/^\d{1,2}-\d{1,2}\.mp3$/.test(file)) return res.status(404).json({ error: "Audio topilmadi" });
+  if (!/^(words|sentences)$/.test(kind) || !CLIP_FILE.test(file)) return res.status(404).json({ error: "Audio topilmadi" });
   res.setHeader("Cache-Control", "private, max-age=604800");
   res.sendFile(path.join(CLIP_DIR, kind, file), (error) => { if (error && !res.headersSent) res.status(404).json({ error: "Audio topilmadi" }); });
 });
@@ -148,6 +146,7 @@ api.get("/config", (req, res) => {
     googleIos: GOOGLE_IOS_ID || null,
     tutor: false, tutorComingSoon: false, demo: DEMO, clips: HAS_CLIPS, mail: mailEnabled(), push: PUSH_PUBLIC_KEY,
     contentVersion: CONTENT_VERSION,
+    defaultLevel,
     // The oldest app build this server still answers. Raise it only for a change the app cannot be made to
     // survive; every app checks it at startup and asks the learner to update.
     minAppVersion: MIN_APP_VERSION,
@@ -163,10 +162,10 @@ api.get("/content", (req, res) => {
   res.json(contentManifest());
 });
 
-api.get("/content/:part", (req, res) => {
-  const body = partBody(req.params.part);
+api.get("/content/:level/:part", (req, res) => {
+  const body = partBody(req.params.level, req.params.part);
   if (!body) return res.status(404).json({ error: "Topilmadi" });
-  const tag = `"${CONTENT_VERSION}-${req.params.part}"`;
+  const tag = `"${CONTENT_VERSION}-${req.params.level}-${req.params.part}"`;
   res.setHeader("ETag", tag);
   // `?v=<version>` can only ever name this content, so it is cached for a year. Asked for without one, the
   // app revalidates instead and an unchanged part comes back as a 304 with no body at all.
@@ -488,58 +487,16 @@ api.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
 
 app.use("/api", api);
 
-// The service worker caches the app shell under a version name, and index.html stamps the same id onto every
-// script and stylesheet URL. The id is a fingerprint of the files in public/, so every deploy that changes a
-// file makes browsers fetch the new shell and the new assets — no manual version bumps, no build step.
-function publicFingerprint() {
-  const hash = crypto.createHash("sha1");
-  const walk = (dir) => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) walk(full);
-      else { const st = fs.statSync(full); hash.update(`${full}:${st.size}:${st.mtimeMs};`); }
-    }
-  };
-  walk(WEB_DIR);
-  walk(SHARED_DIR); // vocab.js, examples.js, roots.js and sync.js are part of the payload too
-  return hash.digest("hex").slice(0, 12);
-}
-// Walked once, at startup, instead of on every /sw.js request. `npm run dev` edits public/ without
-// restarting, so there the walk is repeated per request and nothing is cached for long.
-const BUILD = publicFingerprint();
-const buildId = () => (DEV ? publicFingerprint() : BUILD);
-
-// index.html and sw.js carry __BUILD__ placeholders, so they are rendered rather than served from disk, and
-// they must never be cached hard: they are what tells a browser that everything else has changed.
-const stamped = (file, type) => (req, res) => {
-  res.setHeader("Cache-Control", "no-cache");
-  res.type(type).send(fs.readFileSync(path.join(WEB_DIR, file), "utf8").replaceAll("__BUILD__", buildId()));
-};
-app.get("/sw.js", stamped("sw.js", "application/javascript"));
-app.get(["/", "/index.html"], stamped("index.html", "html"));
-
-const YEAR = 31536000;
-function assetHeaders(res, filePath) {
-  // A year of immutable caching is only safe for a URL that changes when the file does — that is, one
-  // carrying this build's id. The same file asked for without it (an old cached page, a hand-typed URL)
-  // gets a short cache and a revalidation instead.
-  const versioned = !DEV && res.req && res.req.query && res.req.query.v === BUILD;
-  if (DEV || /\.html$/i.test(filePath)) res.setHeader("Cache-Control", "no-cache");
-  else if (/\.(?:js|css|woff2?)$/i.test(filePath)) res.setHeader("Cache-Control", versioned ? `public, max-age=${YEAR}, immutable` : "public, max-age=300");
-  else res.setHeader("Cache-Control", "public, max-age=86400"); // icons, manifest — small, and named for their content
-}
-
-// packages/shared lives outside apps/web but is served from the same /js path the browser has always
-// used, so index.html, the service worker's cache list and every cached copy out there keep working
-// unchanged. Named one by one: the package also holds its own manifest and entry point, and those are
-// not part of what a browser downloads. Anything else falls through to apps/web/js below.
-const SHARED_WEB_FILES = new Set(["/sync.js", "/vocab.js", "/examples.js", "/roots.js"]);
-const sharedFiles = express.static(SHARED_DIR, { index: false, setHeaders: assetHeaders });
-app.use("/js", (req, res, next) => (SHARED_WEB_FILES.has(req.path) ? sharedFiles(req, res, next) : next()));
-app.use(express.static(WEB_DIR, {
+// ---------- Landing page ----------
+// The browser app is gone; upkorean.uz is one page that says what UpKorean is and that the mobile app
+// is where it lives now. Nothing here is generated, so there is no build id and no service worker —
+// just five files that change when someone edits them.
+app.use(express.static(LANDING_DIR, {
   extensions: ["html"],
-  index: false, // "/" is rendered above
-  setHeaders: assetHeaders,
+  setHeaders(res, filePath) {
+    if (/\.html$/i.test(filePath)) res.setHeader("Cache-Control", "no-cache");
+    else res.setHeader("Cache-Control", "public, max-age=86400"); // icons, named for their content
+  },
 }));
 
 q.purgeSessions.run(Date.now());

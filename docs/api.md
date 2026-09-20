@@ -58,6 +58,7 @@ Tizimga kirish shart emas. Ilova ishga tushganda birinchi bo'lib shuni so'raydi.
   "mail": false,
   "push": "BI2DS5Sk…",
   "contentVersion": "f664a8b5012b",
+  "defaultLevel": "b",
   "minAppVersion": "1.0.0"
 }
 ```
@@ -67,46 +68,60 @@ bilan solishtirib, kerak bo'lsa "yangilang" ekranini ko'rsatadi.
 
 ## Kurs ma'lumoti
 
-Kurs — 30 kun, 1000 so'z, har bir so'zga bitta kitob gapi va so'zning qanday tuzilgani (hanja ildizlari).
-Tizimga kirish shart emas.
+Kurs uch darajaga bo'lingan: `b` (초급), `m` (중급), `a` (고급). Har birining maqsadi — 50 kun, kuniga
+30 so'z. Tizimga kirish shart emas.
+
+So'zning id'si o'z joyini aytadi: `"<daraja>-<kun>-<indeks>"`, masalan `"b-1-0"`. Daraja nomga
+kirgani uchun uch darajaning progressi bitta obyektda to'qnashmaydi, diktor audiosi ham shu nom bilan
+turadi (`/media/clip/words/b-1-0.mp3`).
 
 ### `GET /api/content`
 
 ```json
 {
-  "version": "f664a8b5012b",
-  "days": 30,
-  "words": 1000,
-  "parts": [
-    { "name": "vocab",    "url": "/api/content/vocab?v=f664a8b5012b",    "bytes": 69289 },
-    { "name": "examples", "url": "/api/content/examples?v=f664a8b5012b", "bytes": 199540 },
-    { "name": "roots",    "url": "/api/content/roots?v=f664a8b5012b",    "bytes": 205294 }
+  "version": "91cdce023148",
+  "levels": [
+    { "id": "b", "ko": "초급", "uz": "Boshlang'ich", "days": 30, "words": 1000,
+      "target": { "days": 50, "perDay": 30 }, "locked": false,
+      "parts": [
+        { "name": "vocab",    "url": "/api/content/b/vocab?v=91cdce023148",    "bytes": 83332 },
+        { "name": "examples", "url": "/api/content/b/examples?v=91cdce023148", "bytes": 201549 },
+        { "name": "roots",    "url": "/api/content/b/roots?v=91cdce023148",    "bytes": 194448 }
+      ] },
+    { "id": "m", "ko": "중급", "uz": "O'rta", "days": 0, "words": 0,
+      "target": { "days": 50, "perDay": 30 }, "locked": true, "parts": [] },
+    { "id": "a", "ko": "고급", "uz": "Yuqori", "days": 0, "words": 0,
+      "target": { "days": 50, "perDay": 30 }, "locked": true, "parts": [] }
   ]
 }
 ```
 
-### `GET /api/content/:part`
+`target` — reja, `days`/`words` — haqiqatda nima borligi. So'zlari hali yozilmagan daraja
+`locked: true` bilan keladi va `parts` bo'sh bo'ladi: ilova uni ko'rsatadi, lekin ochmaydi.
 
-`part` — `vocab`, `examples` yoki `roots`.
+### `GET /api/content/:level/:part`
+
+`level` — `b`, `m` yoki `a`; `part` — `vocab`, `examples` yoki `roots`. Qulflangan daraja `404`.
 
 ```jsonc
 // vocab
-{ "version": "…", "days": 30, "count": 1000,
-  "words": [{ "id": "1-0", "day": 1, "i": 0, "ko": "필요하다", "uz": "kerak" }, …] }
+{ "version": "…", "id": "b", "ko": "초급", "uz": "Boshlang'ich", "days": 30, "count": 1000,
+  "words": [{ "id": "b-1-0", "level": "b", "day": 1, "i": 0, "ko": "필요하다", "uz": "kerak" }, …] }
 
 // examples
-{ "version": "…", "count": 1000, "examples": [{ "id": "1-0", "ko": "…", "uz": "…" }, …] }
+{ "version": "…", "id": "b", "count": 1000,
+  "examples": [{ "id": "b-1-0", "w": "필요하다", "ko": "…", "hl": "…", "cloze": "…", "uz": "…" }, …] }
 
 // roots
-{ "version": "…", "roots": { "1-0": { "parts": [{ "h": "必", … }], … }, … }, "hanja": { … }, "suffix": { … } }
+{ "version": "…", "id": "b", "roots": { "b-1-0": { "parts": [{ "k": "필", "h": "必", "uz": "albatta" }, …],
+  "idea": "…", "origin": "sino" }, … } }
 ```
 
-So'z `id` si — `"<kun>-<indeks>"`, web ilovadagi bilan bir xil. Progress ham shu id'lar bilan saqlanadi.
-
-**Tartib:** ishga tushganda `/api/content` ni so'rang, `version` ni saqlab qo'yganingiz bilan solishtiring.
-Bir xil bo'lsa hech nima yuklamang. O'zgargan bo'lsa uchala qismni `?v=<version>` bilan yuklab, qurilmaga
-yozing. `?v=` li manzil bir yilga keshlanadi; usiz `ETag` bo'yicha `304` qaytadi. Internet bo'lmasa
-saqlangan nusxa to'liq kurs — hech qanday so'rovsiz ishlaydi.
+**Tartib:** ishga tushganda `/api/content` ni so'rang va `version` ni saqlab qo'yganingiz bilan
+solishtiring. Bir xil bo'lsa hech nima yuklamang. O'zgargan bo'lsa kerakli darajaning uchala qismini
+`?v=<version>` bilan yuklab, qurilmaga yozing. `?v=` li manzil bir yilga keshlanadi; usiz `ETag`
+bo'yicha `304` qaytadi. Internet bo'lmasa saqlangan nusxa to'liq daraja — hech qanday so'rovsiz
+ishlaydi.
 
 Namuna: [apps/mobile/src/content.js](../apps/mobile/src/content.js).
 
@@ -154,7 +169,8 @@ Demo hisobda bu uchchalasi ham `403`.
 ## Progress
 
 Progress — bitta JSON obyekt: o'rganilgan so'zlar, takrorlash jadvali, XP, kunlik faollik, sozlamalar.
-Tuzilishi [apps/web/js/store.js](../apps/web/js/store.js) dagi `freshState()` da.
+So'zlar darajali id bilan kalitlanadi (`"b-1-0"`), shuning uchun uchala darajaning progressi
+bitta obyektda yonma-yon turadi.
 
 ### `GET /api/progress`
 
@@ -212,7 +228,7 @@ Shu haftaning XP'si. Eng yaxshi 5 ta, o'zingiz beshtalikka kirmasangiz oxiriga q
 
 ### `GET /media/clip/:kind/:file`
 
-`kind` — `words` yoki `sentences`; `file` — `<so'z id>.mp3`, masalan `1-0.mp3`.
+`kind` — `words` yoki `sentences`; `file` — `<so'z id>.mp3`, masalan `b-1-0.mp3`.
 
 Tizimga kirish shart: `Authorization: Bearer` sarlavhasi bilan so'ralishi kerak. `expo-audio` manba
 sifatida `{ uri, headers }` qabul qiladi — `apps/mobile/src/api.js` dagi `authHeaders()` shu uchun bor.

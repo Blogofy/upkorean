@@ -1,18 +1,17 @@
 # UpKorean
 
-30 kunlik TOPIK II so'z boyligi platformasi. Bitta backend, uchta mijoz: web (PWA), mobil (Expo) va
-kelajakda qo'shiladigani.
+Koreys tili so'z boyligi ilovasi. Uch daraja — 초급, 중급, 고급 — har biri 50 kun, kuniga 30 so'z.
 
 ```
 apps/
-  api/        Express server — JSON API (/api/*) + web ilovaning statik hosting'i
-  web/        Brauzer ilovasi (PWA). Build step yo'q: oddiy HTML, CSS, JS
-  mobile/     Expo / React Native ilovasi — API bilan bearer token orqali gaplashadi
+  api/        Express server — JSON API (/api/*) va landing sahifaning hosting'i
+  mobile/     Expo / React Native ilovasi — asosiy mijoz
+  landing/    upkorean.uz dagi bitta statik sahifa
 packages/
-  shared/     Ikkala ilova ham, server ham o'qiydigan kod va kurs ma'lumoti
+  shared/     Progress sync mantiqi va kurs ma'lumoti (uch darajaning fayllari)
 data/         SQLite bazasi va backup'lar (git'ga tushmaydi)
-audio/        1000 so'z + 1000 gap diktor audiosi (git'ga tushmaydi, rsync bilan yuklanadi)
-scripts/      Kontentni tekshirish, backup, OCR yordamchilari
+audio/        Diktor audiosi, so'z id'si bo'yicha: audio/words/b-1-0.mp3 (git'ga tushmaydi)
+scripts/      Kontentni tekshirish, backup, audio nomlash, OCR yordamchilari
 test/         node:test — API, sync, progress, push va kontent testlari
 deploy/       Apache konfigi, systemd unit'i, deploy skripti va server qo'llanmasi
 docs/         API ma'lumotnomasi
@@ -20,18 +19,21 @@ docs/         API ma'lumotnomasi
 
 ## Nega shunday
 
-Ilgari `server/` va `public/` bo'lgan. Mobil ilova paydo bo'lishi bilan ikkita narsa kerak bo'ldi:
-API'ning brauzerdan mustaqil bo'lishi (cookie emas, token) va kurs ma'lumotining `<script>` tegidan
-mustaqil bo'lishi (JSON). `packages/shared` — aynan shu ikkisining umumiy qismi: progress sync mantiqi
-va kursning o'zi. Server uni brauzerga `/js/*.js` sifatida beradi, mobilga esa `/api/content` orqali
-JSON qilib beradi — ya'ni ma'lumot bitta joyda turadi, ikki nusxa emas.
+Ilgari bu brauzer ilovasi (PWA) edi va butun kod `server/` bilan `public/` ga bo'lingan edi. Aksariyat
+o'rganuvchida kompyuter yo'q, telefon esa bor — shuning uchun mobil ilova asosiy mijozga aylandi, web
+ilova esa olib tashlandi. Ortda bitta backend qoldi: u API'ni beradi va `upkorean.uz` da bitta landing
+sahifani ko'rsatadi.
+
+Kurs `packages/shared/course/<daraja>/` da yashaydi va API orqali JSON bo'lib tarqaladi. So'z nomi
+o'zining joyini aytadi: `"b-1-0"` — 초급, 1-kun, birinchi so'z. Daraja nomga kirgani uchun uchala
+darajaning progressi bitta obyektda hech qachon to'qnashmaydi.
 
 ## Ishga tushirish
 
-```sh
-npm install              # apps/api, apps/web, packages/shared — npm workspaces
-cp .env.example .env     # kamida PORT va APP_URL
-npm run dev              # http://localhost:3000 — API ham, web ilova ham shu yerda
+```powershell
+npm install              # apps/api, packages/shared — npm workspaces
+copy .env.example .env   # kamida PORT va APP_URL
+npm run dev              # http://localhost:3000 — API va landing
 ```
 
 Mobil ilova alohida turadi (Metro bundler npm workspaces bilan yaxshi chiqishmaydi). Windows
@@ -44,23 +46,34 @@ npx expo start
 ```
 
 Dev rejimida ilova API manzilini o'zi topadi: bundle'ni qaysi kompyuterdan yuklagan bo'lsa,
-`http://<shu IP>:3000` ga boradi. Shuning uchun kompyuterda `npm run dev` ishlab tursa kifoya — IP
-yozish kerak emas. Telefon yetolmasa, Windows Firewall'da 3000-portni oching yoki
-`npx expo start --tunnel` ishlating.
+`http://<shu IP>:3000` ga boradi. Telefon va kompyuter bitta Wi-Fi'da bo'lsin.
 
 ## Buyruqlar
 
 | Buyruq | Nima qiladi |
 | --- | --- |
-| `npm run dev` | Serverni `--watch` bilan, demo hisob va parol tiklash havolasi yoqilgan holda |
+| `npm run dev` | Serverni `--watch` bilan, demo hisob yoqilgan holda |
 | `npm start` | Serverni prod rejimida |
-| `npm test` | Butun test to'plami (40 ta test) |
-| `npm run check:content` | Kurs ma'lumotining tuzilishini tekshiradi |
+| `npm test` | Butun test to'plami |
+| `npm run check:content` | Har bir darajaning tuzilishini tekshiradi |
 | `npm run backup` | SQLite bazasining nusxasini `data/backups/` ga oladi |
 | `npm run mobile` | `apps/mobile` dagi Expo dev serverini ochadi |
 
+## Kontent qo'shish
+
+Har bir daraja o'z papkasida, uchta fayl bilan: `packages/shared/course/<b|m|a>/`
+
+| Fayl | Shakli |
+| --- | --- |
+| `vocab.js` | `export default [[["필요하다","kerak"], …], …]` — tashqi massiv kunlar, ichkarisi `[koreyscha, o'zbekcha]` |
+| `examples.js` | `export default [{ id:"1-0", w, ko, hl, cloze?, uz, note? }, …]` — id kun ichidagi o'rin (`"<kun>-<indeks>"`), darajasiz |
+| `roots.js` | `export default { "1-0": { parts:[…], idea, origin }, … }` — so'z qanday tuzilgani (ixtiyoriy) |
+
+Papkasi yo'q daraja xato emas — u ilovada qulflangan ko'rinadi. Qo'shgandan keyin:
+`npm run check:content`.
+
 ## Hujjatlar
 
-- [docs/api.md](docs/api.md) — API ma'lumotnomasi (mobil ilova yozish uchun shu kerak)
+- [docs/api.md](docs/api.md) — API ma'lumotnomasi
 - [deploy/README.md](deploy/README.md) — serverga chiqarish, Apache, systemd, backup, sertifikat
 - [apps/mobile/README.md](apps/mobile/README.md) — Expo ilovasini yig'ish va chiqarish

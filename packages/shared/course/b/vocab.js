@@ -1,6 +1,6 @@
 // TOPIK II vocabulary — 30 days. Source: "TOPIK in 30days" PDF (Kosimjonov Ibrokhim, TOPIK TEAM) via the UpKorean design project.
 // Each day: list of [korean, uzbek].
-window.UK_VOCAB = [
+const DAYS = [
   [["필요하다","kerak"],["방법","usul"],["이용하다","foydalanmoq"],["생각하다","o'ylamoq"],["관심","qiziqish"],["가능하다","mumkin bo'lmoq / iloji bo'lmoq"],["결과","natija"],["늘다","ko'paymoq / oshmoq"],["바꾸다","o'zgartirmoq / almashtirmoq"],["노력하다","harakat qilmoq / tirishmoq"],["느끼다","his qilmoq"],["경우","holat / hol"],["상품","mahsulot / sovrin"],["생기다","paydo bo'lmoq"],["도움","yordam"],["환경","atrof-muhit"],["내용","mazmun"],["상황","vaziyat / holat"],["바로잡다","tuzatmoq"],["사회","jamiyat"],["생활","hayot / turmush"],["이상하다","g'alati"],["경험","tajriba"],["다양하다","xilma-xil / turli"],["최근","so'nggi paytlarda / yaqinda"],["선택하다","tanlamoq"],["효과","samara / ta'sir"],["문제","muammo / savol"],["자신","o'zi / o'ziga ishonch"],["찾다","qidirmoq / topmoq"],["관계","munosabat / aloqa"],["기간","muddat"],["전문가","mutaxassis"]],
   [["행사","tadbir / marosim"],["대상","obyekt / maqsadli guruh"],["설명하다","tushuntirmoq"],["연구","tadqiqot"],["직접","bevosita / o'zi"],["대부분","ko'pchilik / katta qismi"],["물건","buyum / narsa"],["안내하다","yo'l ko'rsatmoq / ma'lumot bermoq"],["직장","ishxona / ish joyi"],["참여하다","qatnashmoq / ishtirok etmoq"],["시작하다","boshlamoq"],["변화","o'zgarish"],["편하다","qulay"],["성공하다","muvaffaqiyatga erishmoq"],["영향","ta'sir"],["걱정하다","xavotir olmoq"],["교통","transport / qatnov"],["모으다","yig'moq / to'plamoq"],["세계","dunyo"],["신청","ariza / so'rov"],["오히려","aksincha"],["지역","hudud"],["판매하다","sotmoq"],["계속","davomli / uzluksiz"],["버리다","tashlamoq"],["경력","ish staji"],["계획","reja"],["끝나다","tugamoq"],["어리다","yosh / kichik"],["직원","xodim / ishchi"],["관리","boshqaruv / parvarish"],["사실","haqiqat / fakt"],["불편하다","noqulay"]],
   [["소비","iste'mol / xarajat"],["실제로","haqiqatda / amalda"],["충분하다","yetarli bo'lmoq"],["표현하다","ifodalamoq"],["해결하다","hal qilmoq"],["개인","shaxs / shaxsiy"],["경제","iqtisodiyot"],["늦다","kechikmoq / kech bo'lmoq"],["따라하다","taqlid qilmoq / takrorlamoq"],["인기","mashhurlik"],["장단점","yaxshi va yomon tomonlari"],["지키다","rioya qilmoq / asramoq"],["통하다","orqali"],["참가하다","qatnashmoq"],["문화","madaniyat"],["받다","olmoq"],["발생","sodir bo'lish / yuzaga kelish"],["심하다","kuchli / jiddiy"],["장소","joy"],["제도로","yetarlicha"],["개발하다","ishlab chiqmoq / rivojlantirmoq"],["구입하다","xarid qilmoq"],["기분","kayfiyat"],["기억","xotira"],["기회","imkoniyat"],["무료","bepul"],["상대방","suhbatdosh / qarshi tomon"],["색","rang"],["알려주다","xabar bermoq / aytib bermoq"],["포함되다","tarkibiga kirmoq"],["힘","kuch"],["대회","musobaqa / tanlov"],["발표","taqdimot / e'lon"]],
@@ -93,5 +93,8 @@ const UK_VOCAB_ERRATA = [
   [30, 27, "분실하다", "yo'qotmoq"],
 ];
 for (const [day, position, korean, uzbek] of UK_VOCAB_ERRATA) {
-  window.UK_VOCAB[day - 1][position - 1] = [korean, uzbek];
+  DAYS[day - 1][position - 1] = [korean, uzbek];
 }
+
+// One entry per day: [[korean, uzbek], ...].
+export default DAYS;

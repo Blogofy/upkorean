@@ -215,14 +215,18 @@ test("login: guesses against an account never keep its owner out", async () => {
   assert.equal((await owner("GET", "/api/auth/me")).data.user.email, email);
 });
 
-test("responses carry security headers; the service worker gets a build fingerprint", async () => {
-  const r = await fetch(`${BASE}/sw.js`);
+test("the landing page is served with security headers, and the browser app is gone", async () => {
+  const r = await fetch(`${BASE}/`);
+  assert.equal(r.status, 200);
   const body = await r.text();
-  assert.match(body, /const VERSION = "upkorean-[0-9a-f]{12}"/);
+  assert.match(body, /UpKorean/);
   assert.equal(r.headers.get("cache-control"), "no-cache");
-  assert.match(r.headers.get("content-security-policy"), /default-src 'self'/);
-  const js = await fetch(`${BASE}/js/examples.js`, { headers: { "Accept-Encoding": "gzip" } });
-  assert.equal(js.headers.get("content-encoding"), "gzip");
+  // One static page with no script of its own: nothing is allowed to run on it.
+  assert.match(r.headers.get("content-security-policy"), /script-src 'none'/);
+  // What the browser app used to be served from answers for nothing now.
+  for (const gone of ["/sw.js", "/js/app.js", "/js/vocab.js", "/manifest.webmanifest"]) {
+    assert.equal((await fetch(BASE + gone)).status, 404, gone);
+  }
 });
 
 // ---------- The mobile app's side of the API ----------
@@ -267,8 +271,8 @@ test("an app signs in with a bearer token and a browser still signs in with a co
   assert.equal((await app("PUT", "/api/progress", { state: { xp: 7 }, baseAt: null, rev: "m1" })).status, 200);
   assert.deepEqual((await app("GET", "/api/progress")).data.state, { xp: 7 });
   // Audio is behind the same session.
-  assert.equal((await fetch(`${BASE}/media/clip/words/1-0.mp3`)).status, 401);
-  assert.equal((await fetch(`${BASE}/media/clip/words/1-0.mp3`, { headers: { Authorization: `Bearer ${app.token()}` } })).status, 200);
+  assert.equal((await fetch(`${BASE}/media/clip/words/b-1-0.mp3`)).status, 401);
+  assert.equal((await fetch(`${BASE}/media/clip/words/b-1-0.mp3`, { headers: { Authorization: `Bearer ${app.token()}` } })).status, 200);
 
   // The same account from a browser: a cookie, and no token handed to page script.
   const browser = client();
@@ -297,31 +301,43 @@ test("changing the password hands the app a new token and drops the old one", as
   assert.equal(old.status, 401); // the old one does not
 });
 
-test("course content is served as JSON, versioned and revalidatable", async () => {
+test("course content is served per level, versioned and revalidatable", async () => {
   const manifest = await (await fetch(`${BASE}/api/content`)).json();
   assert.match(manifest.version, /^[0-9a-f]{12}$/);
-  assert.equal(manifest.days, 30);
-  assert.equal(manifest.words, 1000);
-  assert.deepEqual(manifest.parts.map((p) => p.name), ["vocab", "examples", "roots"]);
+  assert.deepEqual(manifest.levels.map((l) => l.id), ["b", "m", "a"]);
+
+  const [beginner, ...rest] = manifest.levels;
+  assert.equal(beginner.locked, false);
+  assert.ok(beginner.words > 0);
+  assert.deepEqual(beginner.parts.map((p) => p.name), ["vocab", "examples", "roots"]);
+  // A level whose words are not written yet is announced and shut, not hidden.
+  for (const level of rest) {
+    assert.equal(level.locked, true);
+    assert.equal(level.words, 0);
+    assert.deepEqual(level.parts, []);
+  }
 
   const config = await (await fetch(`${BASE}/api/config`)).json();
   assert.equal(config.contentVersion, manifest.version);
+  assert.equal(config.defaultLevel, "b");
 
-  // No sign-in: the course is the same public payload the browser gets as /js/vocab.js.
-  const vocab = await fetch(`${BASE}/api/content/vocab?v=${manifest.version}`);
+  // No sign-in: the course is public, as it has always been.
+  const vocab = await fetch(`${BASE}/api/content/b/vocab?v=${manifest.version}`);
   assert.equal(vocab.status, 200);
   assert.match(vocab.headers.get("cache-control"), /immutable/);
   const data = await vocab.json();
-  assert.equal(data.words.length, 1000);
-  assert.deepEqual(Object.keys(data.words[0]).sort(), ["day", "i", "id", "ko", "uz"]);
-  assert.equal(data.words[0].id, "1-0");
+  assert.equal(data.words.length, beginner.words);
+  assert.deepEqual(Object.keys(data.words[0]).sort(), ["day", "i", "id", "ko", "level", "uz"]);
+  // A word carries its level in its name, so progress from two levels can never collide.
+  assert.equal(data.words[0].id, "b-1-0");
 
   // Asked for without the version, an unchanged part comes back as a 304 with no body.
   const etag = vocab.headers.get("etag");
-  const again = await fetch(`${BASE}/api/content/vocab`, { headers: { "If-None-Match": etag } });
+  const again = await fetch(`${BASE}/api/content/b/vocab`, { headers: { "If-None-Match": etag } });
   assert.equal(again.status, 304);
 
-  assert.equal((await fetch(`${BASE}/api/content/passwords`)).status, 404);
+  assert.equal((await fetch(`${BASE}/api/content/b/passwords`)).status, 404);
+  assert.equal((await fetch(`${BASE}/api/content/m/vocab`)).status, 404); // locked level, nothing to send
 });
 
 // A page on another site may reach the API, but only signed out: no Allow-Credentials, and the session

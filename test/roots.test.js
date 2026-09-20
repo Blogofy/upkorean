@@ -1,14 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-globalThis.window = globalThis;
-await import("../packages/shared/vocab.js");
-await import("../packages/shared/roots.js");
+// Checked against one level's raw files, where ids are still local ("<day>-<index>"). The level prefix
+// is added when the course is assembled (packages/shared/course/model.js) and adds nothing to check here.
+import VOCAB from "../packages/shared/course/b/vocab.js";
+import PARSED, { HANJA_MEANINGS, ORIGIN_OVERRIDES } from "../packages/shared/course/b/roots.js";
 
 const WORDS = {};
-globalThis.UK_VOCAB.forEach((list, d) => list.forEach(([ko, uz], i) => { WORDS[`${d + 1}-${i}`] = { ko, uz, day: d + 1 }; }));
-const ROOTS = Object.entries(globalThis.UK_ROOTS);
-const HANJA = globalThis.UK_HANJA;
+VOCAB.forEach((list, d) => list.forEach(([ko, uz], i) => { WORDS[`${d + 1}-${i}`] = { ko, uz, day: d + 1 }; }));
+const ROOTS = Object.entries(PARSED);
+const HANJA = HANJA_MEANINGS;
 const SYLLABLE = /^[가-힣]$/;
 const CJK = /^[一-鿿]$/;
 
@@ -88,13 +89,13 @@ test("every word has an origin that agrees with its parts", () => {
     if (r.origin === "sino") continue;
     assert.ok(!hasHanja, `${id}: ${r.origin} word with hanja parts`);
   }
-  for (const [id, o] of Object.entries(globalThis.UK_ORIGIN_OVERRIDES)) {
+  for (const [id, o] of Object.entries(ORIGIN_OVERRIDES)) {
     assert.ok(WORDS[id], `origin override for unknown word ${id}`);
-    if (o === "sino") assert.ok(!(globalThis.UK_ROOTS[id].parts || []).some((p) => p.h), `${id}: has hanja parts, no override needed`);
+    if (o === "sino") assert.ok(!(PARSED[id].parts || []).some((p) => p.h), `${id}: has hanja parts, no override needed`);
   }
   assert.ok(counts.sino > 600 && counts.native > 250 && counts.loan >= 10, JSON.stringify(counts));
 });
 
 test("every course word has an entry", () => {
-  for (const id of Object.keys(WORDS)) assert.ok(globalThis.UK_ROOTS[id], `${id} ${WORDS[id].ko} has no entry`);
+  for (const id of Object.keys(WORDS)) assert.ok(PARSED[id], `${id} ${WORDS[id].ko} has no entry`);
 });
