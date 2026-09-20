@@ -17,17 +17,23 @@ emas, faqat `window` globallariga tayangan.
 
 ## Birinchi ishga tushirish
 
-```sh
-cd apps/mobile
+Har bir buyruq alohida qatorda — Windows PowerShell 5.1 da `&&` ishlamaydi:
+
+```powershell
+cd apps\mobile
 npm install
-npx expo install --fix   # paket versiyalarini o'rnatilgan Expo SDK'siga aniq moslaydi
 npx expo start
 ```
 
 Telefonda **Expo Go** ilovasini ochib QR kodni skanerlang.
 
-> `package.json` dagi versiyalar Expo SDK 57 ga qarab yozilgan. `expo install --fix` — ularni
-> to'g'rilashning rasmiy yo'li, shuning uchun birinchi o'rnatishda uni albatta chaqiring.
+Versiyalar Expo SDK 57 ga moslab qotirilgan va tekshirilgan: `npx expo-doctor` — 21/21, `npx expo export
+--platform android` — bundle yig'iladi. Keyinchalik SDK'ni yangilaganingizda versiyalarni
+`npx expo install --fix` qayta moslaydi.
+
+`babel.config.js` bu yerda yo'q va kerak ham emas: SDK 57 `babel-preset-expo` ni o'zi qo'llaydi. Qo'lda
+qo'shilgan konfig aksincha buzadi — `babel-preset-expo` `expo/node_modules` ichida yotadi va loyiha
+ildizidan topilmaydi.
 
 ## Server manzili
 

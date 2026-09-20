@@ -34,12 +34,12 @@ cp .env.example .env     # kamida PORT va APP_URL
 npm run dev              # http://localhost:3000 — API ham, web ilova ham shu yerda
 ```
 
-Mobil ilova alohida turadi (Metro bundler npm workspaces bilan yaxshi chiqishmaydi):
+Mobil ilova alohida turadi (Metro bundler npm workspaces bilan yaxshi chiqishmaydi). Windows
+PowerShell 5.1 da `&&` yo'q, shuning uchun har bir buyruq alohida qatorda:
 
-```sh
-cd apps/mobile
+```powershell
+cd apps\mobile
 npm install
-npx expo install --fix   # versiyalarni o'rnatilgan Expo SDK'siga moslaydi
 npx expo start
 ```
 

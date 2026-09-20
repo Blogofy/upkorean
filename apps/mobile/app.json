@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "scheme": "upkorean",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "android": {
       "package": "uz.upkorean.app"
     },
