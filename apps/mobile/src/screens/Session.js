@@ -274,8 +274,13 @@ function Intro({ item, onNext }) {
           <Row justify="space-between">
             <Text style={eyebrow(c)}>Misol</Text>
             {store.audio ? (
-              <Pressable hitSlop={10} onPress={() => { tapped(); play("sentences", item.id); }}>
-                <PlayIcon size={13} color={c.green} />
+              <Pressable
+                accessibilityLabel="Gapni eshitish"
+                hitSlop={8}
+                onPress={() => { tapped(); play("sentences", item.id); }}
+                style={({ pressed }) => [{ width: 38, height: 38, borderRadius: 19, backgroundColor: c.greenTint, alignItems: "center", justifyContent: "center", transform: [{ scale: pressed ? 0.94 : 1 }] }]}
+              >
+                <PlayIcon size={14} color={c.greenDeep} />
               </Pressable>
             ) : null}
           </Row>
@@ -450,8 +455,13 @@ function Choose({ item, session, onChoose, onConfirm }) {
           </>
         )}
         {fromKorean && store.audio ? (
-          <Pressable hitSlop={10} onPress={() => { tapped(); play("words", item.id); }} style={{ marginTop: 4 }}>
-            <PlayIcon size={14} color={c.green} />
+          <Pressable
+            accessibilityLabel="Eshitish"
+            hitSlop={8}
+            onPress={() => { tapped(); play("words", item.id); }}
+            style={({ pressed }) => [{ marginTop: 6, width: 48, height: 48, borderRadius: 24, backgroundColor: c.greenTint, alignItems: "center", justifyContent: "center", transform: [{ scale: pressed ? 0.94 : 1 }] }]}
+          >
+            <PlayIcon size={18} color={c.greenDeep} />
           </Pressable>
         ) : null}
       </View>
