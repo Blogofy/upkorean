@@ -10,6 +10,7 @@ import { BackLink, Button, Empty, Row, Screen, Segmented, Title, Toggle, tapped 
 
 const TYPES = [
   { id: "mixed", title: "Aralash", desc: "Barcha turlar aralash keladi", perItem: 0.35, badge: "tavsiya" },
+  { id: "card", title: "Flashcard", desc: "Kartani ochib, o'zingizni baholaysiz", perItem: 0.15 },
   { id: "listen", title: "Eshitib topish", desc: "Talaffuzdan so'zni tanish", perItem: 0.3, audio: true },
   { id: "type", title: "Yozish", desc: "Hangul bilan yozib javob berish", perItem: 0.45 },
   { id: "sent", title: "Gap ichida", desc: "Misol gapdagi bo'sh joy", perItem: 0.45 },
@@ -53,14 +54,14 @@ export default function Practice({ navigation, route }) {
         <>
           <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 14, gap: 12 }} showsVerticalScrollIndicator={false}>
             <View style={{ flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4.5 }}>
-              {TYPES.filter((t) => !t.audio || store.audio).map((t) => {
+              {TYPES.filter((t) => !t.audio || store.audio).map((t, index) => {
                 const on = t.id === type;
                 const n = Math.min(count, t.id === "sent" ? ids.filter((id) => course.examples[id]?.cloze).length : ids.length);
                 return (
-                  <View key={t.id} style={{ width: "50%", padding: 4.5 }}>
+                  <View key={t.id} style={{ width: index === 0 ? "100%" : "50%", padding: 4.5 }}>
                     <Pressable
                       onPress={() => { tapped(); setType(t.id); }}
-                      style={({ pressed }) => [{ backgroundColor: on ? c.green : c.card, borderRadius: 20, padding: 16, gap: 5, minHeight: 116, opacity: pressed ? 0.85 : 1 }]}
+                      style={({ pressed }) => [{ backgroundColor: on ? c.green : c.card, borderRadius: 20, padding: 16, gap: 5, minHeight: index === 0 ? 0 : 116, opacity: pressed ? 0.85 : 1 }]}
                     >
                       <Row justify="space-between">
                         <Text style={{ fontFamily: FONTS.bold, fontSize: 15, color: on ? c.onGreen : c.ink }}>{t.title}</Text>

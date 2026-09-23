@@ -81,6 +81,7 @@ export default function Review({ navigation }) {
           {learned ? (
             <Row gap={8} wrap>
               <Chip square tone="soft" label="Aralash · ~7 daq" onPress={() => navigation.navigate("Session", { kind: "quiz", quizType: "mixed", title: "Aralash mashq", count: 20 })} />
+              <Chip square tone="tint" label="Flashcard" onPress={() => navigation.navigate("Session", { kind: "quiz", quizType: "card", title: "Flashcard", count: 20 })} />
               {store.audio ? <Chip square tone="tint" label="Eshitib topish" onPress={() => navigation.navigate("Session", { kind: "quiz", quizType: "listen", title: "Eshitib topish", count: 20 })} /> : null}
               <Chip square tone="tint" label="Yozish" onPress={() => navigation.navigate("Session", { kind: "quiz", quizType: "type", title: "Yozish", count: 20 })} />
               <Chip square tone="tint" label="Gap ichida" onPress={() => navigation.navigate("Session", { kind: "quiz", quizType: "sent", title: "Gap ichida", count: 20, ids: srs.learnedIds(state, course).filter((id) => course.examples[id]?.cloze) })} />

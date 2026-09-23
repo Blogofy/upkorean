@@ -325,7 +325,9 @@ function Card({ item, session, onReveal, onGrade }) {
   const { state } = store;
   const back = session.phase === "back";
   const flagged = !!srs.wordState(state, item.id)?.flag;
+  // A practice card does not move the schedule, so it does not promise a next date either.
   const days = (g) => {
+    if (session.kind === "quiz") return "";
     const n = srs.previewInterval(state, item.id, g);
     return n <= 1 ? "ertaga" : `${n} kun`;
   };
@@ -386,7 +388,7 @@ function Grade({ title, sub, tone, onPress }) {
       style={({ pressed }) => [{ flex: 1, paddingVertical: 16, paddingHorizontal: 8, borderRadius: 17, alignItems: "center", gap: 3, backgroundColor: good ? c.green : c.card, opacity: pressed ? 0.85 : 1 }]}
     >
       <Text style={{ fontFamily: FONTS.bold, fontSize: 14.5, color: good ? c.onGreen : tone === "bad" ? c.danger : c.ink }}>{title}</Text>
-      <Text style={{ fontFamily: FONTS.body, fontSize: 11.5, color: good ? c.greenTint : c.ink2 }}>{sub}</Text>
+      {sub ? <Text style={{ fontFamily: FONTS.body, fontSize: 11.5, color: good ? c.greenTint : c.ink2 }}>{sub}</Text> : null}
     </Pressable>
   );
 }

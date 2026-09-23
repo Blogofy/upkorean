@@ -141,23 +141,24 @@ export function reviewItems(course, ids, opts) {
   const weights = { card: 3, mc: 3, mcr: 3, type: 2, listen: 2, sent: 1 };
   return ids.map((id) => {
     const type = chooseType(course, id, weights, opts);
-    if (type === "card") {
-      return {
-        type: "card", id, ko: course.byId[id].ko, uz: course.byId[id].uz,
-        example: course.examples[id] || null,
-      };
-    }
+    if (type === "card") return cardItem(course, id);
     return makeItem(course, type, id);
   });
 }
 
-// Free practice. The learner picked the form, or asked for a mix.
+const cardItem = (course, id) => ({
+  type: "card", id, ko: course.byId[id].ko, uz: course.byId[id].uz,
+  example: course.examples[id] || null,
+});
+
+// Free practice. The learner picked the form, or asked for a mix. "card" is flash cards on their own.
 export function quizItems(state, course, ids, quizType, opts, count = 20) {
   const weights = { mc: 3, mcr: 3, type: 2, listen: 2, sent: 2 };
   const weakFirst = ids.slice().sort((a, b) => ((state.words[b] || {}).bad || 0) - ((state.words[a] || {}).bad || 0));
   const chosen = shuffle(shuffle(weakFirst.slice(0, count * 2)).slice(0, Math.min(count, ids.length)));
   const fixed = { mixed: null, mc: null, listen: "listen", type: "type", sent: "sent" }[quizType];
   return chosen.map((id) => {
+    if (quizType === "card") return cardItem(course, id);
     if (quizType === "mc") return makeItem(course, pick(["mc", "mcr"]), id);
     return makeItem(course, fixed || chooseType(course, id, weights, opts), id);
   });
@@ -267,7 +268,16 @@ export function gradeCard(state, session, g, now = today()) {
   const item = current(session);
   if (!item || item.type !== "card" || session.phase !== "back") return null;
   trackTime(session);
-  const days = srs.grade(state, item.id, g, now);
+  // In free practice the three buttons only count: rating a card at midnight for fun must not move it on
+  // the review ladder, exactly as a wrong answer in practice does not.
+  let days = null;
+  if (session.kind === "quiz") {
+    const word = state.words[item.id];
+    if (word) { word.seen++; word.last = now; if (g === 1) word.bad++; else word.ok++; }
+    srs.addXP(state, g >= 3 ? 2 : 1, now);
+  } else {
+    days = srs.grade(state, item.id, g, now);
+  }
   session.results.push({ id: item.id, type: "card", grade: g, correct: g >= 3 });
   if (g >= 3) session.ok++; else { session.bad++; session.mistakes[item.id] = true; }
   return days;

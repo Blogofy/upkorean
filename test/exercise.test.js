@@ -223,3 +223,20 @@ test("a listening question is answered with the meaning, not with the word that 
   assert.ok(item.opts.includes("birinchi 3"));
   assert.ok(item.opts.every((option) => !/[가-힣]/.test(option)), "no Korean among the options");
 });
+
+test("practice flash cards are all cards, and rating them never moves the schedule", () => {
+  const state = fresh();
+  const ids = dayIds(1);
+  for (const id of ids) srs.grade(state, id, 3);
+  const before = JSON.stringify(ids.map((id) => [state.words[id].s, state.words[id].due]));
+  const session = ex.newSession("quiz", ex.quizItems(state, course, ids, "card", {}, 5), { quizType: "card", title: "Flashcard", xpStart: state.xp });
+  assert.equal(session.items.length, 5);
+  assert.ok(session.items.every((item) => item.type === "card"));
+  while (ex.current(session)) {
+    ex.reveal(session);
+    ex.gradeCard(state, session, 1);
+    if (!ex.next(session)) break;
+  }
+  assert.equal(JSON.stringify(ids.map((id) => [state.words[id].s, state.words[id].due])), before);
+  assert.equal(session.bad, 5);
+});
