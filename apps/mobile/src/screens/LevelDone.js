@@ -1,6 +1,7 @@
 // 28 — Daraja tugadi. The last day of a level is done: what it took, and the level after it.
 import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
+import { StatusBar } from "expo-status-bar";
 
 import * as srs from "@upkorean/shared/srs.js";
 import { diffDays, today } from "@upkorean/shared/dates.js";
@@ -39,6 +40,8 @@ export default function LevelDone({ navigation }) {
 
   return (
     <Screen edges={["top", "bottom"]} style={{ backgroundColor: c.green }}>
+      {/* White clock and battery on the green; the shell's own bar takes over again when this screen goes. */}
+      <StatusBar style="light" />
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 22, paddingBottom: 26, gap: 16 }} showsVerticalScrollIndicator={false}>
         <View style={{ paddingTop: 40, alignItems: "center", gap: 10 }}>
           <Text style={{ fontSize: 48, fontWeight: "900", letterSpacing: 2, color: "rgba(255,255,255,0.34)" }}>수료</Text>

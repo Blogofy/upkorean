@@ -38,6 +38,8 @@ export default function Today({ navigation }) {
     ? srs.missedYesterday(state, course, now) : null;
   const lastDone = day > 1 ? srs.dayState(state, day - 1) : null;
   const doneToday = !!(lastDone && lastDone.done && lastDone.doneAt === now);
+  // Nothing learned yet: there is nothing to review, and "bugun bajarildi" would praise work not done.
+  const fresh = srs.learnedIds(state, course).length === 0;
 
   return (
     <Screen>
@@ -91,10 +93,10 @@ export default function Today({ navigation }) {
             <Text style={label(c)}>Takrorlash</Text>
             <Row gap={12}>
               <RingStat value={goal.done} total={goal.done + goal.left || 1} size={52} />
-              <View>
-                <Text style={{ fontFamily: FONTS.display, fontSize: 26, lineHeight: 29, color: c.ink }}>{goal.left}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: FONTS.display, fontSize: 26, lineHeight: 29, color: c.ink }}>{fresh ? "—" : goal.left}</Text>
                 <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, color: c.ink2 }}>
-                  {goal.left ? `so'z · ~${goal.minutes} daq` : "bugun bajarildi"}
+                  {fresh ? "ertadan boshlanadi" : goal.left ? `so'z · ~${goal.minutes} daq` : goal.done ? "bugun bajarildi" : "bugun so'z yo'q"}
                 </Text>
               </View>
             </Row>
@@ -102,6 +104,7 @@ export default function Today({ navigation }) {
               title={goal.left ? "Boshlash" : "Takrorlash"}
               size="sm"
               kind={goal.left ? "primary" : "tint"}
+              disabled={fresh}
               onPress={() => (goal.left ? openReview(navigation) : navigation.navigate("Review"))}
             />
           </View>

@@ -117,3 +117,29 @@ export function MemoCard({ root, title = "Yodda tutish uchun" }) {
     </View>
   );
 }
+
+// The breakdown in a line or two, for the word card: [필 必 albatta] + [요 要 talab], then what they make.
+export function MemoChips({ root }) {
+  const c = useColors();
+  const parts = partsOf(root).filter((part) => !part.ending);
+  return (
+    <View style={{ gap: 8 }}>
+      {parts.length ? (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
+          {parts.map((part, i) => (
+            <View key={`${part.k}-${i}`} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              {i > 0 ? <Text style={{ fontFamily: FONTS.bold, fontSize: 14, color: c.ink4 }}>+</Text> : null}
+              <View style={{ flexDirection: "row", alignItems: "baseline", gap: 5, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 11, backgroundColor: c.tint }}>
+                <Text style={{ fontSize: 16, fontWeight: "700", color: c.ink }}>{part.k}</Text>
+                {part.h ? <Text style={{ fontSize: 12, color: c.ink4 }}>{part.h}</Text> : null}
+                <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, color: c.ink2 }}>{part.uz}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : null}
+      {root?.idea ? <Text style={{ fontFamily: FONTS.semi, fontSize: 14, lineHeight: 20, color: c.greenDeep }}>{parts.length ? "= " : ""}{sentence(root.idea)}</Text> : null}
+      {root?.hint ? <Text style={{ fontFamily: FONTS.body, fontSize: 13, lineHeight: 19, color: c.ink2 }}>{root.hint}</Text> : null}
+    </View>
+  );
+}

@@ -240,3 +240,33 @@ test("practice flash cards are all cards, and rating them never moves the schedu
   assert.equal(JSON.stringify(ids.map((id) => [state.words[id].s, state.words[id].due])), before);
   assert.equal(session.bad, 5);
 });
+
+test("skipping the matching game counts the unfound pairs as missed", () => {
+  const state = fresh();
+  const ids = dayIds(1).slice(0, 5);
+  for (const id of ids) srs.introduce(state, id);
+  const session = ex.newSession("learn", ex.recallItems(course, ids, { audio: false }), { day: 1, stageIdx: 1, xpStart: 0 });
+  const match = ex.current(session);
+  assert.equal(match.type, "match");
+  ex.matchPick(state, session, "ko", match.ids[0]);
+  ex.matchPick(state, session, "uz", match.ids[0]);
+  assert.ok(ex.matchSkip(state, session));
+  assert.equal(session.phase, "a");
+  const results = session.results.filter((r) => r.type === "match");
+  assert.equal(results.length, 5);
+  assert.equal(results.filter((r) => r.correct).length, 1);
+  for (const id of match.ids.slice(1)) assert.ok(session.mistakes[id]);
+});
+
+test("a finished sitting reports how each kind of question went", () => {
+  const state = fresh();
+  const ids = dayIds(1);
+  for (const id of ids) srs.grade(state, id, 3);
+  const session = ex.newSession("quiz", ex.quizItems(state, course, ids, "type", {}, 4), { quizType: "type", title: "Yozish", xpStart: state.xp });
+  while (ex.current(session)) {
+    ex.submitTyped(state, session, course, "틀림");
+    if (!ex.next(session)) break;
+  }
+  const outcome = ex.finish(state, session, course);
+  assert.deepEqual(outcome.byType, { type: { ok: 0, bad: 4 } });
+});

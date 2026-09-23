@@ -1,6 +1,6 @@
 // 26 — Profil. Who, the daily load, the reminder, night mode, the narrator, and the account itself.
 import { useState } from "react";
-import { Modal, Pressable, ScrollView, Share, Text, View } from "react-native";
+import { Linking, Modal, Pressable, ScrollView, Share, Text, View } from "react-native";
 
 import * as srs from "@upkorean/shared/srs.js";
 
@@ -9,6 +9,7 @@ import { FONTS, useColors } from "../theme";
 import { BackLink, Button, Dialog, Field, ListRow, Row, Screen, Segmented, Title, Toggle } from "../ui";
 import { initial, levelInfo } from "../model";
 import { syncReminder } from "../notify";
+import { PRIVACY_URL } from "../config";
 
 const TIMES = ["08:00", "13:00", "20:00", "21:30"];
 const THEMES = [
@@ -118,6 +119,7 @@ export default function Profile({ navigation }) {
           ) : null}
           <ListRow title="Daraja" sub={`${level.ko} · ${level.uz}`} onPress={() => navigation.navigate("LevelSwitch")} />
           <ListRow title="Ma'lumotlarni yuklab olish" sub="o'rganilgan so'zlar ro'yxati" onPress={exportData} />
+          <ListRow title="Maxfiylik siyosati" sub="qanday ma'lumot saqlanadi" onPress={() => Linking.openURL(PRIVACY_URL)} />
           <ListRow last title="Hisob" sub={user?.email || profile.email} chevron={false} />
         </View>
 

@@ -101,18 +101,13 @@ export default function Results({ navigation }) {
             sub="turi va so'z manbasini o'zingiz tanlaysiz"
             onPress={() => navigation.navigate("Practice")}
           />
+          {/* Premium returns here once payment is connected; a price with nothing behind it misleads. */}
           <ListRow
+            last
             left={<IconBox><Feather name="user" size={20} color={c.greenDeep} /></IconBox>}
             title="Profil va sozlamalar"
             sub="kunlik yuk, eslatma, tungi rejim"
             onPress={() => navigation.navigate("Profile")}
-          />
-          <ListRow
-            last
-            left={<IconBox><Feather name="award" size={20} color={c.greenDeep} /></IconBox>}
-            title="UpKorean Premium"
-            sub="uchala daraja, cheksiz mashq"
-            onPress={() => navigation.navigate("Paywall")}
           />
         </View>
       </ScrollView>

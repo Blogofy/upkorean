@@ -291,6 +291,24 @@ export function introNext(state, session, now = today()) {
   return true;
 }
 
+// Giving up on the matching game. Every pair not found yet counts as a word not known — the same as a
+// wrong answer in the sitting's mode — so skipping is never a cheaper way through than trying.
+export function matchSkip(state, session, now = today()) {
+  const item = current(session);
+  if (!item || item.type !== "match" || session.phase !== "q") return false;
+  trackTime(session);
+  for (const id of item.ids) {
+    const found = session.matched.includes(id);
+    if (!found) {
+      session.mistakes[id] = true;
+      srs.answer(state, id, false, "match", modeOf(session), now);
+    }
+    session.results.push({ id, type: "match", correct: found && !session.mistakes[id] });
+  }
+  session.phase = "a";
+  return true;
+}
+
 // Tapping one side of the matching game. Returns "pair" when a pair landed, "miss" when it did not,
 // "done" when the board is clear, or null when the tap only moved the selection.
 export function matchPick(state, session, side, id) {
@@ -422,6 +440,13 @@ export function finish(state, session, course, now = today()) {
   outcome.missed = Object.entries(missed)
     .sort((a, b) => b[1] - a[1])
     .map(([id, times]) => ({ id, times, ko: course.byId[id]?.ko, uz: course.byId[id]?.uz }));
+  // How each kind of question went, so the summary can say where the mistakes were.
+  const byType = {};
+  for (const result of session.results) {
+    const row = (byType[result.type] = byType[result.type] || { ok: 0, bad: 0 });
+    if (result.correct) row.ok++; else row.bad++;
+  }
+  outcome.byType = byType;
   return outcome;
 }
 

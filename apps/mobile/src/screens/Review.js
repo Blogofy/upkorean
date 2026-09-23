@@ -20,6 +20,7 @@ export default function Review({ navigation }) {
   const forgot = srs.forgottenIds(state, course).length;
   const learned = srs.learnedIds(state, course).length;
   const extra = goal.left === 0 && goal.due > 0;
+  const fresh = learned === 0;
 
   const lists = [
     { mode: "weak", n: weak, title: "Qiyin", sub: "2+ marta xato qilingan", action: "Mashq", bad: true },
@@ -31,6 +32,16 @@ export default function Review({ navigation }) {
     <Screen>
       <TabHeader title="Takrorlash" />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 24, gap: 13 }} showsVerticalScrollIndicator={false}>
+        {fresh ? (
+          <View style={{ backgroundColor: c.card, borderRadius: 26, padding: 22, gap: 10 }}>
+            <Text style={{ fontFamily: FONTS.bold, fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: c.ink4 }}>Hali boshlanmagan</Text>
+            <Text style={{ fontFamily: FONTS.display, fontSize: 21, lineHeight: 26, color: c.ink }}>Takrorlash ertadan boshlanadi</Text>
+            <Text style={{ fontFamily: FONTS.body, fontSize: 14, lineHeight: 20, color: c.ink2 }}>
+              Bugun o'rgangan so'zlaringiz ertaga shu yerga qaytadi — keyin 3, 7 va 16-kunlarda yana.
+            </Text>
+            <Button title="1-kunni boshlash" size="md" style={{ marginTop: 6 }} onPress={() => navigation.navigate("Day", { day: srs.currentDay(state, course) })} />
+          </View>
+        ) : (
         <View style={{ backgroundColor: c.green, borderRadius: 26, padding: 22, gap: 16 }}>
           <Text style={{ fontFamily: FONTS.bold, fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: c.greenTint }}>Bugungi maqsad</Text>
           <Row gap={16}>
@@ -48,14 +59,15 @@ export default function Review({ navigation }) {
             </View>
           </Row>
           <Button
-            title={goal.left ? "Boshlash" : extra ? `Yana ${Math.min(srs.EXTRA_ROUND, goal.due)} ta` : "Bajarildi"}
+            title={goal.left ? "Boshlash" : extra ? `Yana ${Math.min(srs.EXTRA_ROUND, goal.due)} ta` : "Mashq qilish"}
             kind="inverse"
             size="md"
-            disabled={!goal.left && !extra}
-            onPress={() => openReview(navigation, "due", extra ? { extra: true } : {})}
+            onPress={() => (goal.left || extra ? openReview(navigation, "due", extra ? { extra: true } : {}) : navigation.navigate("Practice"))}
           />
         </View>
+        )}
 
+        {fresh ? null : (
         <View style={{ backgroundColor: c.card, borderRadius: 22, paddingVertical: 6, paddingHorizontal: 18 }}>
           {lists.map((list, i) => (
             <ListRow
@@ -70,6 +82,7 @@ export default function Review({ navigation }) {
             />
           ))}
         </View>
+        )}
 
         <View style={{ backgroundColor: c.card, borderRadius: 22, padding: 18, gap: 12 }}>
           <Row justify="space-between" align="baseline">

@@ -1,5 +1,6 @@
 // 18 — Kun tugadi. A green screen: what the day took, when its words come back, and which went wrong.
 import { ScrollView, Text, View } from "react-native";
+import { StatusBar } from "expo-status-bar";
 
 import * as srs from "@upkorean/shared/srs.js";
 
@@ -30,6 +31,8 @@ export default function DayDone({ navigation, route }) {
 
   return (
     <Screen edges={["top", "bottom"]} style={{ backgroundColor: c.green }}>
+      {/* White clock and battery on the green; the shell's own bar takes over again when this screen goes. */}
+      <StatusBar style="light" />
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 22, paddingBottom: 26, gap: 16 }} showsVerticalScrollIndicator={false}>
         <View style={{ paddingTop: 36, alignItems: "center", gap: 10 }}>
           <Text style={{ fontSize: 44, fontWeight: "900", letterSpacing: 2, color: "rgba(255,255,255,0.34)" }}>완료</Text>

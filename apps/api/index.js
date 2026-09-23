@@ -13,6 +13,7 @@ import {
 } from "./auth.js";
 import { tutorEnabled } from "./tutor.js";
 import { mailEnabled, sendResetEmail } from "./mail.js";
+import { privacyPage } from "./privacy.js";
 import { tzOf, localTime, leaderboardXp } from "./progress.js";
 import "../../packages/shared/sync.js"; // defines globalThis.UKSync, shared with the mobile app
 
@@ -453,6 +454,13 @@ ${token ? `<h1>Yangi parol o'rnatish</h1>
   : `<h1>Havola ishlamadi</h1>
 <p>Havola eskirgan yoki to'liq nusxalanmagan. Ilovadan yangi havola so'rang: Kirish → Parolni unutdingizmi?</p>`}
 </main></body></html>`;
+
+// ---------- Privacy policy ----------
+// The stores want a URL for it, and the app opens it from sign-up and the profile.
+app.get("/privacy", (req, res) => {
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.type("html").send(privacyPage);
+});
 
 // ---------- Password reset hand-off ----------
 // The reset link is opened in a mail app, on a phone or on a desktop, and what it has to reach is the app.

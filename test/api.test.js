@@ -200,6 +200,12 @@ test("login: guesses against an account never keep its owner out", async () => {
   assert.equal((await owner("GET", "/api/auth/me")).data.user.email, email);
 });
 
+test("the privacy policy is served for the stores", async () => {
+  const r = await fetch(`${BASE}/privacy`);
+  assert.equal(r.status, 200);
+  assert.match(await r.text(), /Maxfiylik siyosati/);
+});
+
 test("there is no website: the root and the old browser app's files answer 404", async () => {
   for (const gone of ["/", "/index.html", "/privacy.html", "/icon.svg", "/sw.js", "/js/app.js", "/manifest.webmanifest"]) {
     assert.equal((await fetch(BASE + gone)).status, 404, gone);

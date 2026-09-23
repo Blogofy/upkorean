@@ -433,7 +433,7 @@ export const Eyebrow = ({ children, c: role = "ink2", style }) => (
 
 // ---------- Overlays ----------
 // A sheet that rises from the bottom edge. The word card and the level switcher are both this.
-export function Sheet({ visible, onClose, children, title, maxHeight = "86%" }) {
+export function Sheet({ visible, onClose, children, title, footer, maxHeight = "88%" }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const slide = useRef(new Animated.Value(0)).current;
@@ -462,7 +462,12 @@ export function Sheet({ visible, onClose, children, title, maxHeight = "86%" }) 
             <IconButton name="x" label="Yopish" size={20} c="ink2" onPress={onClose} />
           </Row>
         ) : null}
-        {children}
+        <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ paddingBottom: footer ? 12 : 4 }} showsVerticalScrollIndicator={false} bounces={false}>
+          {children}
+        </ScrollView>
+        {footer ? (
+          <View style={{ paddingHorizontal: SPACE.screen + 2, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.line }}>{footer}</View>
+        ) : null}
       </Animated.View>
     </Modal>
   );

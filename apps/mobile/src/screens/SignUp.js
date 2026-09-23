@@ -1,11 +1,12 @@
 // 02 — Ro'yxatdan o'tish. Three fields and a strength bar; the server has the last word on each of them.
 import { useRef, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, Text, View } from "react-native";
 
 import { useStore } from "../store";
 import { FONTS, useColors } from "../theme";
 import { Button, Col, Field, Screen, Title, Txt } from "../ui";
 import { BackTo, StrengthBar } from "./authParts";
+import { PRIVACY_URL } from "../config";
 
 export default function SignUp({ navigation }) {
   const c = useColors();
@@ -100,8 +101,8 @@ export default function SignUp({ navigation }) {
 
           <View style={{ flex: 1, minHeight: 20 }} />
           <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, lineHeight: 19, color: c.ink2, textAlign: "center" }}>
-            Davom etish orqali <Text style={{ fontFamily: FONTS.bold, color: c.green }}>foydalanish shartlari</Text> va{" "}
-            <Text style={{ fontFamily: FONTS.bold, color: c.green }}>maxfiylik siyosati</Text>ga rozilik bildirasiz.
+            Davom etish orqali{" "}
+            <Text accessibilityRole="link" onPress={() => Linking.openURL(PRIVACY_URL)} style={{ fontFamily: FONTS.bold, color: c.green, textDecorationLine: "underline" }}>maxfiylik siyosati</Text>ga rozilik bildirasiz.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
