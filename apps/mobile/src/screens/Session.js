@@ -459,9 +459,6 @@ function Choose({ item, session, onChoose, onConfirm }) {
   }
 
   const koOptions = item.type !== "mc";
-  // The meaning under each option helps only where it cannot give the answer away: after hearing a word or
-  // reading its sentence. Asked for the Korean of a meaning, it would be the answer itself.
-  const showMeaning = item.type !== "mcr" && !!item.optMeanings;
   return (
     <View style={{ flex: 1 }}>
       {prompt}
@@ -472,7 +469,6 @@ function Choose({ item, session, onChoose, onConfirm }) {
             index={index}
             ko={koOptions ? option : null}
             text={koOptions ? null : option}
-            meaning={showMeaning ? item.optMeanings[index] : null}
             state={stateOf(index)}
             disabled={answered}
             onPress={() => onChoose(index)}
