@@ -89,7 +89,7 @@ export default function WordSheet({ id, onClose, navigation }) {
           {root ? (
             <View style={{ gap: 6, paddingTop: 12, borderTopWidth: 1, borderTopColor: c.tint2 }}>
               <Text style={label(c)}>O'zak</Text>
-              <Memo root={root} onTint={false} />
+              <Memo root={root} />
             </View>
           ) : null}
         </View>

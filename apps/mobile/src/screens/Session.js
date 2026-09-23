@@ -208,7 +208,7 @@ export default function Session({ navigation, route }) {
         <FadeIn key={"v" + session.idx} distance={36} duration={220}><Verdict item={item} session={session} onNext={advance} /></FadeIn>
       ) : null}
       {item.type === "intro" ? (
-        <View style={{ paddingHorizontal: 18, paddingTop: 8, paddingBottom: 14 }}>
+        <View style={{ paddingHorizontal: 18, paddingTop: 14, paddingBottom: 14, borderTopWidth: 1, borderTopColor: c.line }}>
           <Button title="Tushundim" onPress={() => { ex.introNext(state, session); store.save(); advance(); }} />
         </View>
       ) : null}
@@ -254,48 +254,51 @@ export default function Session({ navigation, route }) {
 }
 
 // ---------- 11 · Tanishish ----------
+// Three white cards: the word, a sentence it lives in, and how it is built.
 function Intro({ item }) {
   const c = useColors();
   const store = useStore();
   const { play } = useNarrator();
   const example = item.example;
   return (
-    <View style={{ flex: 1, gap: 12 }}>
-      <View style={{ alignSelf: "center", paddingVertical: 7, paddingHorizontal: 14, borderRadius: 99, backgroundColor: c.greenTint }}>
-        <Text style={{ fontFamily: FONTS.bold, fontSize: 12, color: c.greenDeep }}>YANGI SO'Z</Text>
-      </View>
-      <View style={[{ backgroundColor: c.card, borderRadius: 26, paddingVertical: 22, paddingHorizontal: 22, alignItems: "center", gap: 6 }, shadow(c, 2)]}>
-        <Text style={{ fontSize: 56, lineHeight: 70, fontWeight: "700", color: c.ink, textAlign: "center" }} adjustsFontSizeToFit numberOfLines={1}>{item.ko}</Text>
-        <Text style={{ fontFamily: FONTS.bold, fontSize: 24, color: c.ink, marginTop: 6, textAlign: "center" }}>{item.uz}</Text>
+    <View style={{ gap: 12 }}>
+      <View style={[{ backgroundColor: c.card, borderRadius: 26, paddingTop: 16, paddingBottom: 22, paddingHorizontal: 20, alignItems: "center", gap: 4 }, shadow(c, 2)]}>
+        <View style={{ alignSelf: "flex-start", paddingVertical: 6, paddingHorizontal: 12, borderRadius: 99, backgroundColor: c.greenTint }}>
+          <Text style={{ fontFamily: FONTS.bold, fontSize: 11.5, letterSpacing: 0.6, color: c.greenDeep }}>YANGI SO'Z</Text>
+        </View>
+        <Text style={{ fontSize: 60, lineHeight: 76, fontWeight: "700", color: c.ink, textAlign: "center" }} adjustsFontSizeToFit numberOfLines={1}>{item.ko}</Text>
+        <Text style={{ fontFamily: FONTS.displayBold, fontSize: 25, lineHeight: 31, color: c.ink, textAlign: "center" }}>{item.uz}</Text>
         {store.audio ? (
-          <Row gap={8} style={{ marginTop: 10 }}>
-            <SoundPill label="Eshitish" onPress={() => play("words", item.id)} />
-            <SoundPill label="Sekin" onPress={() => play("words", item.id, { rate: 0.7 })} plain />
+          <Row gap={10} style={{ marginTop: 14 }}>
+            <SoundPill label="Eshitish" solid onPress={() => play("words", item.id)} />
+            <SoundPill label="Sekin" onPress={() => play("words", item.id, { rate: 0.7 })} />
           </Row>
         ) : null}
       </View>
+
       {example ? (
-        <View style={{ backgroundColor: c.card, borderRadius: 22, padding: 18, gap: 6 }}>
-          <Row justify="space-between">
+        <View style={{ backgroundColor: c.card, borderRadius: 22, paddingVertical: 16, paddingLeft: 18, paddingRight: 14, flexDirection: "row", gap: 12 }}>
+          <View style={{ flex: 1, gap: 5 }}>
             <Text style={eyebrow(c)}>Misol</Text>
-            {store.audio ? (
-              <Pressable
-                accessibilityLabel="Gapni eshitish"
-                hitSlop={8}
-                onPress={() => { tapped(); play("sentences", item.id); }}
-                style={({ pressed }) => [{ width: 38, height: 38, borderRadius: 19, backgroundColor: c.greenTint, alignItems: "center", justifyContent: "center", transform: [{ scale: pressed ? 0.94 : 1 }] }]}
-              >
-                <PlayIcon size={14} color={c.greenDeep} />
-              </Pressable>
-            ) : null}
-          </Row>
-          <Sentence text={example.ko} part={example.hl} />
-          <Text style={{ fontFamily: FONTS.body, fontSize: 14, lineHeight: 20, color: c.ink2 }}>{plainUz(example.uz)}</Text>
+            <Sentence text={example.ko} part={example.hl} size={17} />
+            <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, lineHeight: 19, color: c.ink2 }}>{plainUz(example.uz)}</Text>
+          </View>
+          {store.audio ? (
+            <Pressable
+              accessibilityLabel="Gapni eshitish"
+              hitSlop={8}
+              onPress={() => { tapped(); play("sentences", item.id); }}
+              style={({ pressed }) => [{ marginTop: 6, width: 44, height: 44, borderRadius: 22, backgroundColor: c.greenTint, alignItems: "center", justifyContent: "center", transform: [{ scale: pressed ? 0.94 : 1 }] }]}
+            >
+              <PlayIcon size={14} color={c.greenDeep} />
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
+
       {item.roots ? (
-        <View style={{ backgroundColor: c.greenTint, borderRadius: 22, padding: 18, gap: 12 }}>
-          <Text style={[eyebrow(c), { color: c.greenDeep }]}>Yodda tutish uchun</Text>
+        <View style={{ backgroundColor: c.card, borderRadius: 22, padding: 18, gap: 14 }}>
+          <Text style={eyebrow(c)}>Yodda tutish uchun</Text>
           <Memo root={item.roots} />
         </View>
       ) : null}
@@ -303,15 +306,18 @@ function Intro({ item }) {
   );
 }
 
-function SoundPill({ label, onPress, plain }) {
+function SoundPill({ label, onPress, solid }) {
   const c = useColors();
   return (
     <Pressable
       onPress={() => { tapped(); onPress(); }}
-      style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 7, paddingVertical: 9, paddingHorizontal: 16, borderRadius: 99, backgroundColor: c.greenTint, opacity: pressed ? 0.8 : 1 }]}
+      style={({ pressed }) => [{
+        flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 11, paddingHorizontal: 20, borderRadius: 99,
+        backgroundColor: solid ? c.green : c.greenTint, transform: [{ scale: pressed ? 0.96 : 1 }],
+      }]}
     >
-      {plain ? null : <PlayIcon size={11} color={c.greenDeep} />}
-      <Text style={{ fontFamily: FONTS.bold, fontSize: 13, color: c.greenDeep }}>{label}</Text>
+      {solid ? <PlayIcon size={12} color={c.onGreen} /> : null}
+      <Text style={{ fontFamily: FONTS.bold, fontSize: 14, color: solid ? c.onGreen : c.greenDeep }}>{label}</Text>
     </Pressable>
   );
 }
