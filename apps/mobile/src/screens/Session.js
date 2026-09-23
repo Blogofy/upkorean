@@ -626,52 +626,47 @@ function Match({ item, session, onPick, onSkip }) {
 }
 
 // ---------- 17 · The verdict under an answered question ----------
-// Which answer was right is already green above, so a wrong answer is not told it again. The card shows
-// what helps remember it instead: how the right word is built, syllable by syllable, with its hanja.
+// Which answer was right is already green above, and which was wrong is red, so the card says neither
+// in words. A wrong answer gets a red mark and how the right word is built — its syllables with their
+// hanja and what they add up to — and a full-width "Keyingi" under it. A right one stays a single row.
 function Verdict({ item, session, onNext }) {
   const c = useColors();
   const { course } = useStore();
   const right = !!session.correct;
-  const chosen = item.type === "type"
-    ? session.typed
-    : session.chosen !== null && session.chosen !== undefined ? item.opts[session.chosen] : "";
-  const byMeaning = item.type === "mc" || item.type === "listen";
   const root = course?.roots?.[item.id];
   const hasParts = !!(root && (root.parts || []).some((part) => part.k && !part.ending));
-  const later = session.kind === "quiz"
-    ? "Erkin mashqda jadval o'zgarmaydi."
-    : session.requeued ? "Birozdan keyin yana chiqadi." : "Ertaga yana chiqadi.";
 
-  let title;
-  if (right) title = "To'g'ri!";
-  else if (!chosen) title = "O'tkazib yuborildi";
-  else title = byMeaning ? `Xato — ${item.ko} ≠ ${chosen}` : `Xato — ${chosen} ≠ ${item.uz}`;
+  const card = [{ marginHorizontal: 18, marginBottom: 14, marginTop: 4, backgroundColor: c.card, borderRadius: 24, padding: 16 }, shadow(c, 1)];
+
+  if (right) {
+    return (
+      <View style={[card, { flexDirection: "row", alignItems: "center", gap: 12 }]}>
+        <Radio selected onGreen={false} size={30} />
+        <Text style={{ flex: 1, fontSize: 15, color: c.ink }} numberOfLines={2}>
+          <Text style={{ fontWeight: "700" }}>{item.ko}</Text>
+          <Text style={{ fontFamily: FONTS.body, color: c.ink2 }}>  {item.uz}</Text>
+        </Text>
+        <Button title="Keyingi" size="sm" onPress={onNext} style={{ paddingHorizontal: 20 }} />
+      </View>
+    );
+  }
 
   return (
-    <View style={[{
-      marginHorizontal: 18, marginBottom: 14, marginTop: 4, backgroundColor: c.card, borderRadius: 22,
-      paddingVertical: 14, paddingHorizontal: 16, gap: 12,
-    }, shadow(c, 1)]}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-        {right ? <Radio selected onGreen={false} /> : (
-          <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: c.danger, alignItems: "center", justifyContent: "center" }}>
-            <Feather name="x" size={15} color="#FFFFFF" />
-          </View>
-        )}
-        <View style={{ flex: 1, gap: 1 }}>
-          <Text style={{ fontFamily: FONTS.bold, fontSize: 14.5, color: right ? c.green : c.dangerInk }} numberOfLines={2}>{title}</Text>
-          {right
-            ? <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: c.ink2 }} numberOfLines={1}>{item.ko} — {item.uz}</Text>
-            : <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, color: c.ink4 }}>{later}</Text>}
+    <View style={[card, { gap: 14 }]}>
+      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+        <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: c.danger, alignItems: "center", justifyContent: "center", marginTop: 3 }}>
+          <Feather name="x" size={17} color="#FFFFFF" />
         </View>
-        <Button title="Keyingi" size="sm" onPress={onNext} style={{ paddingHorizontal: 18 }} />
+        <View style={{ flex: 1 }}>
+          {hasParts ? <MemoLine root={root} /> : (
+            <Text style={{ fontSize: 16, lineHeight: 36, color: c.ink }}>
+              <Text style={{ fontWeight: "700" }}>{item.ko}</Text>
+              <Text style={{ fontFamily: FONTS.body, color: c.ink2 }}>  {item.uz}</Text>
+            </Text>
+          )}
+        </View>
       </View>
-      {!right && hasParts ? <MemoLine root={root} /> : null}
-      {!right && !hasParts ? (
-        <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, lineHeight: 19, color: c.ink2 }}>
-          <Text style={{ fontWeight: "700", color: c.ink }}>{item.ko}</Text> — {item.uz}
-        </Text>
-      ) : null}
+      <Button title="Keyingi" size="md" onPress={onNext} />
     </View>
   );
 }
