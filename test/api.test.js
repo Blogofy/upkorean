@@ -34,22 +34,28 @@ after(async () => {
   fs.rmSync(dataDir, { recursive: true, force: true });
 });
 
-// A browser-like client with its own session cookie.
+// The app: no cookie jar, the session travels as a bearer token.
 function client() {
-  let cookie = "";
-  return async (method, url, body, headers = {}) => {
+  let token = "";
+  const call = async (method, url, body, headers = {}) => {
     const res = await fetch(BASE + url, {
       method,
-      headers: { ...(body !== undefined ? { "Content-Type": "application/json" } : {}), ...(cookie ? { Cookie: cookie } : {}), ...headers },
+      headers: {
+        "X-UK-Client": "mobile/1.0.0",
+        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...headers,
+      },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
-    const set = res.headers.get("set-cookie");
-    if (set) cookie = set.split(";")[0];
     const text = await res.text();
     let data = null;
     try { data = JSON.parse(text); } catch { data = text; }
+    if (data && data.token) token = data.token;
     return { status: res.status, data, headers: res.headers };
   };
+  call.token = () => token;
+  return call;
 }
 let n = 0;
 async function signedUp(name = "Test User") {
@@ -153,27 +159,6 @@ test("progress: saves are rate limited, bounded in size and limited to the keys 
   assert.equal(after.updatedAt, saved.data.updatedAt);
 });
 
-test("push: only real push services are accepted; demo cannot subscribe", async () => {
-  const c = await signedUp();
-  const keys = { p256dh: "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM", auth: "tBHItJI5svbpez7KI4CCXg" };
-  for (const endpoint of ["http://127.0.0.1:9/x", "https://169.254.169.254/latest", "https://fcm.googleapis.com.evil.uz/x", "not a url"]) {
-    const r = await c("POST", "/api/push/subscribe", { subscription: { endpoint, keys }, tz: -300 });
-    assert.equal(r.status, 400, endpoint);
-  }
-  const ok = await c("POST", "/api/push/subscribe", { subscription: { endpoint: "https://fcm.googleapis.com/fcm/send/abc123", keys }, tz: -300 });
-  assert.equal(ok.status, 200);
-  assert.equal((await c("POST", "/api/push/unsubscribe", { endpoint: "https://fcm.googleapis.com/fcm/send/abc123" })).status, 200);
-  // No subscription left: the test button says so instead of pretending.
-  assert.equal((await c("POST", "/api/push/test", {})).status, 404);
-
-  const demo = client();
-  assert.equal((await demo("POST", "/api/auth/demo", {})).status, 200);
-  assert.equal((await demo("POST", "/api/push/subscribe", { subscription: { endpoint: "https://fcm.googleapis.com/fcm/send/demo", keys } })).status, 403);
-
-  const config = (await c("GET", "/api/config")).data;
-  assert.match(config.push, /^[A-Za-z0-9_-]{80,}$/);
-});
-
 test("accounts: demo restrictions, one answer for every failed login, local-only reset links", async () => {
   const demo = client();
   await demo("POST", "/api/auth/demo", {});
@@ -202,7 +187,7 @@ test("accounts: demo restrictions, one answer for every failed login, local-only
 test("login: guesses against an account never keep its owner out", async () => {
   const victim = await signedUp();
   const email = (await victim("GET", "/api/auth/me")).data.user.email;
-  // The guesser is a separate client (own cookie jar) but the same IP — the harness cannot vary that, and it
+  // The guesser is a separate client (own session) but the same IP — the harness cannot vary that, and it
   // makes the case harder: attacker and owner share every key the server could rate limit on.
   const attacker = client();
   for (let i = 0; i < 10; i++) {
@@ -215,49 +200,16 @@ test("login: guesses against an account never keep its owner out", async () => {
   assert.equal((await owner("GET", "/api/auth/me")).data.user.email, email);
 });
 
-test("the landing page is served with security headers, and the browser app is gone", async () => {
-  const r = await fetch(`${BASE}/`);
-  assert.equal(r.status, 200);
-  const body = await r.text();
-  assert.match(body, /UpKorean/);
-  assert.equal(r.headers.get("cache-control"), "no-cache");
-  // One static page with no script of its own: nothing is allowed to run on it.
-  assert.match(r.headers.get("content-security-policy"), /script-src 'none'/);
-  // What the browser app used to be served from answers for nothing now.
-  for (const gone of ["/sw.js", "/js/app.js", "/js/vocab.js", "/manifest.webmanifest"]) {
+test("there is no website: the root and the old browser app's files answer 404", async () => {
+  for (const gone of ["/", "/index.html", "/privacy.html", "/icon.svg", "/sw.js", "/js/app.js", "/manifest.webmanifest"]) {
     assert.equal((await fetch(BASE + gone)).status, 404, gone);
   }
 });
 
 // ---------- The mobile app's side of the API ----------
 
-// A native app: no cookie jar, the session travels as a bearer token.
-function appClient() {
-  let token = "";
-  const call = async (method, url, body, headers = {}) => {
-    const res = await fetch(BASE + url, {
-      method,
-      headers: {
-        "X-UK-Client": "mobile/1.0.0",
-        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...headers,
-      },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
-    const text = await res.text();
-    let data = null;
-    try { data = JSON.parse(text); } catch { data = text; }
-    if (data && data.token) token = data.token;
-    return { status: res.status, data, headers: res.headers };
-  };
-  call.token = () => token;
-  call.forget = () => { token = ""; };
-  return call;
-}
-
-test("an app signs in with a bearer token and a browser still signs in with a cookie", async () => {
-  const app = appClient();
+test("an app signs in with a bearer token, never a cookie", async () => {
+  const app = client();
   const email = `app1-${port}@mail.uz`;
   const up = await app("POST", "/api/auth/register", { name: "App User", email, password: "password1" });
   assert.equal(up.status, 201);
@@ -274,22 +226,17 @@ test("an app signs in with a bearer token and a browser still signs in with a co
   assert.equal((await fetch(`${BASE}/media/clip/words/b-1-0.mp3`)).status, 401);
   assert.equal((await fetch(`${BASE}/media/clip/words/b-1-0.mp3`, { headers: { Authorization: `Bearer ${app.token()}` } })).status, 200);
 
-  // The same account from a browser: a cookie, and no token handed to page script.
-  const browser = client();
-  const signedIn = await browser("POST", "/api/auth/login", { email, password: "password1" });
-  assert.equal(signedIn.status, 200);
-  assert.equal(signedIn.data.token, undefined);
-  assert.match(signedIn.headers.get("set-cookie"), /uk_sid=/);
-
-  // Logging out ends the bearer session only — the browser's cookie session survives.
+  // A second device has its own session, and logging out ends only the one that asked.
+  const tablet = client();
+  assert.equal((await tablet("POST", "/api/auth/login", { email, password: "password1" })).status, 200);
   assert.equal((await app("POST", "/api/auth/logout", {})).status, 200);
-  const dead = await fetch(`${BASE}/api/auth/me`, { headers: { Authorization: `Bearer ${app.token()}`, "X-UK-Client": "mobile/1.0.0" } });
+  const dead = await fetch(`${BASE}/api/auth/me`, { headers: { Authorization: `Bearer ${app.token()}` } });
   assert.equal(dead.status, 401);
-  assert.equal((await browser("GET", "/api/auth/me")).status, 200);
+  assert.equal((await tablet("GET", "/api/auth/me")).status, 200);
 });
 
 test("changing the password hands the app a new token and drops the old one", async () => {
-  const app = appClient();
+  const app = client();
   const email = `app2-${port}@mail.uz`;
   await app("POST", "/api/auth/register", { name: "App User", email, password: "password1" });
   const before = app.token();
@@ -340,8 +287,8 @@ test("course content is served per level, versioned and revalidatable", async ()
   assert.equal((await fetch(`${BASE}/api/content/m/vocab`)).status, 404); // locked level, nothing to send
 });
 
-// A page on another site may reach the API, but only signed out: no Allow-Credentials, and the session
-// cookie is SameSite=Lax, so the browser never attaches it to a cross-site request.
+// A page on another site may reach the API, but only signed out: no Allow-Credentials, and there is no
+// cookie to attach — the session is a bearer token only the app holds.
 test("the API answers other origins, but never with credentials", async () => {
   const preflight = await fetch(`${BASE}/api/progress`, {
     method: "OPTIONS",

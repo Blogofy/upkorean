@@ -7,7 +7,10 @@
     "scheme": "upkorean",
     "userInterfaceStyle": "automatic",
     "android": {
-      "package": "uz.upkorean.app"
+      "package": "uz.upkorean.app",
+      "permissions": [
+        "POST_NOTIFICATIONS"
+      ]
     },
     "ios": {
       "bundleIdentifier": "uz.upkorean.app",
@@ -15,6 +18,18 @@
     },
     "extra": {
       "apiUrl": "https://upkorean.uz"
-    }
+    },
+    "plugins": [
+      "expo-audio",
+      "expo-font",
+      "expo-splash-screen",
+      [
+        "expo-notifications",
+        {
+          "color": "#1B6F65"
+        }
+      ],
+      "expo-asset"
+    ]
   }
 }

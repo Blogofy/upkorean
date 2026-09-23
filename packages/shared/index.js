@@ -7,3 +7,7 @@ import "./sync.js";
 
 export const { diffState, applyChanges, mergeStates } = globalThis.UKSync;
 export { LEVELS, LEVEL_IDS, levelMeta, wordId, levelOfWord, parseWordId } from "./course/levels.js";
+export * as dates from "./dates.js";
+export * as srs from "./srs.js";
+export * as exercise from "./exercise.js";
+export * as hangul from "./hangul.js";

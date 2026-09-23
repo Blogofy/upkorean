@@ -2,12 +2,16 @@
   "name": "@upkorean/shared",
   "version": "1.0.0",
   "private": true,
-  "description": "Progress-sync logic and the course data, shared by the API and the mobile app",
+  "description": "Learning model, exercise engine, Hangul helpers, progress sync and the course data",
   "type": "module",
   "main": "index.js",
   "exports": {
     ".": "./index.js",
     "./sync.js": "./sync.js",
+    "./dates.js": "./dates.js",
+    "./srs.js": "./srs.js",
+    "./exercise.js": "./exercise.js",
+    "./hangul.js": "./hangul.js",
     "./course/levels.js": "./course/levels.js",
     "./course/model.js": "./course/model.js",
     "./course/data.js": "./course/data.js"

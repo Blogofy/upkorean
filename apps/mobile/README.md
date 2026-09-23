@@ -2,18 +2,24 @@
 
 Expo (React Native). Serverga [docs/api.md](../../docs/api.md) da tasvirlangan API orqali ulanadi.
 
-## Nimalari tayyor
+## Tuzilishi
+
+Ekranlar claude.ai/design dagi "UpKorean Redesign" dizayniga (34 ekran, A–L guruhlar) bir xil qilib
+qurilgan. Har bir ekran faylining birinchi qatori dizayndagi raqamini aytadi (`// 08 — Bugun`).
 
 | Fayl | Nima qiladi |
 | --- | --- |
-| `src/config.js` | Server manzili (`app.json` → `expo.extra.apiUrl`) va `X-UK-Client` sarlavhasi |
-| `src/api.js` | Butun API: kirish, hisob, progress, reyting, kontent, audio. Sessiya tokenini `expo-secure-store` da saqlaydi |
-| `src/content.js` | Kursni bir marta yuklab, qurilmada saqlaydi; versiya o'zgarmasa qayta yuklamaydi; oflayn ishlaydi |
-| `App.js` | Zanjir ishlayotganini ko'rsatadigan eng kichik ekran: kirish → kun tanlash → so'zlar ro'yxati |
+| `App.js` | Shriftlar, store, tema, qaysi oqim (kirish yoki ilova) ko'rinishi, kunlik eslatma |
+| `src/nav.js` | 5 ta tab (dizayndagi pastki panel bilan) va ularning ustidagi stek |
+| `src/store.js` | Kim kirgan, progress, daraja; progressni serverga farqi bilan yuboradi, oflayn ishlaydi |
+| `src/theme.js` | Kunduzgi va tungi palitra, shriftlar, o'lchamlar — ranglar faqat shu yerda |
+| `src/ui.js` | Dizayndagi takrorlanadigan bo'laklar: tugma, karta, tanlov, halqa, sheet, dialog… |
+| `src/model.js` | Ekranlar kurs haqida gapiradigan narsalar: kun holati, daraja nomi, misol gapni bo'lish |
+| `src/notify.js` | Kunlik eslatma — telefonda rejalashtiriladigan lokal bildirishnoma |
+| `src/api.js`, `src/content.js`, `src/audio.js` | API, kursni qurilmada saqlash, diktor ovozi |
+| `src/screens/` | Ekranlar |
 
-Ekranlarni (sessiya, takrorlash, profil, reyting) shular ustiga qurasiz. Web ilovadagi mantiqni
-`apps/web/js/store.js` va `apps/web/js/exercise.js` dan olib kelish mumkin — ular brauzerga bog'liq
-emas, faqat `window` globallariga tayangan.
+O'rganish mantiqi (SRS, mashqlar, Hangul klaviaturasi) `packages/shared` da — testlari `test/` da.
 
 ## Birinchi ishga tushirish
 
@@ -90,8 +96,9 @@ Ularsiz ilovadan kelgan Google tokenini server rad etadi. Olingan `idToken` ni
 
 ## Hali qilinmagan
 
-- **Bildirishnomalar.** Server hozir faqat brauzerning Web Push obunasini qabul qiladi. Mobil eslatma
-  uchun avval Expo Push yoki to'g'ridan-to'g'ri FCM tanlanishi, keyin serverga ikkinchi yuborish yo'li
-  qo'shilishi kerak — batafsil [docs/api.md](../../docs/api.md) ning oxirida.
+- **Google bilan kirish.** Dizayndagi tugma hali qo'shilmagan: Android/iOS OAuth client id'lari kerak
+  (pastda). Ular `.env` ga qo'shilgach, `expo-auth-session` bilan ulanadi.
+- **To'lov.** Premium sahifasi bor, lekin to'lov ulanmagan — hozircha hamma imkoniyat bepul ochiq va
+  "Bepul limit tugadi" oynasi chiqarilmaydi.
 - **Ikona va splash.** `app.json` da hozir yo'q; `assets/` papkasi bilan birga qo'shiladi.
 - **EAS build.** Do'konga chiqarish uchun `eas.json` va `eas build` sozlanishi kerak.
