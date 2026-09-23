@@ -1,6 +1,7 @@
 // How a word is built, for the "Yodda tutish uchun" block on a new word and the "O'zak" part of the word
 // card. Each piece is shown as the Korean syllable the learner actually reads — 생 · 활, not 生 · 活 —
 // with its meaning under it; then what the pieces add up to, and other words that share them.
+import { Fragment } from "react";
 import { Text, View } from "react-native";
 
 import { FONTS, useColors } from "../theme";
@@ -19,23 +20,22 @@ export default function Memo({ root, onTint = true }) {
   return (
     <View style={{ gap: 12 }}>
       {parts.length ? (
-        <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start", gap: 6 }}>
+        <View style={{ flexDirection: "row", alignItems: "stretch", gap: 6 }}>
           {parts.map((part, i) => (
-            <View key={`${part.k}-${i}`} style={{ flexDirection: "row", alignItems: "flex-start", gap: 6 }}>
-              {i > 0 ? <Text style={{ fontFamily: FONTS.bold, fontSize: 16, color: soft, marginTop: 9 }}>+</Text> : null}
-              <View style={{ alignItems: "center", gap: 4, maxWidth: 110 }}>
-                <View style={{
-                  minWidth: 44, paddingHorizontal: 10, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center",
-                  backgroundColor: part.ending ? "transparent" : box,
-                  borderWidth: part.ending ? 1.5 : 0, borderColor: onTint ? c.greenLine : c.line, borderStyle: "dashed",
-                }}>
-                  <Text style={{ fontSize: 19, fontWeight: "700", color: part.ending ? soft : ink }}>{part.k}</Text>
-                </View>
-                <Text style={{ fontFamily: FONTS.body, fontSize: 12, lineHeight: 16, color: soft, textAlign: "center", opacity: part.ending ? 0.8 : 1 }}>
+            <Fragment key={`${part.k}-${i}`}>
+              {i > 0 ? <Text style={{ alignSelf: "center", fontFamily: FONTS.bold, fontSize: 15, color: soft, opacity: 0.7 }}>+</Text> : null}
+              <View style={{
+                flex: 1, alignSelf: "stretch", alignItems: "center", justifyContent: "center", gap: 4,
+                paddingVertical: 10, paddingHorizontal: 6, borderRadius: 14,
+                backgroundColor: part.ending ? "transparent" : box,
+                borderWidth: part.ending ? 1.5 : 0, borderStyle: "dashed", borderColor: onTint ? c.greenLine : c.line,
+              }}>
+                <Text style={{ fontSize: 20, lineHeight: 26, fontWeight: "700", color: part.ending ? soft : ink }}>{part.k}</Text>
+                <Text style={{ fontFamily: FONTS.body, fontSize: 11.5, lineHeight: 15, color: soft, textAlign: "center" }} numberOfLines={2}>
                   {part.uz}
                 </Text>
               </View>
-            </View>
+            </Fragment>
           ))}
         </View>
       ) : null}

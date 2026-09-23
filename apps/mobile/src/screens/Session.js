@@ -165,7 +165,7 @@ export default function Session({ navigation, route }) {
 
   let body;
   switch (item.type) {
-    case "intro": body = <Intro item={item} onNext={() => { ex.introNext(state, session); store.save(); advance(); }} />; break;
+    case "intro": body = <Intro item={item} />; break;
     case "card": body = <Card item={item} session={session} onReveal={() => { ex.reveal(session); redraw(); }} onGrade={(g) => { ex.gradeCard(state, session, g); store.save(); tapped(g >= 3 ? "ok" : "light"); advance(); }} />; break;
     case "match": body = <Match item={item} session={session} onPick={(side, id) => {
       const result = ex.matchPick(state, session, side, id);
@@ -206,6 +206,11 @@ export default function Session({ navigation, route }) {
       </ScrollView>
       {answeredNow && item.type !== "match" ? (
         <FadeIn key={"v" + session.idx} distance={36} duration={220}><Verdict item={item} session={session} onNext={advance} /></FadeIn>
+      ) : null}
+      {item.type === "intro" ? (
+        <View style={{ paddingHorizontal: 18, paddingTop: 8, paddingBottom: 14 }}>
+          <Button title="Tushundim" onPress={() => { ex.introNext(state, session); store.save(); advance(); }} />
+        </View>
       ) : null}
       {answeredNow && item.type === "match" ? (
         <View style={{ paddingHorizontal: 18, paddingBottom: 26 }}>
@@ -249,7 +254,7 @@ export default function Session({ navigation, route }) {
 }
 
 // ---------- 11 · Tanishish ----------
-function Intro({ item, onNext }) {
+function Intro({ item }) {
   const c = useColors();
   const store = useStore();
   const { play } = useNarrator();
@@ -259,7 +264,7 @@ function Intro({ item, onNext }) {
       <View style={{ alignSelf: "center", paddingVertical: 7, paddingHorizontal: 14, borderRadius: 99, backgroundColor: c.greenTint }}>
         <Text style={{ fontFamily: FONTS.bold, fontSize: 12, color: c.greenDeep }}>YANGI SO'Z</Text>
       </View>
-      <View style={[{ backgroundColor: c.card, borderRadius: 26, paddingVertical: 28, paddingHorizontal: 22, alignItems: "center", gap: 8 }, shadow(c, 2)]}>
+      <View style={[{ backgroundColor: c.card, borderRadius: 26, paddingVertical: 22, paddingHorizontal: 22, alignItems: "center", gap: 6 }, shadow(c, 2)]}>
         <Text style={{ fontSize: 56, lineHeight: 70, fontWeight: "700", color: c.ink, textAlign: "center" }} adjustsFontSizeToFit numberOfLines={1}>{item.ko}</Text>
         <Text style={{ fontFamily: FONTS.bold, fontSize: 24, color: c.ink, marginTop: 6, textAlign: "center" }}>{item.uz}</Text>
         {store.audio ? (
@@ -294,8 +299,6 @@ function Intro({ item, onNext }) {
           <Memo root={item.roots} />
         </View>
       ) : null}
-      <View style={{ flex: 1, minHeight: 16 }} />
-      <Button title="Tushundim" onPress={onNext} style={{ marginBottom: 10 }} />
     </View>
   );
 }
