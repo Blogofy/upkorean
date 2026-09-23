@@ -1,6 +1,6 @@
 // 27 — Darajani almashtirish. A sheet over the screen it was opened from. Progress in every level is kept,
 // so switching is never a loss — which is the one thing the sheet has to say.
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import * as srs from "@upkorean/shared/srs.js";
@@ -15,6 +15,7 @@ export default function LevelSwitch({ navigation }) {
   const store = useStore();
   const { state, course } = store;
   const [busy, setBusy] = useState(null);
+  const closeRef = useRef((after) => (after || navigation.goBack)());
   if (!state || !course) return null;
   const levels = allLevels(store.levels);
 
@@ -25,7 +26,7 @@ export default function LevelSwitch({ navigation }) {
     setBusy(id);
     try {
       await store.switchLevel(id);
-      navigation.goBack();
+      closeRef.current(() => navigation.goBack());
     } catch (problem) {
       store.say(problem.message, "bad");
     } finally {
@@ -35,6 +36,7 @@ export default function LevelSwitch({ navigation }) {
 
   return (
     <SheetScreen onClose={() => navigation.goBack()}>
+      {(close) => { closeRef.current = close; return (<>
       <View style={{ gap: 4 }}>
         <Title size={24}>Darajani almashtirish</Title>
         <Text style={{ fontFamily: FONTS.body, fontSize: 14, lineHeight: 21, color: c.ink2 }}>Progress saqlanadi — istalgan payt qaytasiz.</Text>
@@ -85,7 +87,8 @@ export default function LevelSwitch({ navigation }) {
           );
         })}
       </View>
-      <Button title="Bekor qilish" kind="white" onPress={() => navigation.goBack()} />
+      <Button title="Bekor qilish" kind="white" onPress={() => close()} />
+      </>); }}
     </SheetScreen>
   );
 }

@@ -8,7 +8,8 @@ import { useStore } from "../store";
 import { FONTS, useColors } from "../theme";
 import { Button, PlayIcon, Row, Sheet, Ticks, tapped } from "../ui";
 import { useNarrator } from "../audio";
-import { highlight, nextReviewText, plainUz, reading, rootLine } from "../model";
+import { highlight, nextReviewText, plainUz } from "../model";
+import Memo from "./Memo";
 
 export const Star = ({ size = 19, color, filled }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? color : "none"}>
@@ -43,7 +44,6 @@ export default function WordSheet({ id, onClose, navigation }) {
     const origin = root?.origin ? srs.ORIGINS[root.origin]?.ko : null;
     const flagged = !!memory?.flag;
     const weak = srs.isWeak(state, word.id);
-    const line = rootLine(root);
 
     body = (
       <View style={{ paddingHorizontal: 22, paddingTop: 4, gap: 16 }}>
@@ -51,7 +51,7 @@ export default function WordSheet({ id, onClose, navigation }) {
           <View style={{ flex: 1, gap: 5 }}>
             <Text style={{ fontSize: 42, lineHeight: 50, fontWeight: "700", color: c.ink }}>{word.ko}</Text>
             <Text style={{ fontFamily: FONTS.body, fontSize: 15, color: c.ink2 }}>
-              {[reading(word.ko), `${word.day}-kun`, origin].filter(Boolean).join(" · ")}
+              {[`${word.day}-kun`, origin].filter(Boolean).join(" · ")}
             </Text>
           </View>
           <Row gap={8}>
@@ -86,10 +86,10 @@ export default function WordSheet({ id, onClose, navigation }) {
               <Text style={{ fontFamily: FONTS.body, fontSize: 14, lineHeight: 20, color: c.ink2 }}>{plainUz(example.uz)}</Text>
             </View>
           ) : null}
-          {line ? (
+          {root ? (
             <View style={{ gap: 6, paddingTop: 12, borderTopWidth: 1, borderTopColor: c.tint2 }}>
               <Text style={label(c)}>O'zak</Text>
-              <Text style={{ fontFamily: FONTS.body, fontSize: 14, lineHeight: 21, color: c.ink }}>{line}</Text>
+              <Memo root={root} onTint={false} />
             </View>
           ) : null}
         </View>

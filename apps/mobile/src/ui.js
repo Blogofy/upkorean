@@ -438,17 +438,19 @@ export function Sheet({ visible, onClose, children, title, maxHeight = "86%" }) 
   const insets = useSafeAreaInsets();
   const slide = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(slide, { toValue: visible ? 1 : 0, duration: visible ? 230 : 150, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    Animated.timing(slide, { toValue: visible ? 1 : 0, duration: visible ? 280 : 180, easing: visible ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic), useNativeDriver: true }).start();
   }, [visible, slide]);
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
-      <Pressable style={{ flex: 1, backgroundColor: colors.overlay }} onPress={onClose} accessibilityLabel="Yopish" />
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: colors.overlay, opacity: slide }]}>
+        <Pressable style={{ flex: 1 }} onPress={onClose} accessibilityLabel="Yopish" />
+      </Animated.View>
       <Animated.View
         style={{
           position: "absolute", left: 0, right: 0, bottom: 0, maxHeight,
           backgroundColor: colors.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28,
           paddingBottom: insets.bottom + 16,
-          transform: [{ translateY: slide.interpolate({ inputRange: [0, 1], outputRange: [400, 0] }) }],
+          transform: [{ translateY: slide.interpolate({ inputRange: [0, 1], outputRange: [600, 0] }) }],
         }}
       >
         <View style={{ alignItems: "center", paddingTop: 10, paddingBottom: 4 }}>
@@ -781,23 +783,52 @@ export function RingStat({ value, total = 100, size = 52, width = 5, label, sub,
   );
 }
 
+// Content that arrives rather than appears: it fades in while travelling a few points into place. Keyed
+// by the caller (a question's index, a step), so every new item enters the same way. Native driver only —
+// opacity and transform never touch layout, so nothing around it jumps.
+export function FadeIn({ children, from = "bottom", distance = 14, duration = 240, delay = 0, style }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: 1, duration, delay, easing: Easing.out(Easing.cubic), useNativeDriver: true,
+    }).start();
+  }, [anim, duration, delay]);
+  const back = from === "left" || from === "top";
+  const offset = anim.interpolate({ inputRange: [0, 1], outputRange: [back ? -distance : distance, 0] });
+  const transform = from === "left" || from === "right" ? [{ translateX: offset }] : [{ translateY: offset }];
+  return <Animated.View style={[{ opacity: anim, transform }, style]}>{children}</Animated.View>;
+}
+
 // The grabber-and-panel shape a sheet has, for screens that are pushed as a modal route rather than drawn
-// with <Sheet>: the level switcher and the free-limit notice.
+// with <Sheet>: the level switcher. The route itself has no animation; the backdrop fades and the panel
+// rises here, and `children` may be a function that receives `close`, which plays it all backwards first.
 export function SheetScreen({ onClose, children }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const anim = useRef(new Animated.Value(0)).current;
+  const closing = useRef(false);
+  useEffect(() => {
+    Animated.timing(anim, { toValue: 1, duration: 280, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  }, [anim]);
+  const close = (after) => {
+    if (closing.current) return;
+    closing.current = true;
+    Animated.timing(anim, { toValue: 0, duration: 200, easing: Easing.in(Easing.cubic), useNativeDriver: true })
+      .start(() => (after || onClose)());
+  };
   return (
     <View style={{ flex: 1, justifyContent: "flex-end" }}>
-      <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Yopish">
-        <View style={{ flex: 1, backgroundColor: colors.overlay }} />
-      </Pressable>
-      <View style={{
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: colors.overlay, opacity: anim }]}>
+        <Pressable style={{ flex: 1 }} onPress={() => close()} accessibilityLabel="Yopish" />
+      </Animated.View>
+      <Animated.View style={{
         backgroundColor: colors.bg, borderTopLeftRadius: 30, borderTopRightRadius: 30,
         paddingTop: 14, paddingHorizontal: 22, paddingBottom: insets.bottom + 24, gap: 16,
+        transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [520, 0] }) }],
       }}>
         <View style={{ width: 42, height: 5, borderRadius: 3, backgroundColor: colors.radio, alignSelf: "center" }} />
-        {children}
-      </View>
+        {typeof children === "function" ? children(close) : children}
+      </Animated.View>
     </View>
   );
 }

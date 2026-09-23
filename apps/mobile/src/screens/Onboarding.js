@@ -10,7 +10,7 @@ import { addDays, fmtDayMonth, today } from "@upkorean/shared/dates.js";
 
 import { useStore } from "../store";
 import { FONTS, useColors } from "../theme";
-import { Button, Choice, Col, Row, Screen, Segmented, Title, Toggle, Txt } from "../ui";
+import { Button, Choice, Col, FadeIn, Row, Screen, Segmented, Title, Toggle, Txt } from "../ui";
 import { allLevels, LEVEL_BLURB } from "../model";
 import { syncReminder } from "../notify";
 
@@ -190,11 +190,13 @@ export default function Onboarding({ navigation }) {
     <Screen edges={["top", "bottom"]}>
       <Progress />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 26, paddingBottom: 12 }}>
-        <Col gap={7}>
-          <Title size={29}>{content.title}</Title>
-          <Txt c="ink2">{content.lead}</Txt>
-        </Col>
-        <View style={{ marginTop: 26 }}>{content.body}</View>
+        <FadeIn key={step} from="right" distance={24}>
+          <Col gap={7}>
+            <Title size={29}>{content.title}</Title>
+            <Txt c="ink2">{content.lead}</Txt>
+          </Col>
+          <View style={{ marginTop: 26 }}>{content.body}</View>
+        </FadeIn>
       </ScrollView>
       <Footer label={content.next} onNext={() => setStep(step + 1)} />
     </Screen>

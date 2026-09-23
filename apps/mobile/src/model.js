@@ -98,10 +98,11 @@ export function clozePieces(example) {
   return { before: ko.slice(0, at), after: ko.slice(at + cloze.length) };
 }
 
-// "必 (albatta) + 要 (talab) — 필수, 중요하다 so'zlarida ham uchraydi."
+// "필 (albatta) + 요 (talab) — 필수, 중요하다 so'zlarida ham uchraydi." Hangul, not the hanja: the learner reads
+// the syllable, and the character behind it would only be one more thing to learn.
 export function rootLine(root) {
   if (!root) return "";
-  const parts = (root.parts || []).filter((part) => part.h).map((part) => `${part.h} (${part.uz})`);
+  const parts = (root.parts || []).filter((part) => part.k && !part.ending).map((part) => `${part.k} (${part.uz})`);
   const family = (root.family || []).map(([ko]) => ko);
   if (!parts.length) return root.idea ? `${root.idea}.` : "";
   return `${parts.join(" + ")}${family.length ? ` — ${family.join(", ")} so'zlarida ham uchraydi.` : "."}`;

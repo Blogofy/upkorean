@@ -107,7 +107,7 @@ function TabBar({ state, navigation }) {
 
 function MoreFlow() {
   return (
-    <MoreStack.Navigator screenOptions={{ headerShown: false, animation: "slide_from_right" }}>
+    <MoreStack.Navigator screenOptions={{ headerShown: false, ...push }}>
       <MoreStack.Screen name="Results" component={ResultsScreen} />
       <MoreStack.Screen name="Achievements" component={AchievementsScreen} />
       <MoreStack.Screen name="Profile" component={ProfileScreen} />
@@ -117,7 +117,7 @@ function MoreFlow() {
 
 function MainTabs() {
   return (
-    <Tabs.Navigator tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>
+    <Tabs.Navigator tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false, animation: "shift" }}>
       <Tabs.Screen name="Today" component={TodayScreen} />
       <Tabs.Screen name="Course" component={CourseScreen} />
       <Tabs.Screen name="Review" component={ReviewScreen} />
@@ -129,7 +129,7 @@ function MainTabs() {
 
 export function AuthFlow() {
   return (
-    <AuthStack.Navigator screenOptions={{ headerShown: false, animation: "slide_from_right" }}>
+    <AuthStack.Navigator screenOptions={{ headerShown: false, ...push }}>
       <AuthStack.Screen name="SignIn" component={SignInScreen} />
       <AuthStack.Screen name="SignUp" component={SignUpScreen} />
       <AuthStack.Screen name="Reset" component={ResetScreen} />
@@ -137,25 +137,30 @@ export function AuthFlow() {
   );
 }
 
-const sheet = { presentation: "transparentModal", animation: "fade", contentStyle: { backgroundColor: "transparent" } };
+// A sheet route draws its own rise and fall (SheetScreen), so the navigator adds none of its own.
+const sheet = { presentation: "transparentModal", animation: "none", contentStyle: { backgroundColor: "transparent" } };
+// One motion for everything that is pushed: the iOS slide, on Android too, where the platform default is a
+// zoom-and-fade that reads as a different app. A result screen fades up out of the sitting it closes.
+const push = { animation: "ios_from_right", animationDuration: 320, gestureEnabled: true };
+const rise = { animation: "fade_from_bottom", animationDuration: 280 };
 
 export function AppFlow() {
   const store = useStore();
   const onboarded = !!store.state?.profile?.onboarded;
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, animation: "slide_from_right" }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, ...push }}>
       {!onboarded
         ? <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ animation: "fade" }} />
         : null}
       <Stack.Screen name="Tabs" component={MainTabs} options={{ animation: "fade" }} />
       <Stack.Screen name="Day" component={DayScreen} />
-      <Stack.Screen name="Session" component={SessionScreen} options={{ animation: "slide_from_bottom", gestureEnabled: false }} />
-      <Stack.Screen name="DayDone" component={DayDoneScreen} options={{ animation: "fade", gestureEnabled: false }} />
-      <Stack.Screen name="SessionDone" component={SessionDoneScreen} options={{ animation: "fade", gestureEnabled: false }} />
-      <Stack.Screen name="LevelDone" component={LevelDoneScreen} options={{ animation: "fade", gestureEnabled: false }} />
+      <Stack.Screen name="Session" component={SessionScreen} options={{ ...rise, gestureEnabled: false }} />
+      <Stack.Screen name="DayDone" component={DayDoneScreen} options={{ ...rise, gestureEnabled: false }} />
+      <Stack.Screen name="SessionDone" component={SessionDoneScreen} options={{ ...rise, gestureEnabled: false }} />
+      <Stack.Screen name="LevelDone" component={LevelDoneScreen} options={{ ...rise, gestureEnabled: false }} />
       <Stack.Screen name="Practice" component={PracticeScreen} />
       <Stack.Screen name="LevelSwitch" component={LevelSwitchScreen} options={sheet} />
-      <Stack.Screen name="Paywall" component={PaywallScreen} options={{ animation: "slide_from_bottom" }} />
+      <Stack.Screen name="Paywall" component={PaywallScreen} options={rise} />
       <Stack.Screen name="Offline" component={OfflineScreen} />
     </Stack.Navigator>
   );

@@ -13,11 +13,12 @@ import { KEYS, backspace, compose, firstJamo, shiftKey } from "@upkorean/shared/
 import { useStore } from "../store";
 import { FONTS, shadow, useColors } from "../theme";
 import {
-  Bar, Button, Chip, Dialog, Empty, Feather, Option, PlayIcon, Radio, Row, Screen, SessionTop, Title, tapped,
+  Bar, Button, Chip, Dialog, Empty, FadeIn, Feather, Option, PlayIcon, Radio, Row, Screen, SessionTop, Title, tapped,
 } from "../ui";
 import { useNarrator, useStopAudioOnLeave } from "../audio";
-import { clozePieces, plainUz, reading, rootLine, uzPieces } from "../model";
+import { clozePieces, plainUz, uzPieces } from "../model";
 import { Sentence } from "./WordSheet";
+import Memo from "./Memo";
 
 const TIME_LIMIT_MS = 20000;
 
@@ -201,9 +202,11 @@ export default function Session({ navigation, route }) {
         </View>
       ) : null}
       <ScrollView ref={scroller} contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 18, paddingBottom: 16 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        {body}
+        <FadeIn key={session.idx} from="right" distance={28} duration={260} style={{ flex: 1 }}>{body}</FadeIn>
       </ScrollView>
-      {answeredNow && item.type !== "match" ? <Verdict item={item} session={session} onNext={advance} /> : null}
+      {answeredNow && item.type !== "match" ? (
+        <FadeIn key={"v" + session.idx} distance={36} duration={220}><Verdict item={item} session={session} onNext={advance} /></FadeIn>
+      ) : null}
       {answeredNow && item.type === "match" ? (
         <View style={{ paddingHorizontal: 18, paddingBottom: 26 }}>
           <Button title="Keyingi" onPress={advance} />
@@ -251,7 +254,6 @@ function Intro({ item, onNext }) {
   const store = useStore();
   const { play } = useNarrator();
   const example = item.example;
-  const memo = rootLine(item.roots);
   return (
     <View style={{ flex: 1, gap: 12 }}>
       <View style={{ alignSelf: "center", paddingVertical: 7, paddingHorizontal: 14, borderRadius: 99, backgroundColor: c.greenTint }}>
@@ -259,7 +261,6 @@ function Intro({ item, onNext }) {
       </View>
       <View style={[{ backgroundColor: c.card, borderRadius: 26, paddingVertical: 28, paddingHorizontal: 22, alignItems: "center", gap: 8 }, shadow(c, 2)]}>
         <Text style={{ fontSize: 56, lineHeight: 70, fontWeight: "700", color: c.ink, textAlign: "center" }} adjustsFontSizeToFit numberOfLines={1}>{item.ko}</Text>
-        <Text style={{ fontFamily: FONTS.body, fontSize: 15, color: c.ink2 }}>{reading(item.ko)}</Text>
         <Text style={{ fontFamily: FONTS.bold, fontSize: 24, color: c.ink, marginTop: 6, textAlign: "center" }}>{item.uz}</Text>
         {store.audio ? (
           <Row gap={8} style={{ marginTop: 10 }}>
@@ -282,12 +283,10 @@ function Intro({ item, onNext }) {
           <Text style={{ fontFamily: FONTS.body, fontSize: 14, lineHeight: 20, color: c.ink2 }}>{plainUz(example.uz)}</Text>
         </View>
       ) : null}
-      {memo || item.roots?.idea ? (
-        <View style={{ backgroundColor: c.greenTint, borderRadius: 22, padding: 18, gap: 6 }}>
+      {item.roots ? (
+        <View style={{ backgroundColor: c.greenTint, borderRadius: 22, padding: 18, gap: 12 }}>
           <Text style={[eyebrow(c), { color: c.greenDeep }]}>Yodda tutish uchun</Text>
-          <Text style={{ fontFamily: FONTS.body, fontSize: 14, lineHeight: 21, color: c.greenDeep }}>
-            {[item.roots?.idea ? `${item.roots.idea[0].toUpperCase()}${item.roots.idea.slice(1)}.` : "", memo].filter(Boolean).join(" ")}
-          </Text>
+          <Memo root={item.roots} />
         </View>
       ) : null}
       <View style={{ flex: 1, minHeight: 16 }} />
@@ -329,7 +328,6 @@ function Card({ item, session, onReveal, onGrade }) {
         style={[{ backgroundColor: c.card, borderRadius: 26, paddingVertical: 40, paddingHorizontal: 22, alignItems: "center", gap: 10 }, shadow(c, 2)]}
       >
         <Text style={{ fontSize: 60, lineHeight: 76, fontWeight: "700", color: c.ink, textAlign: "center" }} adjustsFontSizeToFit numberOfLines={1}>{item.ko}</Text>
-        <Text style={{ fontFamily: FONTS.body, fontSize: 15, color: c.ink2 }}>{reading(item.ko)}</Text>
         {back ? (
           <>
             <View style={{ width: 56, height: 1, backgroundColor: c.line, marginVertical: 14 }} />
@@ -443,7 +441,7 @@ function Choose({ item, session, onChoose, onConfirm }) {
         {fromKorean ? (
           <>
             <Text style={{ fontSize: 52, lineHeight: 66, fontWeight: "700", color: c.ink }} adjustsFontSizeToFit numberOfLines={1}>{item.ko}</Text>
-            <Text style={{ fontFamily: FONTS.body, fontSize: 15, color: c.ink2 }}>{reading(item.ko)} · {item.day}-kun</Text>
+            <Text style={{ fontFamily: FONTS.body, fontSize: 15, color: c.ink2 }}>{item.day}-kun</Text>
           </>
         ) : (
           <>
