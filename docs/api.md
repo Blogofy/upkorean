@@ -9,16 +9,9 @@ Mobil (yoki boshqa) ilova yozish uchun kerak bo'ladigan hamma narsa. Manba: [app
   bo'lishi shart, aks holda `415`.
 - **Xabarlar o'zbekcha** — ularni to'g'ridan-to'g'ri ekranga chiqarsa bo'ladi.
 
-## Sessiya: cookie emas, token
+## Sessiya: token
 
-Brauzer `HttpOnly` cookie oladi. Ilovada cookie jar yo'q, shuning uchun har bir so'rovga shu sarlavha
-qo'yiladi:
-
-```
-X-UK-Client: mobile/1.0.0
-```
-
-Server shuni ko'rib sessiyani **javob tanasida** qaytaradi (cookie o'rniga):
+Cookie yo'q. Kirish, ro'yxatdan o'tish va parolni tiklash sessiyani **javob tanasida** qaytaradi:
 
 ```json
 { "user": { … }, "token": "…", "expiresAt": 1792508341176 }
@@ -36,8 +29,10 @@ Amal qilish muddati 30 kun; `401` kelsa tokenni o'chirib, kirish ekraniga qaytin
 
 Token qaytaradigan endpointlar: `register`, `login`, `google`, `demo`, `reset`, `account/password`.
 
+`X-UK-Client` ixtiyoriy — server uni faqat loglar uchun o'qiydi.
+
 **CORS:** API har qanday `Origin` ga javob beradi, lekin `Access-Control-Allow-Credentials` hech qachon
-yuborilmaydi va cookie `SameSite=Lax`. Ya'ni begona sayt bu yo'llarga yeta oladi, ammo foydalanuvchining
+yuborilmaydi va cookie umuman yo'q. Ya'ni begona sayt bu yo'llarga yeta oladi, ammo foydalanuvchining
 sessiyasisiz — tizimga kirmagan holatda.
 
 ## Konfiguratsiya
@@ -51,12 +46,9 @@ Tizimga kirish shart emas. Ilova ishga tushganda birinchi bo'lib shuni so'raydi.
   "google": "…apps.googleusercontent.com",
   "googleAndroid": null,
   "googleIos": null,
-  "tutor": false,
-  "tutorComingSoon": false,
   "demo": true,
   "clips": true,
   "mail": false,
-  "push": "BI2DS5Sk…",
   "contentVersion": "f664a8b5012b",
   "defaultLevel": "b",
   "minAppVersion": "1.0.0"
@@ -153,8 +145,9 @@ Xatoliklar: `400` (ma'lumot noto'g'ri), `401` (email yoki parol noto'g'ri), `409
 mijozlarini yarating va ularning id'sini `.env` ga qo'shing — aks holda ilovadan kelgan token rad etiladi.
 `passwordCleared: true` — Google shu emailni tasdiqladi va eski parol o'chirildi (foydalanuvchiga ayting).
 
-**Parolni tiklash** email orqali `https://upkorean.uz/#/reset/<token>` havolasini yuboradi. Ilovada shu
-havolani `upkorean://` deep link bilan ushlash yoki foydalanuvchini brauzerga yuborish kerak.
+**Parolni tiklash** email orqali `https://upkorean.uz/reset/<token>` havolasini yuboradi. U ochadigan
+sahifa ilovani `upkorean://reset/<token>` bilan ochadi; ochilmasa, kodni ko'rsatadi — ilovada
+"Parolni unutdingizmi? → Kodim bor" orqali kiritiladi.
 
 ## Hisob
 
@@ -238,10 +231,8 @@ Javob `audio/mpeg`, `Cache-Control: private, max-age=604800`.
 
 ## Hali yo'q narsalar
 
-- **Mobil bildirishnoma.** Hozirgi `POST /api/push/subscribe` faqat Web Push obunasini qabul qiladi
-  (brauzer endpoint'i + `p256dh`/`auth` kalitlari) va `web-push` orqali yuboradi — mobil ilovadagi
-  Expo yoki FCM tokeni bu yerga sig'maydi. Eslatmalarni mobilga olib chiqish uchun `push_subs` jadvaliga
-  tur (`web` / `expo`) ustuni va `apps/api/push.js` ga ikkinchi yuborish yo'li kerak bo'ladi. Qaysi
-  provayder (Expo Push yoki to'g'ridan-to'g'ri FCM) tanlanishi hal bo'lmagani uchun qo'shilmadi.
+- **Server push.** Web Push olib tashlandi. Kunlik eslatma telefonning o'zida rejalashtiriladi
+  (`expo-notifications`, lokal bildirishnoma) va serverga ehtiyoj yo'q. Serverdan yuboriladigan xabar
+  (masalan "seriyangiz xavf ostida") kerak bo'lsa, Expo Push tokenlari uchun yangi endpoint qo'shiladi.
 - **AI ustoz** (`POST /api/tutor`) o'chirilgan. Server tarafi saqlangan — `apps/api/tutor.js`,
   qaytarish tartibi [deploy/README.md](../deploy/README.md) da.

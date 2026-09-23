@@ -61,7 +61,6 @@ $ErrorActionPreference = 'Stop'
 # faylning lokal mtime'i faqat qachon ko'chirib olinganini bildiradi: server bir oy oldin
 # to'xtab qolgan bo'lsa ham u "bugungi" bo'lib ko'rinaveradi.
 $BackupNameRe = '^upkorean-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}\.db$'
-$VapidName = 'vapid.json'
 
 $script:LogPath = $null
 $script:StderrFile = Join-Path $env:TEMP ("upkorean-pull-{0}.err" -f $PID)
@@ -237,35 +236,6 @@ foreach ($name in $remoteDb) {
     Move-Item -LiteralPath $part -Destination $final -Force
     $pulled++
     Write-Log "Olindi: $name"
-}
-
-# vapid.json har safar tekshiriladi: server uni har zaxirada ustiga yozadi va nomi o'zgarmaydi.
-if ($remoteNames -contains $VapidName) {
-    $vapidFinal = Join-Path $Destination $VapidName
-    $vapidPart = "$vapidFinal.part"
-    $r = Invoke-Native $scp (@('-p') + $sshOpts + @("${RemoteHost}:$RemoteDir/$VapidName", $vapidPart))
-    if ($r.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $vapidPart)) {
-        $failed++
-        Remove-Item -LiteralPath $vapidPart -Force -ErrorAction SilentlyContinue
-        Write-Log "OGOHLANTIRISH: $VapidName ko'chirilmadi (scp kodi $($r.ExitCode)). $($r.Err)"
-    } elseif (Test-Path -LiteralPath $vapidFinal) {
-        $new = (Get-FileHash -LiteralPath $vapidPart -Algorithm SHA256).Hash
-        $old = (Get-FileHash -LiteralPath $vapidFinal -Algorithm SHA256).Hash
-        if ($new -eq $old) {
-            Remove-Item -LiteralPath $vapidPart -Force
-        } else {
-            # Kalitlar almashgan. Eskisi ham saqlanadi: eski obunalar faqat eski kalit bilan ishlaydi.
-            $archive = Join-Path $Destination ('vapid-{0}.json' -f (Get-Date -Format 'yyyy-MM-dd-HH-mm-ss'))
-            Move-Item -LiteralPath $vapidFinal -Destination $archive -Force
-            Move-Item -LiteralPath $vapidPart -Destination $vapidFinal -Force
-            Write-Log "DIQQAT: $VapidName o'zgargan. Eskisi saqlandi: $(Split-Path -Leaf $archive)"
-        }
-    } else {
-        Move-Item -LiteralPath $vapidPart -Destination $vapidFinal -Force
-        Write-Log "Olindi: $VapidName"
-    }
-} else {
-    Write-Log "OGOHLANTIRISH: serverda $VapidName yo'q. U yo'qolsa push-eslatmalar uchun yangi kalit yaratiladi va hamma brauzer eslatmani qaytadan yoqishi kerak bo'ladi."
 }
 
 Write-Log "Yangi olingan fayllar: $pulled"

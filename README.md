@@ -4,25 +4,24 @@ Koreys tili so'z boyligi ilovasi. Uch daraja — 초급, 중급, 고급 — har 
 
 ```
 apps/
-  api/        Express server — JSON API (/api/*) va landing sahifaning hosting'i
+  api/        Express server — mobil ilova gaplashadigan JSON API (/api/*)
   mobile/     Expo / React Native ilovasi — asosiy mijoz
-  landing/    upkorean.uz dagi bitta statik sahifa
 packages/
   shared/     Progress sync mantiqi va kurs ma'lumoti (uch darajaning fayllari)
 data/         SQLite bazasi va backup'lar (git'ga tushmaydi)
 audio/        Diktor audiosi, so'z id'si bo'yicha: audio/words/b-1-0.mp3 (git'ga tushmaydi)
 scripts/      Kontentni tekshirish, backup, audio nomlash, OCR yordamchilari
-test/         node:test — API, sync, progress, push va kontent testlari
+test/         node:test — API, sync, progress, SRS, mashqlar va kontent testlari
 deploy/       Apache konfigi, systemd unit'i, deploy skripti va server qo'llanmasi
 docs/         API ma'lumotnomasi
 ```
 
 ## Nega shunday
 
-Ilgari bu brauzer ilovasi (PWA) edi va butun kod `server/` bilan `public/` ga bo'lingan edi. Aksariyat
-o'rganuvchida kompyuter yo'q, telefon esa bor — shuning uchun mobil ilova asosiy mijozga aylandi, web
-ilova esa olib tashlandi. Ortda bitta backend qoldi: u API'ni beradi va `upkorean.uz` da bitta landing
-sahifani ko'rsatadi.
+Ilgari bu brauzer ilovasi (PWA) edi. Aksariyat o'rganuvchida kompyuter yo'q, telefon esa bor — shuning
+uchun mahsulot endi faqat mobil ilova. Web qismi (brauzer ilovasi, landing sahifa, Web Push, cookie
+sessiyasi) koddan ham, serverdan ham butunlay olib tashlandi; kerak bo'lsa keyinchalik noldan quriladi.
+Ortda bitta backend qoldi va u faqat API beradi.
 
 Kurs `packages/shared/course/<daraja>/` da yashaydi va API orqali JSON bo'lib tarqaladi. So'z nomi
 o'zining joyini aytadi: `"b-1-0"` — 초급, 1-kun, birinchi so'z. Daraja nomga kirgani uchun uchala
@@ -33,7 +32,7 @@ darajaning progressi bitta obyektda hech qachon to'qnashmaydi.
 ```powershell
 npm install              # apps/api, packages/shared — npm workspaces
 copy .env.example .env   # kamida PORT va APP_URL
-npm run dev              # http://localhost:3000 — API va landing
+npm run dev              # http://localhost:3000/api — API
 ```
 
 Mobil ilova alohida turadi (Metro bundler npm workspaces bilan yaxshi chiqishmaydi). Windows

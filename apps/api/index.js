@@ -1,11 +1,11 @@
-// UpKorean server: static front-end + JSON API (auth, progress sync, leaderboard, AI tutor).
+// UpKorean server: the JSON API the mobile app talks to (auth, progress sync, course content, leaderboard).
 import "./env.js";
 import fs from "node:fs";
 import path from "node:path";
 import express from "express";
 import compression from "compression";
 import { q, backupDb, lastBackupAt, BACKUP_DIR } from "./db.js";
-import { LANDING_DIR, AUDIO_DIR } from "./paths.js";
+import { AUDIO_DIR } from "./paths.js";
 import { manifest as contentManifest, partBody, VERSION as CONTENT_VERSION, defaultLevel } from "./content.js";
 import {
   hashPassword, verifyPassword, startSession, endSession, currentUser, requireAuth,
@@ -14,7 +14,6 @@ import {
 import { tutorEnabled } from "./tutor.js";
 import { mailEnabled, sendResetEmail } from "./mail.js";
 import { tzOf, localTime, leaderboardXp } from "./progress.js";
-import { PUSH_PUBLIC_KEY, PUSH_CONTACT, sendToUser, reminderTimes, runReminders } from "./push.js";
 import "../../packages/shared/sync.js"; // defines globalThis.UKSync, shared with the mobile app
 
 const { UKSync } = globalThis;
@@ -46,20 +45,9 @@ const YEAR = 31536000;
 const BACKUP_HOURS = process.env.BACKUP_HOURS === undefined ? 24 : Number(process.env.BACKUP_HOURS) || 0;
 const BACKUP_KEEP = Number(process.env.BACKUP_KEEP) || 14;
 
-// Everything the page may load. Google Sign-In needs its script, button iframe and stylesheet.
-// The landing page is one static file with no script of its own, so nothing needs to be allowed to run.
-const CSP = [
-  "default-src 'self'",
-  "script-src 'none'",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com",
-  "img-src 'self' data:",
-  "connect-src 'self'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'none'",
-  "frame-ancestors 'none'",
-].join("; ");
+// There is no website: the only HTML this server writes is the password-reset hand-off page, which has
+// inline styles and nothing else.
+const CSP = "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 
 const app = express();
 app.disable("x-powered-by");
@@ -72,8 +60,7 @@ app.use((req, res, next) => {
     console.warn("[ogohlantirish] So'rovlar proksi orqali kelyapti, lekin TRUST_PROXY qo'yilmagan: rate limit barcha foydalanuvchini bitta IP deb hisoblaydi. .env ga TRUST_PROXY=1 qo'shing.");
   }
   res.setHeader("X-Content-Type-Options", "nosniff");
-  // Sign in with Google checks the page's origin from the referrer: "same-origin" hides it and the sign-in hangs.
-  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Referrer-Policy", "no-referrer");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Content-Security-Policy", CSP);
   if (PROD && req.secure) res.setHeader("Strict-Transport-Security", "max-age=15552000");
@@ -81,11 +68,9 @@ app.use((req, res, next) => {
 });
 app.use(compression());
 
-// A native app is not a browser and CORS never applies to it, but Expo's web target, the dev client and any
-// future desktop build are, so the API and the audio it serves answer any origin. What makes that safe is
-// that Access-Control-Allow-Credentials is never sent and the session cookie is SameSite=Lax: a page on
-// another site can reach these routes, but never carrying a visitor's cookie, so it reaches them signed out.
-// An app sends its session as `Authorization: Bearer`, which a third-party page has no way to obtain.
+// A native app is not a browser and CORS never applies to it, but the Expo dev tools run in one, so the API
+// and the audio answer any origin. That is safe because there is no cookie session any more: the session
+// travels as `Authorization: Bearer`, which a third-party page has no way to obtain.
 function cors(req, res, next) {
   if (req.headers.origin) {
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -131,20 +116,18 @@ const str = (v) => (typeof v === "string" ? v : "");
 function validName(name) { name = str(name).trim(); return name.length >= 1 && name.length <= 60 ? name : null; }
 function validEmail(email) { email = str(email).trim().toLowerCase(); return EMAIL_RE.test(email) && email.length <= 200 ? email : null; }
 function validPassword(pw) { pw = str(pw); return pw.length >= 8 && pw.length <= 200 ? pw : null; }
-// A browser on this machine talking to the server directly — not through a reverse proxy.
+// A client on this machine talking to the server directly — not through a reverse proxy.
 const isLocalRequest = (req) => ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.socket.remoteAddress) && !req.headers["x-forwarded-for"];
 const noDemo = (req, res, next) => (isDemo(req.user) ? res.status(403).json({ error: "Demo hisobda bu amal o'chirilgan" }) : next());
 
 // ---------- Config ----------
-// `tutor` and `tutorComingSoon` are both false and stay in the payload on purpose: a browser still running
-// a cached copy of the old front-end reads this object, and a missing key is not the same as a false one.
 api.get("/config", (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   res.json({
     google: GOOGLE_CLIENT_ID || null,
     googleAndroid: GOOGLE_ANDROID_ID || null,
     googleIos: GOOGLE_IOS_ID || null,
-    tutor: false, tutorComingSoon: false, demo: DEMO, clips: HAS_CLIPS, mail: mailEnabled(), push: PUSH_PUBLIC_KEY,
+    demo: DEMO, clips: HAS_CLIPS, mail: mailEnabled(),
     contentVersion: CONTENT_VERSION,
     defaultLevel,
     // The oldest app build this server still answers. Raise it only for a change the app cannot be made to
@@ -154,7 +137,7 @@ api.get("/config", (req, res) => {
 });
 
 // ---------- Course content ----------
-// Public, exactly as /js/vocab.js has always been for the browser: this is the course, not anyone's
+// Public: this is the course, not anyone's
 // progress. The app asks for the manifest, compares the version with what it has stored, and downloads
 // only the parts that moved.
 api.get("/content", (req, res) => {
@@ -285,7 +268,7 @@ api.post("/auth/forgot", authLimit, (req, res) => {
   const email = validEmail(req.body.email);
   const user = email && q.userByEmail.get(email);
   const out = { ok: true };
-  // Returning the link skips the mailbox check, so only a developer's own browser may get it.
+  // Returning the link skips the mailbox check, so only a request from the developer's own machine may get it.
   const devLink = DEV && isLocalRequest(req);
   // A token is created only when there is somewhere safe to send it. Without SMTP it would have nowhere to go
   // but the server log, and a reset link in a log is a working password for whoever can read the log.
@@ -294,7 +277,7 @@ api.post("/auth/forgot", authLimit, (req, res) => {
     resetRequests.add(email);
     const token = randomToken();
     q.insertReset.run(sha256(token), user.id, Date.now() + 30 * 60000);
-    const link = `${APP_URL}/#/reset/${token}`;
+    const link = `${APP_URL}/reset/${token}`;
     // Not awaited: waiting for SMTP would make "account exists" answers measurably slower.
     if (mailEnabled()) sendResetEmail(email, user.name, link).catch((err) => console.error(`[password reset] email to ${email} failed:`, err.message));
     if (devLink) out.devLink = link;
@@ -360,7 +343,7 @@ api.delete("/account", requireAuth, noDemo, (req, res) => {
 
 // ---------- Progress ----------
 // Each save names the server version it started from (baseAt). If another device saved in between, the
-// server answers 409 with its current progress so the browser can merge both and try again.
+// server answers 409 with its current progress so the app can merge both and try again.
 const progressConflict = (res, row) => res.status(409).json({
   error: "Progress boshqa qurilmada o'zgargan",
   conflict: true,
@@ -384,10 +367,6 @@ function storeProgress(req, res, state, row) {
   if (isDemo(req.user)) week.xp = 0;
   const rev = typeof req.body.rev === "string" ? req.body.rev.slice(0, 40) : null;
   q.putProgress.run(req.user.id, json, Math.max(0, Math.round(Number(state.xp) || 0)), week.week, week.xp, now, rev);
-  if (!isDemo(req.user)) {
-    const t = reminderTimes(state);
-    q.putReminders.run(req.user.id, tz, t.learn, t.review, t.streak);
-  }
   res.json({ ok: true, updatedAt: now, rev });
 }
 
@@ -429,47 +408,6 @@ api.get("/leaderboard", requireAuth, (req, res) => {
   res.json({ rows: top, total: list.length });
 });
 
-// ---------- Push reminders ----------
-// The server sends requests to the subscription endpoint, so only real browser push services are accepted.
-const PUSH_HOSTS = [".googleapis.com", ".push.apple.com", ".mozilla.com", ".notify.windows.com"];
-function validSubscription(s) {
-  if (!s || typeof s.endpoint !== "string" || s.endpoint.length > 1000 || !s.keys) return null;
-  let url;
-  try { url = new URL(s.endpoint); } catch { return null; }
-  if (url.protocol !== "https:" || !PUSH_HOSTS.some((h) => url.hostname.endsWith(h))) return null;
-  const { p256dh, auth } = s.keys;
-  if (typeof p256dh !== "string" || typeof auth !== "string" || p256dh.length > 200 || auth.length > 100) return null;
-  return { endpoint: s.endpoint, p256dh, auth };
-}
-
-api.post("/push/subscribe", requireAuth, noDemo, (req, res) => {
-  const sub = validSubscription(req.body.subscription);
-  if (!sub) return res.status(400).json({ error: "Bildirishnoma obunasi noto'g'ri" });
-  q.putSub.run(sub.endpoint, req.user.id, sub.p256dh, sub.auth, Date.now());
-  // Reminder times normally arrive with the progress; store them now too, in case no save follows soon.
-  const row = q.getProgress.get(req.user.id);
-  const t = reminderTimes(row ? JSON.parse(row.state) : null);
-  q.putReminders.run(req.user.id, tzOf(req.body.tz), t.learn, t.review, t.streak);
-  res.json({ ok: true });
-});
-
-api.post("/push/unsubscribe", requireAuth, (req, res) => {
-  q.deleteUserSub.run(str(req.body.endpoint), req.user.id);
-  res.json({ ok: true });
-});
-
-const pushTestLimit = rateLimit({ windowMs: 10 * 60000, max: 5, key: (req) => `p${req.user.id}` });
-api.post("/push/test", requireAuth, noDemo, pushTestLimit, async (req, res) => {
-  const delivered = await sendToUser(req.user.id, {
-    title: "UpKorean eslatmalari ishlayapti",
-    body: "Belgilangan vaqtda shu yerda xabar olasiz.",
-    url: "/#/profile",
-    tag: "test",
-  });
-  if (!delivered) return res.status(404).json({ error: "Bu hisobda faol bildirishnoma obunasi topilmadi" });
-  res.json({ ok: true, delivered });
-});
-
 // ---------- AI tutor ----------
 // Switched off end to end. There used to be a POST /tutor here that only ever answered 503, a client module
 // (public/js/tutor.js) nothing routed to, and a "tez kunda" button on the day-done screen — a flagship
@@ -487,17 +425,48 @@ api.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
 
 app.use("/api", api);
 
-// ---------- Landing page ----------
-// The browser app is gone; upkorean.uz is one page that says what UpKorean is and that the mobile app
-// is where it lives now. Nothing here is generated, so there is no build id and no service worker —
-// just five files that change when someone edits them.
-app.use(express.static(LANDING_DIR, {
-  extensions: ["html"],
-  setHeaders(res, filePath) {
-    if (/\.html$/i.test(filePath)) res.setHeader("Cache-Control", "no-cache");
-    else res.setHeader("Cache-Control", "public, max-age=86400"); // icons, named for their content
-  },
-}));
+// The one page this server generates, and it is generated because the token is in the path. The token
+// matches [A-Za-z0-9_-] before it gets here, so it cannot carry markup; it is still only ever written into
+// text and an href, never into a script.
+const resetPage = (token) => `<!DOCTYPE html>
+<html lang="uz"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Parolni tiklash — UpKorean</title>
+<style>
+:root{--bg:#E8E9E6;--card:#FFF;--ink:#102221;--ink2:#48605C;--green:#1B6F65;--line:#DCDEDA}
+@media (prefers-color-scheme:dark){:root{--bg:#101613;--card:#19211D;--ink:#E7EDEA;--ink2:#9FADA8;--green:#2A9384;--line:#242D28}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:24px}
+main{width:100%;max-width:440px;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:30px 26px}
+h1{margin:0 0 10px;font-size:25px;letter-spacing:-.02em}
+p{margin:0 0 18px;color:var(--ink2);font-size:15px}
+a.btn{display:block;background:var(--green);color:#fff;text-align:center;text-decoration:none;font-weight:700;padding:16px;border-radius:16px}
+code{display:block;margin-top:18px;padding:14px;border-radius:12px;background:var(--bg);border:1px solid var(--line);font:13px/1.5 ui-monospace,monospace;word-break:break-all;color:var(--ink2)}
+small{display:block;margin-top:14px;color:var(--ink2);font-size:13px}
+</style></head><body><main>
+${token ? `<h1>Yangi parol o'rnatish</h1>
+<p>Quyidagi tugma UpKorean ilovasini ochadi va yangi parol sahifasiga olib boradi. Havola 30 daqiqa amal qiladi.</p>
+<a class="btn" href="upkorean://reset/${token}">Ilovada ochish</a>
+<small>Tugma ishlamasa, ilovani oching → Kirish → <b>Parolni unutdingizmi?</b> → <b>Kodim bor</b>, va quyidagi kodni kiriting:</small>
+<code>${token}</code>`
+  : `<h1>Havola ishlamadi</h1>
+<p>Havola eskirgan yoki to'liq nusxalanmagan. Ilovadan yangi havola so'rang: Kirish → Parolni unutdingizmi?</p>`}
+</main></body></html>`;
+
+// ---------- Password reset hand-off ----------
+// The reset link is opened in a mail app, on a phone or on a desktop, and what it has to reach is the app.
+// A custom scheme alone cannot be clicked from every mail client, so the link is an ordinary https one and
+// this page is the doorway: it opens `upkorean://reset/<token>` and, for the cases where that fails, shows
+// the code to type in by hand. The token is never rendered into a script or a query string — only into the
+// text of the page and the scheme link — and the page is told not to be cached or indexed.
+app.get("/reset/:token", (req, res) => {
+  const token = String(req.params.token || "");
+  if (!/^[A-Za-z0-9_-]{16,128}$/.test(token)) return res.status(404).type("html").send(resetPage(null));
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("X-Robots-Tag", "noindex");
+  res.type("html").send(resetPage(token));
+});
 
 q.purgeSessions.run(Date.now());
 q.purgeResets.run(Date.now());
@@ -518,7 +487,6 @@ setInterval(() => {
   q.purgeResets.run(Date.now());
   backupIfDue();
 }, 3600000).unref();
-setInterval(() => runReminders().catch((err) => console.error("[push] reminders failed:", err)), 60000).unref();
 
 // Without SMTP nobody can reset a password on a live site, and the old fallback (the link in the server log)
 // handed an account to anyone who can read the log. So a production server says so and stops instead.
@@ -534,8 +502,6 @@ app.listen(PORT, () => {
   console.log(`  Email:    ${mailEnabled() ? "yoqilgan (SMTP)" : `o'chirilgan — parolni tiklash havolasi yuborilmaydi${DEV ? ", faqat shu kompyuterdagi brauzerga ko'rsatiladi" : ""} (SMTP_HOST yo'q)`}`);
   console.log(`  Audio:    diktor bo'laklari ${WORD_CLIPS}/1000 so'z, ${SENTENCE_CLIPS}/1000 gap`);
   console.log(`  Backup:   ${BACKUP_HOURS ? `har ${BACKUP_HOURS} soatda, oxirgi ${BACKUP_KEEP} tasi → ${BACKUP_DIR}` : "o'chirilgan (BACKUP_HOURS=0)"}`);
-  console.log(`  Eslatma:  Web Push yoqilgan (aloqa: ${PUSH_CONTACT})`);
-  if (PROD && PUSH_CONTACT === "mailto:admin@example.com") console.log("  Eslatma: .env ga VAPID_SUBJECT=mailto:siz@domen.uz qo'ying — Apple push xizmati haqiqiy manzilni talab qiladi.");
   if (DEMO) console.log("  Demo hisob: yoqilgan");
   if (PROD && !process.env.TRUST_PROXY) console.log("  Eslatma: server proksi (nginx, Cloudflare) ortida bo'lsa, TRUST_PROXY=1 qo'ying.");
 });

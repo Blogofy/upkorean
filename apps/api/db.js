@@ -44,28 +44,10 @@ db.exec(`
     expires_at  INTEGER NOT NULL
   );
 
-  -- One row per browser that allowed notifications (Web Push subscription).
-  CREATE TABLE IF NOT EXISTS push_subs (
-    endpoint    TEXT    PRIMARY KEY,
-    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    p256dh      TEXT    NOT NULL,
-    auth        TEXT    NOT NULL,
-    created_at  INTEGER NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS push_subs_user ON push_subs(user_id);
-
-  -- Reminder times copied from the saved progress ("HH:MM" local time, NULL = off) and the last local
-  -- date each kind was handled, so a reminder goes out at most once a day.
-  CREATE TABLE IF NOT EXISTS reminders (
-    user_id      INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    tz           INTEGER NOT NULL,
-    learn_at     TEXT,
-    review_at    TEXT,
-    streak_at    TEXT,
-    learn_sent   TEXT,
-    review_sent  TEXT,
-    streak_sent  TEXT
-  );
+  -- The browser app's Web Push subscriptions and the reminder times they were sent at. The browser app is
+  -- gone and an endpoint only ever reached a browser, so both tables go with it.
+  DROP TABLE IF EXISTS push_subs;
+  DROP TABLE IF EXISTS reminders;
 `);
 
 // Columns added after the first release.
@@ -103,22 +85,6 @@ export const q = {
   deleteResets: db.prepare("DELETE FROM resets WHERE user_id = ?"),
   purgeResets: db.prepare("DELETE FROM resets WHERE expires_at <= ?"),
 
-  putSub: db.prepare(`INSERT INTO push_subs (endpoint, user_id, p256dh, auth, created_at) VALUES (?, ?, ?, ?, ?)
-    ON CONFLICT(endpoint) DO UPDATE SET user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth`),
-  subsForUser: db.prepare("SELECT endpoint, p256dh, auth FROM push_subs WHERE user_id = ?"),
-  deleteSub: db.prepare("DELETE FROM push_subs WHERE endpoint = ?"),
-  deleteUserSub: db.prepare("DELETE FROM push_subs WHERE endpoint = ? AND user_id = ?"),
-
-  putReminders: db.prepare(`INSERT INTO reminders (user_id, tz, learn_at, review_at, streak_at) VALUES (?, ?, ?, ?, ?)
-    ON CONFLICT(user_id) DO UPDATE SET tz = excluded.tz, learn_at = excluded.learn_at, review_at = excluded.review_at, streak_at = excluded.streak_at`),
-  activeReminders: db.prepare(`SELECT * FROM reminders r
-    WHERE (learn_at IS NOT NULL OR review_at IS NOT NULL OR streak_at IS NOT NULL)
-      AND EXISTS (SELECT 1 FROM push_subs s WHERE s.user_id = r.user_id)`),
-  markSent: {
-    learn: db.prepare("UPDATE reminders SET learn_sent = ? WHERE user_id = ?"),
-    review: db.prepare("UPDATE reminders SET review_sent = ? WHERE user_id = ?"),
-    streak: db.prepare("UPDATE reminders SET streak_sent = ? WHERE user_id = ?"),
-  },
 };
 
 // ---------- Backups ----------
@@ -137,9 +103,6 @@ export function backupDb(keep = 14) {
   const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-");
   const file = path.join(BACKUP_DIR, `upkorean-${stamp}.db`);
   db.exec(`VACUUM INTO '${file.replace(/'/g, "''")}'`);
-  // Push subscriptions only work with the keys they were created with.
-  const vapid = path.join(DATA_DIR, "vapid.json");
-  if (fs.existsSync(vapid)) fs.copyFileSync(vapid, path.join(BACKUP_DIR, "vapid.json"));
   const files = backupFiles();
   for (const old of files.slice(0, Math.max(0, files.length - keep))) fs.rmSync(path.join(BACKUP_DIR, old));
   return file;

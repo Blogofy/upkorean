@@ -3,6 +3,5 @@
 import path from "node:path";
 
 export const ROOT = path.resolve(import.meta.dirname, "../..");
-export const LANDING_DIR = path.join(ROOT, "apps", "landing");
 export const AUDIO_DIR = path.join(ROOT, "audio");
 export const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(ROOT, "data");

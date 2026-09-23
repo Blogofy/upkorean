@@ -1,6 +1,6 @@
 # UpKorean serverda (upkorean.uz)
 
-Sxema: brauzer → **aaPanel Apache** (80/443, SSL) → **Node** `127.0.0.1:3000` (systemd `upkorean`) → SQLite `/opt/upkorean/data/`.
+Sxema: mobil ilova → **aaPanel Apache** (80/443, SSL) → **Node** `127.0.0.1:3000` (systemd `upkorean`) → SQLite `/opt/upkorean/data/`.
 Server: `109.205.177.244`, Ubuntu 24.04. Unda boshqa saytlar ham bor (apixy.uz, giu, qorovul), shuning uchun Apache va firewall'ga faqat quyidagilar qo'shiladi.
 
 | Fayl | Serverdagi joyi |
@@ -41,7 +41,7 @@ Faqat commit qilingan kod ketadi. `.env`, `data/`, `audio/` va `node_modules/` s
 
 Ikki narsa bir vaqtda o'zgardi va ikkalasi ham serverda qo'lda qadam talab qiladi.
 
-**1. Kirish nuqtasi.** Repo `apps/api`, `apps/mobile`, `apps/landing` va `packages/shared` ga
+**1. Kirish nuqtasi.** Repo `apps/api`, `apps/mobile` va `packages/shared` ga
 bo'lindi, ya'ni server endi `apps/api/index.js` dan ishga tushadi. `deploy/upkorean.service` shunga
 moslandi, lekin systemd unit'i `update.sh` bilan ko'chmaydi — uni o'zingiz qo'yasiz, aks holda
 `systemctl restart upkorean` endi yo'q faylni (`server/index.js`) ishga tushirmoqchi bo'ladi:
@@ -67,9 +67,25 @@ systemctl restart upkorean                             # klip sanog'i qaytadan o
 
 Qayta ishga tushirsa ham xavfsiz: darajali nomga ega fayllarga tegilmaydi.
 
-**Sayt yopildi.** `upkorean.uz` endi bitta landing sahifa ko'rsatadi: brauzer ilovasi olib
-tashlandi, mobil ilova uning o'rnini oladi. Hisoblar, progress va push obunalari bazada turibdi.
-Eski `server/`, `public/` va `apps/web/` papkalari serverda `rsync --delete` bilan o'chadi.
+### Bir martalik: web qismini serverdan tozalash
+
+Brauzer ilovasi, landing sahifa (`apps/landing`), Web Push (`apps/api/push.js`, `web-push`) va
+cookie sessiyasi koddan olib tashlandi. Keyingi deploy'dagi `rsync --delete` fayllarni o'zi
+o'chiradi, server esa ishga tushganda bazadagi `push_subs` va `reminders` jadvallarini tashlaydi
+(ular faqat brauzerga yetgan). Qo'lda qoladigani — Web Push kalitlari va `.env` dagi yozuvlar:
+
+```sh
+ssh root@109.205.177.244
+rm -f /opt/upkorean/data/vapid.json /opt/upkorean/data/backups/vapid.json
+sed -i '/^VAPID_/d' /opt/upkorean/.env
+ls -la /opt/upkorean/apps                      # faqat api va mobile qolishi kerak
+ls -la /www/wwwroot/upkorean.uz                # faqat .well-known (sertifikat uchun) qolishi kerak
+systemctl restart upkorean
+curl -so /dev/null -w '%{http_code}\n' -H "Host: upkorean.uz" http://127.0.0.1/   # 404
+```
+
+Eslatmalar endi telefonning o'zida rejalashtiriladi (`expo-notifications`), server ishtirok etmaydi.
+Hisoblar va progress bazada o'z joyida.
 
 ## Diktor bo'laklari (`audio/`)
 
@@ -103,13 +119,12 @@ uchinchi nusxasini tashqi diskda yoki bulutda saqlang.
 
 ## Kesh sarlavhalari
 
-Brauzer ilovasi olib tashlangandan keyin serverda generatsiya qilinadigan narsa qolmadi — build id
-ham, service worker ham yo'q. Qolgani: bitta landing sahifa, kurs JSON'i va diktor audiosi.
+Serverda web qismi qolmagan: sahifa ham, build id ham, service worker ham yo'q. Server faqat API
+beradi: kurs JSON'i, progress va diktor audiosi. Yagona HTML — parolni tiklash xatidagi havola ochadigan
+`/reset/<kod>` sahifasi (u ilovani `upkorean://reset/<kod>` bilan ochadi).
 
 | Nima | `Cache-Control` |
 | --- | --- |
-| `/` va `/privacy.html` | `no-cache` — har tashrifda tekshiriladi |
-| `.png`, `.svg` | `public, max-age=86400` |
 | `/api/content/<daraja>/<qism>?v=<version>` | `public, max-age=31536000, immutable` |
 | o'sha qism `?v=` siz | `public, max-age=300` + `ETag` (o'zgarmagan bo'lsa `304`) |
 | `/api/config`, `/api/content` | `no-store` / `no-cache` |
@@ -121,7 +136,7 @@ o'zgaradi va har bir qurilma qayta yuklab oladi; o'zgarmasa hech kim hech nima y
 Deploy'dan keyin tekshirish:
 
 ```sh
-curl -sI https://upkorean.uz/ | grep -i cache-control                     # no-cache
+curl -so /dev/null -w '%{http_code}\n' https://upkorean.uz/                # 404 — sayt yo'q
 curl -s  https://upkorean.uz/api/content | head -c 120                    # version + darajalar
 curl -sI https://upkorean.uz/api/content/b/vocab | grep -i etag           # ETag bor
 ```
@@ -193,16 +208,16 @@ certbot certonly --webroot -w /www/wwwroot/upkorean.uz -d upkorean.uz -d www.upk
 
 Sertifikat paydo bo'lishi bilan vhost o'zi HTTPS'ga o'tadi, HTTP va `www` esa `https://upkorean.uz` ga yo'naltiriladi.
 Sertifikat avtomatik yangilanadi (`systemctl list-timers | grep certbot`).
-HTTPS shart: push-eslatmalar, service worker va `Secure` cookie faqat HTTPS'da ishlaydi.
+HTTPS shart: ilova sessiya tokenini har so'rovda yuboradi, u faqat shifrlangan ulanishda yurishi kerak.
 
-Google sign-in yoqilsa: Google Cloud Console → OAuth client → **Authorized JavaScript origins** → `https://upkorean.uz`.
+Google sign-in yoqilsa: Android va iOS OAuth client id'lari `.env` dagi `GOOGLE_CLIENT_ID_ANDROID` / `GOOGLE_CLIENT_ID_IOS` ga yoziladi.
 
 ## Tekshirish va loglar
 
 ```sh
 systemctl status upkorean
 journalctl -u upkorean -n 50 --no-pager
-curl -sI -H "Host: upkorean.uz" http://127.0.0.1/ | head -3
+curl -s  -H "Host: upkorean.uz" http://127.0.0.1/api/config | head -c 200
 tail /www/wwwlogs/upkorean.uz-error_log
 ```
 
@@ -211,9 +226,6 @@ tail /www/wwwlogs/upkorean.uz-error_log
 Ilova har 24 soatda `/opt/upkorean/data/backups/` ga nusxa oladi (`VACUUM INTO` — server ishlab
 turganda olinadigan butun nusxa) va oxirgi **14** tasini saqlaydi. Ular jonli baza bilan **bitta
 diskda** turibdi, ya'ni server yoki disk yo'qolsa zaxiralar ham u bilan ketadi.
-
-`vapid.json` ham o'sha papkada: u yo'qolsa server push uchun **yangi kalit** yaratadi va hamma
-brauzer eslatmalarni qaytadan yoqishi kerak bo'ladi (`apps/api/push.js`, `loadKeys`).
 
 ### Avtomatik tortish (`deploy/backup-offsite.ps1`)
 
@@ -293,13 +305,6 @@ journalctl -u upkorean -n 30 --no-pager
 `-wal` va `-shm` ni o'chirish shart: baza WAL rejimida ishlaydi (`PRAGMA journal_mode = WAL`),
 zaxira esa `VACUUM INTO` bilan olingan mustaqil fayl va uning o'z WAL'i yo'q. Eski WAL joyida
 qolsa SQLite uni yangi bazaga qo'llashga urinadi.
-
-Push kalitlarini tiklash (kerak bo'lsa):
-
-```powershell
-scp %USERPROFILE%\UpKorean-zaxira\vapid.json root@109.205.177.244:/opt/upkorean/data/vapid.json
-ssh root@109.205.177.244 "chown upkorean:upkorean /opt/upkorean/data/vapid.json && systemctl restart upkorean"
-```
 
 > **Tiklash qadamlari serverda hali sinalmagan — birinchi marta bajarishdan oldin tekshiring.**
 > Fayl egasi va huquqlarini yonidagi mavjud fayllar bilan solishtiring (`ls -l /opt/upkorean/data/`).

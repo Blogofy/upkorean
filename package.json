@@ -2,7 +2,7 @@
   "name": "upkorean",
   "version": "1.0.0",
   "private": true,
-  "description": "UpKorean — koreys tili so'z boyligi ilovasi (API + mobil + landing)",
+  "description": "UpKorean — koreys tili so'z boyligi ilovasi (API + mobil)",
   "type": "module",
   "workspaces": [
     "apps/api",
@@ -23,7 +23,6 @@
     "@anthropic-ai/sdk": "^0.125.0",
     "compression": "^1.8.2",
     "express": "^5.2.1",
-    "nodemailer": "^10.0.10",
-    "web-push": "^3.6.7"
+    "nodemailer": "^10.0.10"
   }
 }

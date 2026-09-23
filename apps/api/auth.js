@@ -1,8 +1,7 @@
-// Password hashing (scrypt), sessions (cookie for the browser, bearer token for the apps) and small helpers.
+// Password hashing (scrypt), bearer-token sessions for the app, and small helpers.
 import crypto from "node:crypto";
 import { q } from "./db.js";
 
-const COOKIE = "uk_sid";
 const SESSION_DAYS = 30;
 
 export const sha256 = (s) => crypto.createHash("sha256").update(s).digest("hex");
@@ -22,47 +21,27 @@ export function verifyPassword(password, stored) {
   return crypto.timingSafeEqual(expected, actual);
 }
 
-function parseCookies(header = "") {
-  const out = {};
-  for (const part of header.split(";")) {
-    const i = part.indexOf("=");
-    if (i > 0) out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
-  }
-  return out;
-}
-
-// A native app announces itself with `X-UK-Client: mobile/<version>`. It has no cookie jar, and no
-// same-site rule to lean on, so it carries the session as a bearer token instead.
-const APP_CLIENTS = new Set(["mobile", "app", "desktop"]);
-export const isAppClient = (req) =>
-  APP_CLIENTS.has(String(req.headers["x-uk-client"] || "").split("/")[0].trim().toLowerCase());
-
 const bearerToken = (req) => {
   const header = String(req.headers.authorization || "");
   return header.startsWith("Bearer ") ? header.slice(7).trim() : "";
 };
 
-// Returns what the response body should carry: nothing for a browser (its token is in an HttpOnly cookie
-// that page script must never be able to read), the token itself for an app.
+// The app has no cookie jar, so the session token travels in the response body and comes back on every
+// request as `Authorization: Bearer`. The app keeps it in the device keystore.
 export function startSession(req, res, userId) {
   const token = randomToken();
   const expiresAt = Date.now() + SESSION_DAYS * 86400000;
   q.insertSession.run(sha256(token), userId, expiresAt);
-  if (isAppClient(req)) return { token, expiresAt };
-  const secure = req.secure || req.headers["x-forwarded-proto"] === "https";
-  res.setHeader("Set-Cookie", `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_DAYS * 86400}${secure ? "; Secure" : ""}`);
-  return {};
+  return { token, expiresAt };
 }
 
-// Ends whichever session made this request, and clears the cookie in case it was the cookie's.
-export function endSession(req, res) {
-  const token = bearerToken(req) || parseCookies(req.headers.cookie)[COOKIE];
+export function endSession(req) {
+  const token = bearerToken(req);
   if (token) q.deleteSession.run(sha256(token));
-  res.setHeader("Set-Cookie", `${COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
 }
 
 export function currentUser(req) {
-  const token = bearerToken(req) || parseCookies(req.headers.cookie)[COOKIE];
+  const token = bearerToken(req);
   if (!token) return null;
   return q.sessionUser.get(sha256(token), Date.now()) || null;
 }
