@@ -44,13 +44,15 @@ export function playClip(kind, wordId, { rate = 1 } = {}) {
     const sound = ensurePlayer();
     sound.replace({ uri: api.clipUrl(kind, wordId), headers: authHeaders() });
     sound.shouldCorrectPitch = true;
-    sound.playbackRate = Math.max(0.5, Math.min(1.5, rate));
-    sound.seekTo(0).catch(() => {});
+    // A method, not the property: on Android `playbackRate` has no setter, and assigning to it throws —
+    // which used to land in the catch below and leave every clip silent.
+    sound.setPlaybackRate(Math.max(0.5, Math.min(1.5, rate)));
     sound.play();
     currentKey = key;
     notify(key);
     return true;
-  } catch {
+  } catch (error) {
+    console.warn("[audio]", error?.message || error);
     currentKey = null;
     notify(null);
     return false;
