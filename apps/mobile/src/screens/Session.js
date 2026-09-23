@@ -18,7 +18,7 @@ import {
 import { useNarrator, useStopAudioOnLeave } from "../audio";
 import { clozePieces, plainUz, uzPieces } from "../model";
 import { Sentence } from "./WordSheet";
-import Memo from "./Memo";
+import { MemoCard } from "./Memo";
 
 const TIME_LIMIT_MS = 20000;
 
@@ -296,12 +296,7 @@ function Intro({ item }) {
         </View>
       ) : null}
 
-      {item.roots ? (
-        <View style={{ backgroundColor: c.card, borderRadius: 22, padding: 18, gap: 14 }}>
-          <Text style={eyebrow(c)}>Yodda tutish uchun</Text>
-          <Memo root={item.roots} />
-        </View>
-      ) : null}
+      <MemoCard root={item.roots} />
     </View>
   );
 }
