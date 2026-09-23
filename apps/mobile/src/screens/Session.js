@@ -468,7 +468,7 @@ function Choose({ item, session, onChoose, onConfirm }) {
     );
   }
 
-  const koOptions = item.type !== "mc";
+  const koOptions = item.type !== "mc" && item.type !== "listen";
   return (
     <View style={{ flex: 1 }}>
       {prompt}
@@ -628,7 +628,8 @@ function Verdict({ item, session, onNext }) {
   const chosen = item.type === "type"
     ? session.typed
     : session.chosen !== null && session.chosen !== undefined ? item.opts[session.chosen] : "";
-  const shown = item.type === "mc" ? item.ko : item.type === "sent" ? item.answer : item.uz;
+  const byMeaning = item.type === "mc" || item.type === "listen";
+  const shown = byMeaning ? item.ko : item.type === "sent" ? item.answer : item.uz;
   const later = session.kind === "quiz"
     ? "Erkin mashq takrorlash jadvalini o'zgartirmaydi."
     : session.requeued ? "Bu so'z birozdan keyin yana chiqadi." : "Bu so'z ertaga yana chiqadi.";
@@ -639,10 +640,10 @@ function Verdict({ item, session, onNext }) {
     text = `${item.ko} — ${item.uz}`;
   } else if (!chosen) {
     title = "O'tkazib yuborildi";
-    text = `To'g'ri javob: ${item.answer}${item.type === "mc" ? "" : ` (${item.uz})`}. ${later}`;
+    text = `To'g'ri javob: ${byMeaning ? `${item.ko} — ${item.uz}` : `${item.answer} (${item.uz})`}. ${later}`;
   } else {
-    title = `Xato — ${item.type === "mc" ? item.ko : chosen} ≠ ${item.type === "mc" ? chosen : shown}`;
-    text = `To'g'ri javob: ${item.answer}${item.type === "mc" || item.type === "sent" ? "" : ` — ${item.uz}`}. ${later}`;
+    title = `Xato — ${byMeaning ? item.ko : chosen} ≠ ${byMeaning ? chosen : shown}`;
+    text = `To'g'ri javob: ${byMeaning ? `${item.ko} — ${item.uz}` : item.answer}${byMeaning || item.type === "sent" ? "" : ` — ${item.uz}`}. ${later}`;
   }
 
   return (

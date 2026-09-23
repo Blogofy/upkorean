@@ -62,16 +62,15 @@ function chooseType(course, id, weights, opts) {
 export function makeItem(course, type, id) {
   const word = course.byId[id];
   const item = { type, id, ko: word.ko, uz: word.uz, day: word.day };
-  if (type === "mc") {
+  // Hearing a word is answered with its meaning. Offering the Korean instead would let anyone pick the
+  // shape that sounds like what was just said, without knowing what it means.
+  if (type === "mc" || type === "listen") {
     item.answer = word.uz;
     item.opts = shuffle([word.uz, ...distractors(course, word, 3, "uz")]);
   }
-  if (type === "mcr" || type === "listen") {
+  if (type === "mcr") {
     item.answer = word.ko;
     item.opts = shuffle([word.ko, ...distractors(course, word, 3, "ko")]);
-    // The listening question shows the meaning under each Korean option: hearing a word and matching it to a
-    // shape you cannot read yet teaches nothing.
-    item.optMeanings = item.opts.map((ko) => (course.words.find((w) => w.ko === ko) || {}).uz || "");
   }
   if (type === "sent") {
     const example = clozeOf(course, id);

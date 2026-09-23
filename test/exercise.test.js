@@ -215,3 +215,11 @@ test("a sitting left early still banks its time and loses no answers", () => {
   assert.equal(state.words[item.id].ok, ok, "the answer was already written when it was given");
   assert.equal(state.reviewSessions, 0, "an abandoned sitting is not a completed one");
 });
+
+test("a listening question is answered with the meaning, not with the word that was heard", () => {
+  const item = ex.makeItem(course, "listen", "b-1-3");
+  assert.equal(item.answer, "birinchi 3");
+  assert.equal(item.opts.length, 4);
+  assert.ok(item.opts.includes("birinchi 3"));
+  assert.ok(item.opts.every((option) => !/[가-힣]/.test(option)), "no Korean among the options");
+});
