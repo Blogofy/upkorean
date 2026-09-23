@@ -528,31 +528,48 @@ export function Failed({ title = "Xatolik", body, action = "Qayta urinish", onAc
   );
 }
 
-// A line that slides in under the header and goes away on its own. Says what happened; never asks.
+// A short note that drops in under the status bar and leaves on its own. It says what happened and never
+// asks; it sits at the top so it can never cover the button the learner is about to press. `onDone` is kept
+// in a ref: the store hands a fresh function every render, and restarting the timer on each one kept a
+// note on screen for as long as the app kept redrawing.
 export function Toast({ message, tone = "ink", onDone }) {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const anim = useRef(new Animated.Value(0)).current;
+  const done = useRef(onDone);
+  done.current = onDone;
   useEffect(() => {
     if (!message) return undefined;
-    Animated.timing(anim, { toValue: 1, duration: 180, useNativeDriver: true }).start();
+    anim.setValue(0);
+    Animated.spring(anim, { toValue: 1, damping: 18, stiffness: 220, mass: 0.9, useNativeDriver: true }).start();
     const timer = setTimeout(() => {
-      Animated.timing(anim, { toValue: 0, duration: 180, useNativeDriver: true }).start(() => onDone?.());
-    }, 2600);
+      Animated.timing(anim, { toValue: 0, duration: 200, easing: Easing.in(Easing.cubic), useNativeDriver: true })
+        .start(() => done.current?.());
+    }, 2400);
     return () => clearTimeout(timer);
-  }, [message, anim, onDone]);
+  }, [message, anim]);
   if (!message) return null;
-  const bg = { ink: colors.ink, ok: colors.green, bad: colors.danger }[tone] || colors.ink;
+  const text = String(message).replace(/^✓\s*/, "");
+  const icon = { ok: "check", bad: "alert-circle" }[tone] || "info";
+  const accent = { ok: colors.green, bad: colors.danger }[tone] || colors.ink2;
   return (
     <Animated.View
       pointerEvents="none"
-      style={{
-        position: "absolute", left: SPACE.screen, right: SPACE.screen, bottom: 28,
-        backgroundColor: bg, borderRadius: RADIUS.lg, paddingVertical: 13, paddingHorizontal: 17,
+      style={[{
+        position: "absolute", left: 16, right: 16, top: insets.top + 8, alignSelf: "center",
+        flexDirection: "row", alignItems: "center", gap: 11,
+        backgroundColor: colors.card, borderRadius: 18, paddingVertical: 12, paddingLeft: 12, paddingRight: 16,
         opacity: anim,
-        transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
-      }}
+        transform: [
+          { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-24, 0] }) },
+          { scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] }) },
+        ],
+      }, shadow(colors, 2)]}
     >
-      <Text style={{ fontFamily: FONTS.semi, fontSize: 14, color: "#FFFFFF" }}>{message}</Text>
+      <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: accent, alignItems: "center", justifyContent: "center" }}>
+        <Feather name={icon} size={15} color="#FFFFFF" />
+      </View>
+      <Text style={{ flex: 1, fontFamily: FONTS.semi, fontSize: 14, lineHeight: 19, color: colors.ink }} numberOfLines={2}>{text}</Text>
     </Animated.View>
   );
 }
