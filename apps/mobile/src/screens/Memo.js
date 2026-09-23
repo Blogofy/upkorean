@@ -130,7 +130,7 @@ export function MemoLine({ root }) {
         {parts.map((part, i) => (
           <View key={`${part.k}-${i}`} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             {i > 0 ? <Text style={{ fontFamily: FONTS.bold, fontSize: 14, color: c.ink4 }}>+</Text> : null}
-            <View style={{ flexDirection: "row", alignItems: "baseline", gap: 5, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 11, backgroundColor: c.tint }}>
+            <View style={{ flexDirection: "row", alignItems: "baseline", gap: 5, paddingVertical: 7, paddingHorizontal: 11, borderRadius: 12, backgroundColor: c.tint }}>
               <Text style={{ fontSize: 17, fontWeight: "700", color: c.ink }}>{part.k}</Text>
               {part.h ? <Text style={{ fontSize: 12.5, color: c.ink4 }}>{part.h}</Text> : null}
               <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, color: c.ink2 }}>{part.uz}</Text>
@@ -139,7 +139,7 @@ export function MemoLine({ root }) {
         ))}
       </View>
       {root.idea ? (
-        <Text style={{ fontFamily: FONTS.semi, fontSize: 14, lineHeight: 20, color: c.greenDeep }}>= {sentence(root.idea)}</Text>
+        <Text style={{ fontFamily: FONTS.semi, fontSize: 13.5, lineHeight: 19, color: c.greenDeep }}>= {sentence(root.idea)}</Text>
       ) : null}
     </View>
   );
