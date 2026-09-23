@@ -18,7 +18,7 @@ import {
 import { useNarrator, useStopAudioOnLeave } from "../audio";
 import { clozePieces, plainUz, uzPieces } from "../model";
 import { Sentence } from "./WordSheet";
-import { MemoCard, MemoLine } from "./Memo";
+import { MemoCard } from "./Memo";
 
 const TIME_LIMIT_MS = 20000;
 
@@ -626,52 +626,45 @@ function Match({ item, session, onPick, onSkip }) {
 }
 
 // ---------- 17 · The verdict under an answered question ----------
-// Which answer was right is already green above, so a wrong answer is not told it again. The card shows
-// what helps remember it instead: how the right word is built, syllable by syllable, with its hanja.
 function Verdict({ item, session, onNext }) {
   const c = useColors();
-  const { course } = useStore();
   const right = !!session.correct;
   const chosen = item.type === "type"
     ? session.typed
     : session.chosen !== null && session.chosen !== undefined ? item.opts[session.chosen] : "";
   const byMeaning = item.type === "mc" || item.type === "listen";
-  const root = course?.roots?.[item.id];
-  const hasParts = !!(root && (root.parts || []).some((part) => part.k && !part.ending));
+  const shown = byMeaning ? item.ko : item.type === "sent" ? item.answer : item.uz;
   const later = session.kind === "quiz"
-    ? "Erkin mashqda jadval o'zgarmaydi."
-    : session.requeued ? "Birozdan keyin yana chiqadi." : "Ertaga yana chiqadi.";
+    ? "Erkin mashq takrorlash jadvalini o'zgartirmaydi."
+    : session.requeued ? "Bu so'z birozdan keyin yana chiqadi." : "Bu so'z ertaga yana chiqadi.";
 
-  let title;
-  if (right) title = "To'g'ri!";
-  else if (!chosen) title = "O'tkazib yuborildi";
-  else title = byMeaning ? `Xato — ${item.ko} ≠ ${chosen}` : `Xato — ${chosen} ≠ ${item.uz}`;
+  let title, text;
+  if (right) {
+    title = "To'g'ri!";
+    text = `${item.ko} — ${item.uz}`;
+  } else if (!chosen) {
+    title = "O'tkazib yuborildi";
+    text = `To'g'ri javob: ${byMeaning ? `${item.ko} — ${item.uz}` : `${item.answer} (${item.uz})`}. ${later}`;
+  } else {
+    title = `Xato — ${byMeaning ? item.ko : chosen} ≠ ${byMeaning ? chosen : shown}`;
+    text = `To'g'ri javob: ${byMeaning ? `${item.ko} — ${item.uz}` : item.answer}${byMeaning || item.type === "sent" ? "" : ` — ${item.uz}`}. ${later}`;
+  }
 
   return (
     <View style={[{
       marginHorizontal: 18, marginBottom: 14, marginTop: 4, backgroundColor: c.card, borderRadius: 22,
-      paddingVertical: 14, paddingHorizontal: 16, gap: 12,
+      paddingVertical: 14, paddingLeft: 16, paddingRight: 14, flexDirection: "row", alignItems: "center", gap: 12,
     }, shadow(c, 1)]}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-        {right ? <Radio selected onGreen={false} /> : (
-          <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: c.danger, alignItems: "center", justifyContent: "center" }}>
-            <Feather name="x" size={15} color="#FFFFFF" />
-          </View>
-        )}
-        <View style={{ flex: 1, gap: 1 }}>
-          <Text style={{ fontFamily: FONTS.bold, fontSize: 14.5, color: right ? c.green : c.dangerInk }} numberOfLines={2}>{title}</Text>
-          {right
-            ? <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: c.ink2 }} numberOfLines={1}>{item.ko} — {item.uz}</Text>
-            : <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, color: c.ink4 }}>{later}</Text>}
+      {right ? <Radio selected onGreen={false} /> : (
+        <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: c.danger, alignItems: "center", justifyContent: "center" }}>
+          <Feather name="x" size={15} color="#FFFFFF" />
         </View>
-        <Button title="Keyingi" size="sm" onPress={onNext} style={{ paddingHorizontal: 18 }} />
+      )}
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ fontFamily: FONTS.bold, fontSize: 14.5, color: right ? c.green : c.dangerInk }} numberOfLines={2}>{title}</Text>
+        <Text style={{ fontFamily: FONTS.body, fontSize: 13, lineHeight: 18, color: c.ink2 }} numberOfLines={3}>{text}</Text>
       </View>
-      {!right && hasParts ? <MemoLine root={root} /> : null}
-      {!right && !hasParts ? (
-        <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, lineHeight: 19, color: c.ink2 }}>
-          <Text style={{ fontWeight: "700", color: c.ink }}>{item.ko}</Text> — {item.uz}
-        </Text>
-      ) : null}
+      <Button title="Keyingi" size="sm" onPress={onNext} style={{ paddingHorizontal: 18 }} />
     </View>
   );
 }
