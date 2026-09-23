@@ -7,6 +7,7 @@
 import { NavigationContainer, DefaultTheme, DarkTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { useRef } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
@@ -58,7 +59,13 @@ function TabBar({ state, navigation }) {
   const { c } = useTheme();
   const store = useStore();
   const insets = useSafeAreaInsets();
-  const goal = store.state && store.course ? srs.reviewGoal(store.state, store.course) : null;
+  // Every answer in a session redraws the whole app, and this bar stays mounted under it. The badge is
+  // only recounted while the tabs are actually on screen; under a session it keeps its last value.
+  const cached = useRef(null);
+  if (navigation.isFocused() || !cached.current) {
+    cached.current = store.state && store.course ? srs.reviewGoal(store.state, store.course) : null;
+  }
+  const goal = cached.current;
   const badge = goal ? goal.left : 0;
 
   return (
@@ -93,11 +100,11 @@ function TabBar({ state, navigation }) {
                   alignItems: "center", justifyContent: "center",
                   backgroundColor: goal.late > 0 && !focused ? c.danger : c.green,
                 }}>
-                  <Text style={{ fontFamily: FONTS.displayBold, fontSize: 10, color: c.onGreen }}>{count > 99 ? "99+" : count}</Text>
+                  <Text maxFontSizeMultiplier={1} style={{ fontFamily: FONTS.displayBold, fontSize: 10, color: c.onGreen }}>{count > 99 ? "99+" : count}</Text>
                 </View>
               ) : null}
             </View>
-            <Text style={{ fontFamily: focused ? FONTS.bold : FONTS.body, fontSize: 11, color }}>{TAB_LABELS[route.name]}</Text>
+            <Text maxFontSizeMultiplier={1.2} numberOfLines={1} style={{ fontFamily: focused ? FONTS.bold : FONTS.body, fontSize: 11, color }}>{TAB_LABELS[route.name]}</Text>
           </Pressable>
         );
       })}

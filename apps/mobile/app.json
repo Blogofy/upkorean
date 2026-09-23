@@ -29,7 +29,8 @@
           "color": "#1B6F65"
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-web-browser"
     ]
   }
 }

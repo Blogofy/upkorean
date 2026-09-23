@@ -5,6 +5,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } fro
 import { useStore } from "../store";
 import { useColors } from "../theme";
 import { Button, Col, Field, Ko, Row, Screen, Txt } from "../ui";
+import GoogleButton, { googleReady } from "./GoogleButton";
 
 export default function SignIn({ navigation }) {
   const c = useColors();
@@ -94,6 +95,17 @@ export default function SignIn({ navigation }) {
             {error && !error.field ? <Txt t="bodySm" c="dangerInk">{error.message}</Txt> : null}
 
             <Button title="Kirish" onPress={submit} loading={busy} style={{ marginTop: 6 }} />
+
+            {googleReady(store.config) ? (
+              <>
+                <Row gap={12} style={{ paddingVertical: 4 }}>
+                  <View style={{ flex: 1, height: 1, backgroundColor: c.lineStrong }} />
+                  <Txt t="bodySm" c="ink2">yoki</Txt>
+                  <View style={{ flex: 1, height: 1, backgroundColor: c.lineStrong }} />
+                </Row>
+                <GoogleButton onError={(message) => setError({ message })} />
+              </>
+            ) : null}
 
             {store.config.demo ? (
               <>

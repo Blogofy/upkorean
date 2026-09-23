@@ -328,8 +328,18 @@ export function StoreProvider({ children }) {
 
   useEffect(() => () => clearTimeout(saveTimer.current), []);
 
+  // A renamed account or a changed password comes back from the server as a new user object.
+  const updateUser = useCallback((next) => {
+    if (!next) return;
+    userRef.current = next;
+    setUser(next);
+    writeJson(USER_KEY, next);
+    if (state.current) { state.current.profile.name = next.name; state.current.profile.email = next.email; }
+    bump();
+  }, [bump]);
+
   const value = useMemo(() => ({
-    phase, bootError, retryBoot: boot,
+    phase, bootError, retryBoot: boot, updateUser,
     user, config, levels, course, offline, syncing, syncError,
     get state() { return state.current; },
     save, flush, bump, say,
@@ -342,7 +352,7 @@ export function StoreProvider({ children }) {
     premium: !!user?.premium,
   }), [
     phase, bootError, boot, user, config, levels, course, offline, syncing, syncError,
-    save, flush, bump, say, toast, auth, signOut, deleteAccount, switchLevel, openLevel,
+    save, flush, bump, say, toast, auth, signOut, deleteAccount, switchLevel, openLevel, updateUser,
   ]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

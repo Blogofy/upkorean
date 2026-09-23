@@ -137,7 +137,7 @@ export function Button({
         ? <ActivityIndicator color={look.fg} />
         : <>
             {icon ? <Feather name={icon} size={size === "sm" ? 15 : 18} color={look.fg} /> : null}
-            <Text style={[{ fontFamily: kind === "primary" || kind === "inverse" ? FONTS.displayBold : FONTS.bold, fontSize: size === "lg" ? 16 : size === "md" ? 15 : 13.5, color: look.fg }, textStyle]}>
+            <Text maxFontSizeMultiplier={1.3} numberOfLines={1} style={[{ fontFamily: kind === "primary" || kind === "inverse" ? FONTS.displayBold : FONTS.bold, fontSize: size === "lg" ? 16 : size === "md" ? 15 : 13.5, color: look.fg }, textStyle]}>
               {title}
             </Text>
             {iconRight ? <Feather name={iconRight} size={size === "sm" ? 15 : 18} color={look.fg} /> : null}
@@ -185,7 +185,7 @@ export function Pill({ label, tone = "tint", icon, style, textStyle }) {
       style,
     ]}>
       {icon ? <Feather name={icon} size={12} color={look.fg} /> : null}
-      <Text style={[{ fontFamily: FONTS.bold, fontSize: 12.5, color: look.fg }, textStyle]}>{label}</Text>
+      <Text maxFontSizeMultiplier={1.3} style={[{ fontFamily: FONTS.bold, fontSize: 12.5, color: look.fg }, textStyle]}>{label}</Text>
     </View>
   );
 }
@@ -363,7 +363,7 @@ export function Segmented({ options, value, onChange, style }) {
               opacity: pressed ? 0.85 : 1,
             }]}
           >
-            <Text style={{ fontFamily: FONTS.bold, fontSize: 14.5, color: selected ? colors.onGreen : colors.ink2 }}>{option.label}</Text>
+            <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: FONTS.bold, fontSize: 14.5, color: selected ? colors.onGreen : colors.ink2 }}>{option.label}</Text>
             {option.sub ? (
               <Text style={{ fontFamily: FONTS.medium, fontSize: 11.5, marginTop: 2, color: selected ? colors.onGreen : colors.ink3 }}>{option.sub}</Text>
             ) : null}
@@ -689,7 +689,7 @@ export function Chip({ label, selected, onPress, tone, style, square }) {
         backgroundColor: bg, opacity: pressed ? 0.8 : 1,
       }, style]}
     >
-      <Text style={{ fontFamily: selected || tone === "soft" ? FONTS.bold : FONTS.semi, fontSize: 13, color: fg }}>{label}</Text>
+      <Text maxFontSizeMultiplier={1.3} style={{ fontFamily: selected || tone === "soft" ? FONTS.bold : FONTS.semi, fontSize: 13, color: fg }}>{label}</Text>
     </Pressable>
   );
 }
@@ -727,7 +727,7 @@ export function SessionTop({ onClose, value, total }) {
         <Feather name="x" size={16} color={colors.ink2} />
       </Pressable>
       <Bar value={value} total={total} height={8} track={colors.line} style={{ flex: 1 }} />
-      <Text style={{ fontFamily: FONTS.bold, fontSize: 13, color: colors.ink2 }}>{Math.min(value + 1, total)} / {total}</Text>
+      <Text maxFontSizeMultiplier={1.2} style={{ fontFamily: FONTS.bold, fontSize: 13, color: colors.ink2 }}>{Math.min(value + 1, total)} / {total}</Text>
     </Row>
   );
 }

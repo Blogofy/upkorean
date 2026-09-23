@@ -5,7 +5,9 @@ import * as srs from "@upkorean/shared/srs.js";
 
 import { useStore } from "../store";
 import { FONTS, useColors } from "../theme";
-import { Button, Col, Note, RingStat, Row, Screen, Stat, Title } from "../ui";
+import { Bar, Button, Col, Note, RingStat, Row, Screen, Stat, Title } from "../ui";
+
+const TYPE_LABEL = { ...srs.TYPE_NAMES, card: "Flashcard", match: "Juftlash" };
 
 export default function SessionDone({ navigation, route }) {
   const c = useColors();
@@ -48,6 +50,24 @@ export default function SessionDone({ navigation, route }) {
                 </Row>
               ))}
             </Col>
+          </View>
+        ) : null}
+
+        {Object.keys(outcome.byType || {}).length > 1 ? (
+          <View style={{ backgroundColor: c.card, borderRadius: 22, padding: 18, gap: 11 }}>
+            <Text style={{ fontFamily: FONTS.bold, fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", color: c.ink2 }}>Mashq turlari bo'yicha</Text>
+            {Object.entries(outcome.byType)
+              .sort((a, b) => b[1].bad - a[1].bad)
+              .map(([type, row]) => {
+                const all = row.ok + row.bad;
+                return (
+                  <Row key={type} gap={12}>
+                    <Text style={{ width: 118, fontFamily: FONTS.body, fontSize: 13.5, color: c.ink }} numberOfLines={1}>{TYPE_LABEL[type] || type}</Text>
+                    <Bar value={row.ok} total={all} height={8} track={row.bad ? c.dangerTint : c.tint2} style={{ flex: 1 }} />
+                    <Text style={{ minWidth: 40, textAlign: "right", fontFamily: FONTS.bold, fontSize: 13, color: row.bad ? c.danger : c.ink }}>{row.ok}/{all}</Text>
+                  </Row>
+                );
+              })}
           </View>
         ) : null}
 

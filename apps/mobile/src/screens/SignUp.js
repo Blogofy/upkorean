@@ -6,6 +6,7 @@ import { useStore } from "../store";
 import { FONTS, useColors } from "../theme";
 import { Button, Col, Field, Screen, Title, Txt } from "../ui";
 import { BackTo, StrengthBar } from "./authParts";
+import GoogleButton, { googleReady } from "./GoogleButton";
 import { PRIVACY_URL } from "../config";
 
 export default function SignUp({ navigation }) {
@@ -97,6 +98,7 @@ export default function SignUp({ navigation }) {
             <StrengthBar password={password} />
             {error && !["name", "email", "password"].includes(error.field) ? <Txt t="bodySm" c="dangerInk">{error.message}</Txt> : null}
             <Button title="Davom etish" onPress={submit} loading={busy} style={{ marginTop: 8 }} />
+            {googleReady(store.config) ? <GoogleButton label="Google bilan ro'yxatdan o'tish" onError={(message) => setError({ message })} /> : null}
           </Col>
 
           <View style={{ flex: 1, minHeight: 20 }} />

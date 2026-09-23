@@ -25,7 +25,7 @@ export default function Achievements({ navigation }) {
   const c = useColors();
   const store = useStore();
   const { state, course } = store;
-  const [board, setBoard] = useState(null);
+  const [board, setBoard] = useState(null); // null = loading, false = could not load
 
   // Anything earned since the last sitting is marked (and saved) once, here, rather than while drawing.
   useEffect(() => {
@@ -34,7 +34,7 @@ export default function Achievements({ navigation }) {
 
   useEffect(() => {
     let live = true;
-    api.leaderboard().then((data) => { if (live) setBoard(data); }).catch(() => {});
+    api.leaderboard().then((data) => { if (live) setBoard(data); }).catch(() => { if (live) setBoard(false); });
     return () => { live = false; };
   }, []);
 
@@ -77,6 +77,14 @@ export default function Achievements({ navigation }) {
           ))}
         </View>
 
+        {board === null || board === false ? (
+          <View style={{ backgroundColor: c.card, borderRadius: 22, padding: 18, gap: 6 }}>
+            <Text style={{ fontFamily: FONTS.bold, fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", color: c.ink2 }}>Haftalik reyting</Text>
+            <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2 }}>
+              {board === null ? "Yuklanmoqda…" : "Reyting internet orqali ko'rinadi — hozir aloqa yo'q."}
+            </Text>
+          </View>
+        ) : null}
         {board && board.rows?.length ? (
           <View style={{ backgroundColor: c.card, borderRadius: 22, padding: 18, gap: 13 }}>
             <Row justify="space-between" align="baseline">

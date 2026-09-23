@@ -1,7 +1,8 @@
 // 08 — Bugun. The screen the app opens on: today's day and where it stands, the review waiting, the week,
 // and the course as a strip. When yesterday went by without a lesson (31), a card says so first.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Svg, { Path } from "react-native-svg";
 
 import * as srs from "@upkorean/shared/srs.js";
@@ -11,6 +12,8 @@ import { useStore } from "../store";
 import { FONTS, shadow, useColors } from "../theme";
 import { Button, Col, Feather, Kicker, Pill, RingStat, Row, Screen, Segments, Title, Txt, tapped } from "../ui";
 import { dayLine, dayProgress, firstName, levelInfo, openReview, openStage } from "../model";
+
+const MISSED_KEY = "uk_missed_hidden_on";
 
 export const Flame = ({ size = 15, color }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -22,7 +25,9 @@ export default function Today({ navigation }) {
   const c = useColors();
   const store = useStore();
   const { state, course } = store;
-  const [hideMissed, setHideMissed] = useState(false);
+  // "Keyinroq" on the missed-day card holds for the rest of the day, not just until the app is closed.
+  const [hiddenOn, setHiddenOn] = useState(null);
+  useEffect(() => { AsyncStorage.getItem(MISSED_KEY).then(setHiddenOn).catch(() => {}); }, []);
   if (!state || !course) return null;
 
   const now = today();
@@ -34,7 +39,7 @@ export default function Today({ navigation }) {
   const finished = srs.courseDone(state, course);
   const day = srs.currentDay(state, course);
   const progress = dayProgress(state, course, day);
-  const missed = !hideMissed && !(state.act[now] && (state.act[now].learned || state.act[now].reviewed))
+  const missed = hiddenOn !== now && !(state.act[now] && (state.act[now].learned || state.act[now].reviewed))
     ? srs.missedYesterday(state, course, now) : null;
   const lastDone = day > 1 ? srs.dayState(state, day - 1) : null;
   const doneToday = !!(lastDone && lastDone.done && lastDone.doneAt === now);
@@ -49,6 +54,7 @@ export default function Today({ navigation }) {
           <Title>Salom, {firstName(state.profile.name)}</Title>
         </View>
         <Pressable
+          accessibilityLabel={`${streak} kunlik seriya`}
           onPress={() => { tapped(); navigation.navigate("More", { screen: "Achievements" }); }}
           style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 13, borderRadius: 99, backgroundColor: c.green }}
         >
@@ -66,8 +72,17 @@ export default function Today({ navigation }) {
             best={state.bestStreak}
             due={goal.due}
             onDo={() => openStage(navigation, state, course, day)}
-            onSkip={() => setHideMissed(true)}
+            onSkip={() => { setHiddenOn(now); AsyncStorage.setItem(MISSED_KEY, now).catch(() => {}); }}
           />
+        ) : null}
+
+        {fresh && !finished ? (
+          <View style={{ gap: 4, paddingHorizontal: 4 }}>
+            <Title size={19}>Birinchi kun shu yerdan boshlanadi</Title>
+            <Text style={{ fontFamily: FONTS.body, fontSize: 14, lineHeight: 20, color: c.ink2 }}>
+              Yangi so'zlar bilan tanishing — keyin ular takrorlashga o'tadi va ertadan qaytib keladi.
+            </Text>
+          </View>
         ) : null}
 
         {finished ? (
@@ -88,6 +103,8 @@ export default function Today({ navigation }) {
           />
         )}
 
+        {/* On the first day everything below the day card is still empty, so it steps back. */}
+        <View style={{ gap: 14, opacity: fresh ? 0.55 : 1 }}>
         <Row gap={12} align="stretch">
           <View style={{ flex: 1, backgroundColor: c.card, borderRadius: 22, padding: 18, gap: 12 }}>
             <Text style={label(c)}>Takrorlash</Text>
@@ -142,6 +159,7 @@ export default function Today({ navigation }) {
           </View>
           <Feather name="chevron-right" size={16} color={c.ink4} />
         </Pressable>
+        </View>
       </ScrollView>
     </Screen>
   );

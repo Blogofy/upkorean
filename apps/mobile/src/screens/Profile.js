@@ -6,7 +6,8 @@ import * as srs from "@upkorean/shared/srs.js";
 
 import { useStore } from "../store";
 import { FONTS, useColors } from "../theme";
-import { BackLink, Button, Dialog, Field, ListRow, Row, Screen, Segmented, Title, Toggle } from "../ui";
+import { BackLink, Button, Dialog, Field, ListRow, Row, Screen, Segmented, Sheet, Title, Toggle } from "../ui";
+import { api } from "../api";
 import { initial, levelInfo } from "../model";
 import { syncReminder } from "../notify";
 import { PRIVACY_URL } from "../config";
@@ -24,6 +25,7 @@ export default function Profile({ navigation }) {
   const { state, course, user } = store;
   const [leaveAsk, setLeaveAsk] = useState(false);
   const [removeAsk, setRemoveAsk] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   if (!state || !course) return null;
 
   const profile = state.profile;
@@ -78,6 +80,9 @@ export default function Profile({ navigation }) {
               value={profile.pace}
               onChange={(pace) => set(() => { profile.pace = pace; })}
             />
+            <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, lineHeight: 18, color: c.ink4 }}>
+              {paceLine(state, course, profile.pace)}
+            </Text>
           </View>
           <View style={{ gap: 10 }}>
             <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2 }}>Kunlik takrorlash maqsadi</Text>
@@ -120,7 +125,7 @@ export default function Profile({ navigation }) {
           <ListRow title="Daraja" sub={`${level.ko} · ${level.uz}`} onPress={() => navigation.navigate("LevelSwitch")} />
           <ListRow title="Ma'lumotlarni yuklab olish" sub="o'rganilgan so'zlar ro'yxati" onPress={exportData} />
           <ListRow title="Maxfiylik siyosati" sub="qanday ma'lumot saqlanadi" onPress={() => Linking.openURL(PRIVACY_URL)} />
-          <ListRow last title="Hisob" sub={user?.email || profile.email} chevron={false} />
+          <ListRow last title="Hisob" sub={user?.email || profile.email} onPress={user?.demo ? undefined : () => setAccountOpen(true)} chevron={!user?.demo} />
         </View>
 
         <Button title="Chiqish" kind="white" textStyle={{ color: c.danger }} onPress={() => setLeaveAsk(true)} style={{ marginTop: 6 }} />
@@ -142,6 +147,7 @@ export default function Profile({ navigation }) {
         onCancel={() => setLeaveAsk(false)}
       />
       <RemoveAccount visible={removeAsk} onClose={() => setRemoveAsk(false)} />
+      <AccountSheet visible={accountOpen} onClose={() => setAccountOpen(false)} />
     </Screen>
   );
 }
@@ -190,3 +196,65 @@ function RemoveAccount({ visible, onClose }) {
 }
 
 const eyebrow = (c) => ({ fontFamily: FONTS.bold, fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", color: c.ink2 });
+
+// How long the rest of the level takes at a pace, so changing it is not a leap in the dark.
+function paceLine(state, course, pace) {
+  const left = Math.max(0, course.words.length - srs.learnedIds(state, course).length);
+  if (!left) return "Darajadagi barcha so'zlar o'rganilgan.";
+  const days = Math.ceil(left / pace);
+  return `Qolgan ${left} so'z shu sur'atda taxminan ${days} kunda tugaydi.`;
+}
+
+// Name and password, in a sheet from the "Hisob" row. The server signs every other device out on a
+// password change and hands this one a new session, which api.changePassword keeps.
+function AccountSheet({ visible, onClose }) {
+  const c = useColors();
+  const store = useStore();
+  const [name, setName] = useState(store.user?.name || "");
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [busy, setBusy] = useState(null);
+  const [error, setError] = useState(null);
+
+  const rename = async () => {
+    setBusy("name"); setError(null);
+    try {
+      const data = await api.rename(name.trim());
+      store.updateUser(data.user);
+      store.say("Ism saqlandi", "ok");
+    } catch (problem) { setError({ field: "name", message: problem.message }); }
+    finally { setBusy(null); }
+  };
+  const password = async () => {
+    setBusy("password"); setError(null);
+    try {
+      const data = await api.changePassword(current, next);
+      if (data?.user) store.updateUser(data.user);
+      setCurrent(""); setNext("");
+      store.say("Parol o'zgartirildi. Boshqa qurilmalardan chiqildi.", "ok");
+      onClose();
+    } catch (problem) { setError({ field: problem.field === "current" ? "current" : "next", message: problem.message }); }
+    finally { setBusy(null); }
+  };
+
+  return (
+    <Sheet visible={visible} onClose={onClose} title="Hisob">
+      <View style={{ paddingHorizontal: 22, gap: 14, paddingBottom: 8 }}>
+        <View style={{ backgroundColor: c.card, borderRadius: 20, padding: 16, gap: 12 }}>
+          <Field label="Ism" value={name} onChangeText={(t) => { setName(t); setError(null); }} autoCapitalize="words" boxStyle={{ backgroundColor: c.tint }}
+            error={error?.field === "name" ? error.message : null} />
+          <Button title="Ismni saqlash" size="md" loading={busy === "name"} disabled={!name.trim() || name.trim() === store.user?.name} onPress={rename} />
+        </View>
+        {store.user?.hasPassword ? (
+          <View style={{ backgroundColor: c.card, borderRadius: 20, padding: 16, gap: 12 }}>
+            <Field label="Hozirgi parol" value={current} onChangeText={(t) => { setCurrent(t); setError(null); }} secureTextEntry autoCapitalize="none" boxStyle={{ backgroundColor: c.tint }}
+              error={error?.field === "current" ? error.message : null} />
+            <Field label="Yangi parol" value={next} onChangeText={(t) => { setNext(t); setError(null); }} secureTextEntry autoCapitalize="none" boxStyle={{ backgroundColor: c.tint }}
+              hint="kamida 8 belgi" error={error?.field === "next" ? error.message : null} />
+            <Button title="Parolni o'zgartirish" size="md" kind="soft" loading={busy === "password"} disabled={!current || next.length < 8} onPress={password} />
+          </View>
+        ) : null}
+      </View>
+    </Sheet>
+  );
+}

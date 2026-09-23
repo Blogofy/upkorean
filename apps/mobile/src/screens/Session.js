@@ -175,7 +175,7 @@ export default function Session({ navigation, route }) {
       } else if (result === "pair") tapped("light");
       else if (result === "done") { tapped("ok"); store.save(); }
       redraw();
-    }} onSkip={advance} />; break;
+    }} onSkip={() => { ex.matchSkip(state, session); tapped("bad"); store.save(); redraw(); }} />; break;
     case "type": body = (
       <Typing
         item={item} session={session} typed={typed} hint={hint}
@@ -545,13 +545,15 @@ function Typing({ item, session, typed, hint, onHint, onSkip }) {
 
 function HangulKeyboard({ shift, onKey, onShift, onBack, onClear, onSpace, onSubmit, canSubmit }) {
   const c = useColors();
-  const key = (label, onPress, style = {}, textStyle = {}) => (
+  const key = (label, onPress, style = {}, textStyle = {}, onLongPress) => (
     <Pressable
       key={label}
+      accessibilityLabel={{ "⇧": "Shift", "⌫": "O'chirish", " ": "Bo'sh joy" }[label] || label}
       onPress={() => { tapped(); onPress(); }}
+      onLongPress={onLongPress ? () => { tapped("medium"); onLongPress(); } : undefined}
       style={({ pressed }) => [{ height: 42, borderRadius: 7, backgroundColor: c.card, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.6 : 1 }, style]}
     >
-      <Text style={[{ fontSize: 17, fontWeight: "500", color: c.ink }, textStyle]}>{label}</Text>
+      <Text maxFontSizeMultiplier={1.15} style={[{ fontSize: 17, fontWeight: "500", color: c.ink }, textStyle]}>{label}</Text>
     </Pressable>
   );
   const mod = { backgroundColor: c.keyMod };
@@ -563,11 +565,10 @@ function HangulKeyboard({ shift, onKey, onShift, onBack, onClear, onSpace, onSub
       <Row gap={5}>
         {key("⇧", onShift, { flex: 1.4, ...(shift ? { backgroundColor: c.green } : mod) }, { ...modText, color: shift ? c.onGreen : c.keyInk })}
         {KEYS[2].map((k) => key(k, () => onKey(k), { flex: 1 }))}
-        {key("⌫", onBack, { flex: 1.4, ...mod }, modText)}
+        {key("⌫", onBack, { flex: 1.4, ...mod }, modText, onClear)}
       </Row>
       <Row gap={5}>
-        {key("Tozalash", onClear, { flex: 1.2, ...mod }, { ...modText, fontSize: 12 })}
-        {key(" ", onSpace, { flex: 3 })}
+        {key(" ", onSpace, { flex: 3.2 })}
         {key("Tekshirish", onSubmit, { flex: 1.6, backgroundColor: c.green, opacity: canSubmit ? 1 : 0.5 }, { fontFamily: FONTS.displayBold, fontSize: 14, color: c.onGreen })}
       </Row>
     </View>

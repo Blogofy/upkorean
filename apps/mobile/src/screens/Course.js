@@ -37,7 +37,8 @@ export default function Course({ navigation }) {
     <Screen>
       <TabHeader
         title="Kurs"
-        subtitle={`${level.ko} · ${doneDays} / ${course.dayCount} kun`}
+        subtitle={`${level.ko} · ${doneDays} / ${course.dayCount} kun  ·  darajani almashtirish ›`}
+        onSubtitle={() => { tapped(); navigation.navigate("LevelSwitch"); }}
         right={
           <Pressable onPress={() => { tapped(); navigation.navigate("LevelSwitch"); }} style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 8, paddingHorizontal: 13, borderRadius: 99, backgroundColor: c.card }}>
             <Text style={{ fontSize: 14, fontWeight: "700", color: c.ink }}>{level.ko}</Text>
@@ -70,7 +71,7 @@ export default function Course({ navigation }) {
                       borderWidth: isCurrent ? 3 : 0, borderColor: c.greenLine, opacity: pressed ? 0.8 : 1,
                     }]}
                   >
-                    <Text style={{ fontFamily: isCurrent ? FONTS.displayBold : done ? FONTS.bold : FONTS.semi, fontSize: 14, color: fg }}>{day}</Text>
+                    <Text maxFontSizeMultiplier={1.2} style={{ fontFamily: isCurrent ? FONTS.displayBold : done ? FONTS.bold : FONTS.semi, fontSize: 14, color: fg }}>{day}</Text>
                   </Pressable>
                 </View>
               );

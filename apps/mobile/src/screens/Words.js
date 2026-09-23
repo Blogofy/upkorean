@@ -18,7 +18,9 @@ export default function Words({ navigation }) {
   const store = useStore();
   const { state, course } = store;
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState("all");
+  // Opening on the whole level buries the words already learned among hundreds not met yet, so the list
+  // starts on the learned ones as soon as there are any.
+  const [filter, setFilter] = useState(() => (store.state && store.course && srs.learnedIds(store.state, store.course).length ? "learned" : "all"));
   const [open, setOpen] = useState(null);
 
   const learnedCount = state && course ? srs.learnedIds(state, course).length : 0;
@@ -86,14 +88,14 @@ export default function Words({ navigation }) {
             style={{ flex: 1, paddingVertical: 13, fontFamily: FONTS.body, fontSize: 15, color: c.ink }}
           />
           {query ? (
-            <Pressable hitSlop={10} onPress={() => setQuery("")} style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: c.locked, alignItems: "center", justifyContent: "center" }}>
+            <Pressable accessibilityLabel="Qidiruvni tozalash" hitSlop={10} onPress={() => setQuery("")} style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: c.locked, alignItems: "center", justifyContent: "center" }}>
               <Feather name="x" size={12} color={c.ink2} />
             </Pressable>
           ) : null}
         </Row>
         <Row gap={7} wrap>
           <Chip label="Hammasi" selected={filter === "all"} onPress={() => setFilter("all")} />
-          <Chip label="O'rganilgan" selected={filter === "learned"} onPress={() => setFilter("learned")} />
+          <Chip label={learnedCount ? `O'rganilgan · ${learnedCount}` : "O'rganilgan"} selected={filter === "learned"} onPress={() => setFilter("learned")} />
           <Chip label={weakCount ? `Qiyin · ${weakCount}` : "Qiyin"} selected={filter === "weak"} onPress={() => setFilter("weak")} />
           <Chip label="Belgilangan" selected={filter === "flag"} onPress={() => setFilter("flag")} />
         </Row>
@@ -110,6 +112,7 @@ export default function Words({ navigation }) {
           renderItem={({ item, index }) => {
             const weak = srs.isWeak(state, item.id);
             const memory = state.words[item.id];
+            const known = srs.isLearned(state, item.id);
             const first = index === 0, last = index === rows.length - 1;
             return (
               <Pressable
@@ -122,13 +125,13 @@ export default function Words({ navigation }) {
                 }]}
               >
                 <Row gap={14} style={{ paddingVertical: 14, borderBottomWidth: last ? 0 : 1, borderBottomColor: c.tint2 }}>
-                  <View style={{ flex: 1, gap: 2 }}>
+                  <View style={{ flex: 1, gap: 2, opacity: known ? 1 : 0.5 }}>
                     <Text style={{ fontSize: 19, fontWeight: "700", color: c.ink }} numberOfLines={1}>{item.ko}</Text>
                     <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: weak ? c.danger : c.ink2 }} numberOfLines={1}>
-                      {item.uz} · {weak ? `${memory.bad} xato` : `${item.day}-kun`}
+                      {known ? `${item.uz} · ${weak ? `${memory.bad} xato` : `${item.day}-kun`}` : `${item.day}-kunda o'rganiladi`}
                     </Text>
                   </View>
-                  <Ticks level={srs.mastery(state, item.id)} weak={weak} width={6} height={16} />
+                  {known ? <Ticks level={srs.mastery(state, item.id)} weak={weak} width={6} height={16} /> : <Feather name="lock" size={15} color={c.ink4} />}
                 </Row>
               </Pressable>
             );
