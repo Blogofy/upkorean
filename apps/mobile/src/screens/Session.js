@@ -53,6 +53,7 @@ export default function Session({ navigation, route }) {
   useStopAudioOnLeave();
 
   const [, redraw] = useReducer((n) => n + 1, 0);
+  const scroller = useRef(null);
   const [exitAsk, setExitAsk] = useState(false);
   const [restAsk, setRestAsk] = useState(false);
   const leaving = useRef(false);
@@ -83,6 +84,13 @@ export default function Session({ navigation, route }) {
     else if (auto && item.type === "intro") narrator.play("words", item.id);
     else if (auto && item.type === "card" && session.phase === "back") narrator.play("words", item.id);
   }, [session?.idx, session?.phase]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The verdict takes the bottom of the screen; when the answers no longer fit above it, the list scrolls
+  // to its end so the right one is never hidden behind the card.
+  useEffect(() => {
+    if (session?.phase === "a") setTimeout(() => scroller.current?.scrollToEnd({ animated: true }), 60);
+    else scroller.current?.scrollTo({ y: 0, animated: false });
+  }, [session?.idx, session?.phase]);
 
   // Practice with a time limit: an unanswered question counts as missed when the time runs out.
   const [clock, setClock] = useState(0);
@@ -192,7 +200,7 @@ export default function Session({ navigation, route }) {
           <Bar value={TIME_LIMIT_MS - clock} total={TIME_LIMIT_MS} height={3} color={clock > 15000 ? c.danger : c.green} />
         </View>
       ) : null}
-      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 18, paddingBottom: 16 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scroller} contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 18, paddingBottom: 16 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {body}
       </ScrollView>
       {answeredNow && item.type !== "match" ? <Verdict item={item} session={session} onNext={advance} /> : null}
@@ -394,14 +402,14 @@ function Choose({ item, session, onChoose, onConfirm }) {
   if (item.type === "listen") {
     const playing = isPlaying("words", item.id);
     prompt = (
-      <View style={{ backgroundColor: c.green, borderRadius: 26, paddingVertical: 40, paddingHorizontal: 22, alignItems: "center", gap: 18 }}>
+      <View style={{ backgroundColor: c.green, borderRadius: 26, paddingVertical: 20, paddingHorizontal: 22, alignItems: "center", gap: 12 }}>
         <Text style={{ fontFamily: FONTS.bold, fontSize: 12, letterSpacing: 1.6, textTransform: "uppercase", color: c.greenTint }}>Eshiting va tanlang</Text>
         <Pressable
           accessibilityLabel="Eshitish"
           onPress={() => { tapped(); play("words", item.id); }}
-          style={({ pressed }) => [{ width: 92, height: 92, borderRadius: 46, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", transform: [{ scale: pressed ? 0.96 : 1 }] }]}
+          style={({ pressed }) => [{ width: 76, height: 76, borderRadius: 38, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", transform: [{ scale: pressed ? 0.96 : 1 }] }]}
         >
-          <PlayIcon size={30} color={c.green} />
+          <PlayIcon size={26} color={c.green} />
         </Pressable>
         <Wave active={playing} />
         <Pressable onPress={() => { tapped(); play("words", item.id, { rate: 0.7 }); }} style={{ paddingVertical: 9, paddingHorizontal: 18, borderRadius: 99, backgroundColor: "#FFFFFF" }}>
@@ -430,11 +438,11 @@ function Choose({ item, session, onChoose, onConfirm }) {
   } else {
     const fromKorean = item.type === "mc";
     prompt = (
-      <View style={{ backgroundColor: c.card, borderRadius: 26, paddingVertical: 34, paddingHorizontal: 22, alignItems: "center", gap: 10 }}>
+      <View style={{ backgroundColor: c.card, borderRadius: 26, paddingVertical: 24, paddingHorizontal: 22, alignItems: "center", gap: 8 }}>
         <Text style={eyebrow(c)}>{fromKorean ? "Tarjimasini tanlang" : "Koreyschasini tanlang"}</Text>
         {fromKorean ? (
           <>
-            <Text style={{ fontSize: 60, lineHeight: 76, fontWeight: "700", color: c.ink }} adjustsFontSizeToFit numberOfLines={1}>{item.ko}</Text>
+            <Text style={{ fontSize: 52, lineHeight: 66, fontWeight: "700", color: c.ink }} adjustsFontSizeToFit numberOfLines={1}>{item.ko}</Text>
             <Text style={{ fontFamily: FONTS.body, fontSize: 15, color: c.ink2 }}>{reading(item.ko)} · {item.day}-kun</Text>
           </>
         ) : (
@@ -459,8 +467,7 @@ function Choose({ item, session, onChoose, onConfirm }) {
   return (
     <View style={{ flex: 1 }}>
       {prompt}
-      <View style={{ flex: 1, minHeight: 18 }} />
-      <View style={{ gap: 10, paddingBottom: 6 }}>
+      <View style={{ gap: 10, marginTop: 14, paddingBottom: 6 }}>
         {item.opts.map((option, index) => (
           <Option
             key={`${index}-${option}`}
@@ -635,19 +642,20 @@ function Verdict({ item, session, onNext }) {
   }
 
   return (
-    <View style={[{ marginHorizontal: 18, marginBottom: 26, marginTop: 4, backgroundColor: c.card, borderRadius: 24, paddingVertical: 18, paddingHorizontal: 20, gap: 14 }, shadow(c, 1)]}>
-      <Row align="flex-start" gap={12}>
-        {right ? <Radio selected onGreen={false} /> : (
-          <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: c.danger, alignItems: "center", justifyContent: "center" }}>
-            <Feather name="x" size={15} color="#FFFFFF" />
-          </View>
-        )}
-        <View style={{ flex: 1, gap: 3 }}>
-          <Text style={{ fontFamily: FONTS.bold, fontSize: 15, color: right ? c.green : c.dangerInk }}>{title}</Text>
-          <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, lineHeight: 20, color: c.ink2 }}>{text}</Text>
+    <View style={[{
+      marginHorizontal: 18, marginBottom: 14, marginTop: 4, backgroundColor: c.card, borderRadius: 22,
+      paddingVertical: 14, paddingLeft: 16, paddingRight: 14, flexDirection: "row", alignItems: "center", gap: 12,
+    }, shadow(c, 1)]}>
+      {right ? <Radio selected onGreen={false} /> : (
+        <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: c.danger, alignItems: "center", justifyContent: "center" }}>
+          <Feather name="x" size={15} color="#FFFFFF" />
         </View>
-      </Row>
-      <Button title="Keyingi" size="md" onPress={onNext} />
+      )}
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ fontFamily: FONTS.bold, fontSize: 14.5, color: right ? c.green : c.dangerInk }} numberOfLines={2}>{title}</Text>
+        <Text style={{ fontFamily: FONTS.body, fontSize: 13, lineHeight: 18, color: c.ink2 }} numberOfLines={3}>{text}</Text>
+      </View>
+      <Button title="Keyingi" size="sm" onPress={onNext} style={{ paddingHorizontal: 18 }} />
     </View>
   );
 }
