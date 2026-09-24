@@ -1,4 +1,4 @@
-// 26 — Profil. Who, the daily load, the reminder, night mode, the narrator, and the account itself.
+// 26 — Profil. Who, the daily plan, the reminder, night mode, the narrator, and the account itself.
 import { useState } from "react";
 import { Linking, Modal, Pressable, ScrollView, Share, Text, View } from "react-native";
 
@@ -8,7 +8,7 @@ import { useStore } from "../store";
 import { FONTS, useColors } from "../theme";
 import { BackLink, Button, Dialog, Field, ListRow, Row, Screen, Segmented, Sheet, Title, Toggle } from "../ui";
 import { api } from "../api";
-import { initial, levelInfo } from "../model";
+import { initial, levelInfo, standardLine } from "../model";
 import { syncReminder } from "../notify";
 import { PRIVACY_URL, SOURCE_URL } from "../config";
 
@@ -38,7 +38,7 @@ export default function Profile({ navigation }) {
   const reminder = async (next) => {
     set(() => { profile.reminders = { ...profile.reminders, ...next }; });
     if (profile.reminders.on) {
-      const allowed = await syncReminder(profile.reminders, { ask: true });
+      const allowed = await syncReminder(profile.reminders, { ask: true, keptToday: srs.planMet(state), words: srs.dailyWords(state) });
       if (!allowed) store.say("Telefon sozlamalarida bildirishnomalarga ruxsat bering", "bad");
     } else syncReminder(profile.reminders);
   };
@@ -72,16 +72,14 @@ export default function Profile({ navigation }) {
         </Row>
 
         <View style={{ backgroundColor: c.card, borderRadius: 22, padding: 18, gap: 14 }}>
-          <Text style={eyebrow(c)}>Kunlik yuk</Text>
-          <View style={{ gap: 10 }}>
-            <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2 }}>Kuniga nechta yangi so'z</Text>
-            <Segmented
-              options={srs.PACE_IDS.map((id) => ({ value: id, label: String(id) }))}
-              value={profile.pace}
-              onChange={(pace) => set(() => { profile.pace = pace; })}
-            />
+          <Text style={eyebrow(c)}>Kunlik reja</Text>
+          <View style={{ gap: 6 }}>
+            <Row justify="space-between">
+              <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2 }}>{level.ko} darajasida kuniga</Text>
+              <Text style={{ fontFamily: FONTS.bold, fontSize: 15, color: c.ink }}>{standardLine(srs.dailyWords(state))}</Text>
+            </Row>
             <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, lineHeight: 18, color: c.ink4 }}>
-              {paceLine(state, course, profile.pace)}
+              {planLine(state, course)}
             </Text>
           </View>
           <View style={{ gap: 10 }}>
@@ -97,7 +95,7 @@ export default function Profile({ navigation }) {
         <View style={{ backgroundColor: c.card, borderRadius: 22, paddingVertical: 6, paddingHorizontal: 18 }}>
           <ListRow
             title="Eslatmalar"
-            sub={profile.reminders.on ? `har kuni ${profile.reminders.at} da` : "o'chirilgan"}
+            sub={profile.reminders.on ? `reja bajarilmagan kuni ${profile.reminders.at} da` : "o'chirilgan"}
             right={<Toggle value={profile.reminders.on} onChange={(on) => reminder({ on })} />}
             chevron={false}
           />
@@ -199,12 +197,11 @@ function RemoveAccount({ visible, onClose }) {
 
 const eyebrow = (c) => ({ fontFamily: FONTS.bold, fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", color: c.ink2 });
 
-// How long the rest of the level takes at a pace, so changing it is not a leap in the dark.
-function paceLine(state, course, pace) {
+// How long the rest of the level takes at its standard. The standard grows with the level (20, 30, 40).
+function planLine(state, course) {
   const left = Math.max(0, course.words.length - srs.learnedIds(state, course).length);
-  if (!left) return "Darajadagi barcha so'zlar o'rganilgan.";
-  const days = srs.daysAtPace(left, pace);
-  return `Qolgan ${left} so'z shu sur'atda taxminan ${days} kunda tugaydi.`;
+  if (!left) return "Ochiq so'zlarning hammasi o'rganilgan.";
+  return `Qolgan ${left} so'z rejaga ko'ra taxminan ${srs.daysFor(left, course.level)} kunda tugaydi. Daraja oshgani sari reja ham oshadi.`;
 }
 
 // Name and password, in a sheet from the "Hisob" row. The server signs every other device out on a

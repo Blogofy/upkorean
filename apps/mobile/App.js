@@ -17,6 +17,8 @@ import { Figtree_500Medium } from "@expo-google-fonts/figtree/500Medium";
 import { Figtree_600SemiBold } from "@expo-google-fonts/figtree/600SemiBold";
 import { Figtree_700Bold } from "@expo-google-fonts/figtree/700Bold";
 
+import * as srs from "@upkorean/shared/srs.js";
+
 import { StoreProvider, useStore } from "./src/store";
 import { ThemeProvider, useTheme } from "./src/theme";
 import { AppFlow, AuthFlow, Navigation } from "./src/nav";
@@ -58,11 +60,14 @@ function Shell() {
   const { c, scheme } = useTheme();
   const reminders = store.state?.profile?.reminders;
   const onboarded = !!store.state?.profile?.onboarded;
+  const keptToday = store.state ? srs.planMet(store.state) : false;
+  const words = store.state ? srs.dailyWords(store.state) : 20;
 
-  // Whatever the phone has scheduled is replaced by what the profile says, on every start and change.
+  // Whatever the phone has scheduled is replaced by what the profile says, on every start and change — and
+  // once today's plan is kept, today's reminder is dropped.
   useEffect(() => {
-    if (store.phase === "ready" && onboarded) syncReminder(reminders);
-  }, [store.phase, onboarded, reminders?.on, reminders?.at]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (store.phase === "ready" && onboarded) syncReminder(reminders, { keptToday, words });
+  }, [store.phase, onboarded, reminders?.on, reminders?.at, keptToday, words]); // eslint-disable-line react-hooks/exhaustive-deps
 
   let body;
   if (store.phase === "boot") body = <Loading label="UpKorean ochilmoqda…" />;

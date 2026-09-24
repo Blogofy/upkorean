@@ -64,12 +64,18 @@ export const lessonLine = (progress) => `${progress.words} so'z · ~${srs.LESSON
 // The level's NIKL grade a lesson belongs to, as the course list heads its sections: "1급".
 export const gradeName = (grade) => `${grade}급`;
 
-// Today's goal in words — the lessons finished today against the pace — for the home screen's ring.
+// Today's plan in words — what was learned today against the level's standard — for the home screen's ring.
+// `goal` is 0 once the level has no new words left, and then the day is kept by any study at all.
 export function todayGoal(state, now = today()) {
-  const goal = (srs.PACES[state.profile.pace] || srs.PACES[srs.DEFAULT_PACE]).words;
+  const goal = srs.dayGoal(state, now);
   const learned = (state.act[now] || {}).learned || 0;
-  return { goal, learned, left: Math.max(0, goal - learned), done: learned >= goal };
+  return { goal, learned, left: Math.max(0, goal - learned), done: srs.planMet(state, now) || (goal > 0 && learned >= goal) };
 }
+
+// "20 so'z · 2 dars" — a daily standard as the plan screens say it.
+export const standardLine = (words) => `${words} so'z · ${Math.round(words / srs.LESSON_SIZE)} dars`;
+// A rough price for a day at that standard: its lessons, and about ten minutes of review on top.
+export const dailyMinutes = (words) => Math.round(words / srs.LESSON_SIZE) * srs.LESSON_MINUTES + 10;
 
 // Whether a word's recording exists yet. The narrator reads the course as it grows, and a play button that
 // makes no sound reads as a broken app, so a word without one simply has no button.

@@ -102,6 +102,25 @@ test("a clean lesson teaches all ten words and finishes the lesson", () => {
   assert.equal(srs.activity(state).learned, ids.length);
 });
 
+test("\"Bilaman\" takes a word out of the rest of the lesson", () => {
+  const state = fresh();
+  const ids = lessonIds(1);
+  const session = ex.newSession("learn", ex.lessonItems(state, course, ids, { audio: false }), { lesson: 1, category: "learn", xpStart: state.xp });
+  const before = session.items.length;
+  const known = ex.current(session).id;
+  assert.equal(ex.introKnown(state, session), true);
+  assert.ok(session.items.length < before);
+  assert.ok(session.items.slice(1).every((item) => item.id !== known || item.type === "match"), "no question about it is left");
+  assert.ok(session.items.filter((item) => item.type === "match").every((item) => !item.ids.includes(known) && item.ids.length >= 2));
+  assert.equal(state.words[known].s, srs.KNOWN_STEP);
+
+  ex.next(session);
+  answerAll(state, session, true);
+  ex.finish(state, session, course);
+  assert.equal(state.words[known].s, srs.KNOWN_STEP, "finishing the lesson does not pull it back to the first interval");
+  assert.ok(ids.every((id) => srs.isLearned(state, id)));
+});
+
 test("a wrong answer comes back later in the same lesson", () => {
   const state = fresh();
   const items = [ex.makeItem(course, "mc", "b-1"), ex.makeItem(course, "mc", "b-2")];

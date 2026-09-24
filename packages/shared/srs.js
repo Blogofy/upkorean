@@ -11,8 +11,11 @@ import { addDays, diffDays, today, weekStart, WEEK_SHORT } from "./dates.js";
 import { parseWordId } from "./course/levels.js";
 
 // The review ladder, in days between repetitions. A new word is seen again after 1, then 3, 7, 16, 35 and
-// 75 days from when it was met — the intervals below are the gaps, not the totals.
-export const INTERVALS = [1, 2, 4, 9, 19, 40];
+// 75 days from when it was met, and after that every three, then every six months — the intervals below are
+// the gaps, not the totals. The top is long on purpose: a learner meets the words again in grammar, reading
+// and tests outside the app, which the app cannot see, and a ladder that brought every known word back each
+// month would bury the day under reviews by the second year.
+export const INTERVALS = [1, 2, 4, 9, 19, 40, 90, 180];
 // From this step on a word counts as mastered: four correct recalls at growing distances.
 export const MASTER_STEP = 4;
 // XP needed for each level. Past the end, every further level costs another XP_STEP, so a learner who
@@ -20,21 +23,17 @@ export const MASTER_STEP = 4;
 export const XP_LEVELS = [0, 300, 800, 1500, 2400, 3500, 4600, 5500, 6800, 8300, 10000, 12000, 14200, 16600, 19200];
 export const XP_STEP = 2600;
 
-// How many new words a day asks for: one, two or three lessons. The course is one long path with no
-// calendar in it, so the pace alone decides how long a level takes. Past the goal nothing stops anyone —
-// the next lesson is always one tap away — but the goal is what a learner can keep up for months.
-export const PACES = {
-  10: { id: 10, name: "Yengil", words: 10, minutes: 10, desc: "1 dars · ~10 daqiqa" },
-  20: { id: 20, name: "Muvozanatli", words: 20, minutes: 18, desc: "2 dars · ~18 daqiqa", recommended: true },
-  30: { id: 30, name: "Jadal", words: 30, minutes: 27, desc: "3 dars · ~27 daqiqa" },
-};
-export const PACE_IDS = [10, 20, 30];
-export const DEFAULT_PACE = 20;
-// How many days the words left take at a pace — what the pace pickers promise.
-export const daysAtPace = (words, pace) => Math.max(1, Math.ceil(words / (PACES[pace] || PACES[DEFAULT_PACE]).words));
-// A day's review target, by pace. Everything over it is spread across the coming days rather than left to
-// pile up: a queue that grows every day is read as one's own failure, and is why people stop opening the app.
-export const REVIEW_GOALS = { 10: 30, 20: 50, 30: 80 };
+// The daily standard: new words a day, by level. Not a choice — a learner offered one takes the lightest,
+// and a course is only as good as the days it is actually kept. A beginner's words are all new; higher up
+// most of them lean on words already known, so the day can carry more. Past the standard nothing stops
+// anyone: the next lesson is always one tap away.
+export const DAILY_WORDS = { b: 20, m: 30, a: 40 };
+export const dailyWords = (state) => DAILY_WORDS[state.profile.level] || DAILY_WORDS.b;
+// How many days a number of words takes at a level's standard — what the plan screens promise.
+export const daysFor = (words, level) => Math.max(1, Math.ceil(words / (DAILY_WORDS[level] || DAILY_WORDS.b)));
+// A day's review target. Everything over it is spread across the coming days rather than left to pile up: a
+// queue that grows every day is read as one's own failure, and is why people stop opening the app.
+export const DEFAULT_REVIEW_GOAL = 50;
 export const REVIEW_GOAL_CHOICES = [30, 50, 80];
 // How far ahead the overflow may land. A word pushed further than a week is a word lost anyway.
 export const PUSH_DAYS = 7;
@@ -69,8 +68,8 @@ export function freshState(profile = {}) {
   return {
     v: 2,
     profile: {
-      name: "", email: "", joined: today(), level: "b", pace: DEFAULT_PACE, goal: "topik",
-      reviewGoal: REVIEW_GOALS[DEFAULT_PACE], onboarded: false,
+      name: "", email: "", joined: today(), level: "b", goal: "topik",
+      reviewGoal: DEFAULT_REVIEW_GOAL, onboarded: false,
       reminders: { on: true, at: "20:00" },
       ...profile,
     },
@@ -91,8 +90,9 @@ export function normalize(state) {
   state.settings = { ...fresh.settings, ...state.settings };
   state.profile = { ...fresh.profile, ...state.profile };
   state.profile.reminders = { ...fresh.profile.reminders, ...state.profile.reminders };
-  if (!PACES[state.profile.pace]) state.profile.pace = DEFAULT_PACE;
-  if (!Number.isFinite(state.profile.reviewGoal)) state.profile.reviewGoal = REVIEW_GOALS[state.profile.pace];
+  // The pace the learner used to pick; the standard now comes with the level.
+  delete state.profile.pace;
+  if (!Number.isFinite(state.profile.reviewGoal)) state.profile.reviewGoal = DEFAULT_REVIEW_GOAL;
   for (const type of EX_TYPES) if (!state.typeStats[type]) state.typeStats[type] = { ok: 0, bad: 0 };
   // The course was rebuilt from nothing (NIKL lessons in place of the book's 50 days of "<level>-<day>-<i>"
   // words): progress on words and days that no longer exist only weighs the object down.
@@ -170,6 +170,24 @@ export function introduce(state, id, now = today()) {
   word.last = now;
 }
 
+// "Bilaman": a word the learner already knows from somewhere else — a grammar class, a drama. It skips the
+// lesson's practice and goes straight to a nine-day interval; the first review after that checks the claim,
+// and a miss there drops it to the bottom like any other.
+export const KNOWN_STEP = 3;
+export function markKnown(state, id, now = today()) {
+  const word = touch(state, id);
+  if (!word.learned) {
+    word.learned = now;
+    activity(state, now).learned++;
+    addXP(state, 2, now);
+  }
+  word.seen++;
+  word.ok++;
+  word.last = now;
+  word.known = true;
+  setStep(word, Math.max(word.s, KNOWN_STEP), now);
+}
+
 export function settleIntroduced(state, ids, mistakes, now = today()) {
   for (const id of ids) {
     const word = state.words[id];
@@ -216,9 +234,11 @@ export function setNote(state, id, text) {
 }
 
 // ---------- Activity, XP, log ----------
+// A day's record. It is born with the level's standard as its goal; setDayGoal trims that when the level has
+// fewer new words left.
 export function activity(state, date = today()) {
   const key = date;
-  return (state.act[key] = state.act[key] || { learned: 0, reviewed: 0, xp: 0, min: { learn: 0, review: 0, quiz: 0 } });
+  return (state.act[key] = state.act[key] || { learned: 0, reviewed: 0, xp: 0, min: { learn: 0, review: 0, quiz: 0 }, goal: dailyWords(state) });
 }
 export function addXP(state, n, now = today()) {
   state.xp += n;
@@ -238,11 +258,31 @@ export function log(state, text, kind = "p") {
 const actMinutes = (act) => (act ? Object.values(act.min || {}).reduce((sum, v) => sum + v, 0) : 0);
 const isActive = (act) => !!act && (act.learned > 0 || act.reviewed > 0 || actMinutes(act) >= 1);
 
+// A day's new-word goal is written into the day itself (setDayGoal), so a later change of level cannot
+// rewrite what an old day asked for. A day kept its plan when that many words were learned; a day with
+// nothing new left to learn (goal 0) counts on any study, and so does a day from before goals were written.
+export const dayGoal = (state, date = today()) => {
+  const act = state.act[date];
+  return act && Number.isFinite(act.goal) ? act.goal : dailyWords(state);
+};
+const dayMet = (act) => !!act && (Number.isFinite(act.goal) && act.goal > 0 ? act.learned >= act.goal : isActive(act));
+export const planMet = (state, date = today()) => dayMet(state.act[date]);
+
+// Records what today asks for: the level's standard, or fewer when fewer new words are left in the level.
+export function setDayGoal(state, course, now = today()) {
+  const left = course.words.filter((word) => !isLearned(state, word.id)).length;
+  const act = activity(state, now);
+  const goal = Math.min(dailyWords(state), act.learned + left);
+  if (act.goal !== goal) act.goal = goal;
+  return goal;
+}
+
+// Days in a row the plan was kept. Today not kept yet does not break it — the day is not over.
 export function streak(state, now = today()) {
   let day = now;
-  if (!isActive(state.act[day])) day = addDays(day, -1);
+  if (!dayMet(state.act[day])) day = addDays(day, -1);
   let n = 0;
-  while (isActive(state.act[day])) { n++; day = addDays(day, -1); }
+  while (dayMet(state.act[day])) { n++; day = addDays(day, -1); }
   if (n > (state.bestStreak || 0)) state.bestStreak = n;
   return n;
 }
@@ -280,7 +320,7 @@ export function weekRhythm(state, now = today()) {
       label, key,
       minutes: dayMinutes(state, key),
       words: (state.act[key] || {}).learned || 0,
-      active: isActive(state.act[key]),
+      active: dayMet(state.act[key]),
       today: key === now,
       future: key > now,
     };
@@ -319,6 +359,18 @@ export function lessonStatus(state, course, n) {
 
 // Lessons finished today, for the home screen: the daily goal is counted in words, and a lesson is ten.
 export const lessonsToday = (state, now = today()) => Object.values(state.lessons).filter((record) => record.doneAt === now).length;
+
+// Where the learner stands against the plan: the lessons the level's standard would have finished by the
+// end of yesterday, counted from the day this level's first lesson was done, against the lessons done. Today
+// is left out — the day is not over — so `behind` is only ever work that is really late.
+export function planStatus(state, course, now = today()) {
+  const started = course.lessons.slice(1).map((lesson) => lessonState(state, lesson.id).doneAt).filter(Boolean).sort()[0];
+  const done = lessonsDone(state, course);
+  if (!started) return { started: null, expected: 0, done, behind: 0 };
+  const perDay = dailyWords(state) / LESSON_SIZE;
+  const expected = Math.min(course.lessonCount, Math.max(0, diffDays(started, now)) * perDay);
+  return { started, expected, done, behind: Math.max(0, Math.floor(expected - done)) };
+}
 
 // ---------- Selectors over what has been learned ----------
 export const learnedIds = (state, course) => Object.keys(state.words).filter((id) => isLearned(state, id) && course.byId[id]);
@@ -360,7 +412,7 @@ export function masteryBreakdown(state, course) {
 }
 
 // ---------- The daily review goal ----------
-const paceGoal = (state) => state.profile.reviewGoal || REVIEW_GOALS[state.profile.pace] || REVIEW_GOALS[DEFAULT_PACE];
+const paceGoal = (state) => state.profile.reviewGoal || DEFAULT_REVIEW_GOAL;
 
 // Today's target: goal — what this learner asked for, due — what is really due, done — what today already
 // cleared, left — what remains, minutes — a rough price. A pure read: it is called from render paths and
@@ -388,10 +440,13 @@ export function reviewQueue(state, course, mode = "due", n, now = today()) {
 
 // The day transition. Runs once per local day and never from a render. Today's queue is cut to the goal and
 // the overflow moved into the coming days, so a learner doing their part meets a number they can finish.
-// Returns true when it really rolled the day over.
+// Returns true when it changed anything worth saving.
 export function newDay(state, course, now = today()) {
   if (!state) return false;
-  if (state.dueStart && state.dueStart.date === now) return false;
+  const before = state.act[now] && state.act[now].goal;
+  setDayGoal(state, course, now);
+  // Today's goal can move without the day turning over: a switched level, a level run short of new words.
+  if (state.dueStart && state.dueStart.date === now) return state.act[now].goal !== before;
   const goal = paceGoal(state);
   const ids = dueIds(state, course, now); // most overdue first
   if (ids.length > goal) pushForward(state, course, ids.slice(0, ids.length - goal), now);
@@ -420,10 +475,10 @@ function pushForward(state, course, ids, now) {
   }
 }
 
-// Was yesterday missed? The skipped-day screen asks, and the streak card needs the same answer.
+// Was yesterday's plan missed? The missed-day card asks, and the streak needs the same answer.
 export function missedYesterday(state, course, now = today()) {
   const yesterday = addDays(now, -1);
-  if (!state.act[yesterday] && !isActive(state.act[yesterday])) {
+  if (!dayMet(state.act[yesterday])) {
     const started = Object.keys(state.act).some((key) => key < yesterday && isActive(state.act[key]));
     if (started) return { date: yesterday, lesson: currentLesson(state, course) };
   }
@@ -436,9 +491,11 @@ export function challenge(state, course, now = today()) {
   const { goal, due } = reviewGoal(state, course, now);
   const act = state.act[now] || { learned: 0, reviewed: 0 };
   const target = state.dueStart && state.dueStart.date === now ? Math.min(state.dueStart.n, goal) : Math.min(goal, due);
-  const newWords = PACES[state.profile.pace].words;
+  const newWords = dayGoal(state, now);
   const items = [
-    { label: `${newWords} so'z o'rganish`, cur: Math.min(act.learned, newWords), goal: newWords },
+    newWords > 0
+      ? { label: `${newWords} so'z o'rganish`, cur: Math.min(act.learned, newWords), goal: newWords }
+      : { label: "Yangi so'z qolmadi", cur: 1, goal: 1 },
     target > 0
       ? { label: `${target} so'zni takrorlash`, cur: Math.min(act.reviewed, target), goal: target }
       : { label: "Bugun takrorlash yo'q", cur: 1, goal: 1 },
@@ -464,9 +521,9 @@ export function achievementList(state, course) {
   const first = lessonAt(course, 1);
   return [
     { id: "first", ko: "첫", title: "Birinchi qadam", desc: "Birinchi dars tugatildi", ok: () => lessonDone(state, course, 1), progress: () => `${lessonLearned(state, course, 1)} / ${first ? first.ids.length : 0}` },
-    { id: "s3", ko: "삼", title: "3 kunlik seriya", desc: "3 kun ketma-ket", ok: () => state.bestStreak >= 3, progress: () => `${state.bestStreak || 0} / 3` },
-    { id: "s10", ko: "십", title: "10 kunlik seriya", desc: "10 kun ketma-ket", ok: () => state.bestStreak >= 10, progress: () => `${state.bestStreak || 0} / 10` },
-    { id: "s30", ko: "삼십", title: "30 kunlik seriya", desc: "30 kun ketma-ket", ok: () => state.bestStreak >= 30, progress: () => `${state.bestStreak || 0} / 30` },
+    { id: "s3", ko: "삼", title: "3 kunlik seriya", desc: "3 kun ketma-ket reja bajarildi", ok: () => state.bestStreak >= 3, progress: () => `${state.bestStreak || 0} / 3` },
+    { id: "s10", ko: "십", title: "10 kunlik seriya", desc: "10 kun ketma-ket reja bajarildi", ok: () => state.bestStreak >= 10, progress: () => `${state.bestStreak || 0} / 10` },
+    { id: "s30", ko: "삼십", title: "30 kunlik seriya", desc: "30 kun ketma-ket reja bajarildi", ok: () => state.bestStreak >= 30, progress: () => `${state.bestStreak || 0} / 30` },
     { id: "w100", ko: "백", title: "100 so'z", desc: "100 ta so'z o'rganildi", ok: () => learned >= 100, progress: () => `${learned} / 100` },
     { id: "w300", ko: "삼백", title: "300 so'z", desc: "300 ta so'z o'rganildi", ok: () => learned >= 300, progress: () => `${learned} / 300` },
     { id: "w500", ko: "오백", title: "500 so'z", desc: "500 ta so'z o'rganildi", ok: () => learned >= 500, progress: () => `${learned} / 500` },

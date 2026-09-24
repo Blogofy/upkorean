@@ -133,6 +133,18 @@ test("new entries from either side survive; a finished lesson stays finished", (
   assert.deepEqual(m.lessons["b-2"], { done: false, ok: 2, bad: 0, min: 1, xp: 6 });
 });
 
+test("a day's goal is kept through a merge, the smaller one when the devices disagree", () => {
+  const base = baseState();
+  const phone = clone(base), laptop = clone(base);
+  phone.act["2026-09-16"] = { learned: 20, reviewed: 0, xp: 60, min: { learn: 8 }, goal: 20 };
+  laptop.act["2026-09-16"] = { learned: 5, reviewed: 10, xp: 30, min: { review: 4 }, goal: 5 };
+  const m = mergeStates(base, phone, laptop);
+  assert.equal(m.act["2026-09-16"].goal, 5);
+  assert.equal(m.act["2026-09-16"].learned, 25);
+  const old = mergeStates(base, base, clone(base));
+  assert.equal(old.act["2026-09-15"].goal, undefined, "a day written before goals stays without one");
+});
+
 test("the removal of the old course's days syncs like any other change", () => {
   const base = { ...baseState(), days: { 1: { stage: 2, done: false } } };
   const cur = clone(base);

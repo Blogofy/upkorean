@@ -1,8 +1,11 @@
 // The one daily reminder, scheduled on the phone itself.
 //
-// The server used to send Web Push to browsers; the app does not need a server for this. A local
-// notification repeats every day at the learner's chosen time and survives the app being closed, and it
-// is rescheduled whenever the setting changes or the app starts, so it always matches the saved profile.
+// The server used to send Web Push to browsers; the app does not need a server for this. The reminder is a
+// local notification at the learner's chosen time, one for each of the next two weeks — not a repeating
+// one, so that a day whose plan is already kept can be left out: a reminder that nags after the work is
+// done teaches people to ignore it. It is rescheduled whenever the setting changes, the app starts or
+// today's plan is kept, so it always matches the saved profile. Someone who stays away for two weeks stops
+// hearing from the app, which is kinder than a reminder they have learnt to swipe away.
 //
 // Expo Go on Android refuses to even load expo-notifications (it throws on import since SDK 53), so the
 // module is required lazily and never inside Expo Go. There the reminder is simply off; a development or
@@ -11,6 +14,7 @@ import { Platform } from "react-native";
 import Constants, { ExecutionEnvironment } from "expo-constants";
 
 const CHANNEL = "reminders";
+const DAYS_AHEAD = 14;
 const IN_EXPO_GO = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 let module = null;
@@ -30,9 +34,21 @@ function notifications() {
   return module;
 }
 
-// Turns the reminder on or off to match `reminders` ({ on, at: "HH:MM" }). Returns false when the learner
-// has not allowed notifications, so the screen can say why nothing will arrive.
-export async function syncReminder(reminders, { ask = false } = {}) {
+// Turns the reminder on or off to match `reminders` ({ on, at: "HH:MM" }). `keptToday` leaves today out;
+// `words` is the day's standard, which the reminder names.
+// Returns false when the learner has not allowed notifications, so the screen can say why nothing will
+// arrive.
+//
+// Calls run one after another: the profile and the app shell can both ask at once, and two runs interleaving
+// their cancel-then-schedule would leave every reminder scheduled twice.
+let queue = Promise.resolve();
+export function syncReminder(reminders, options) {
+  const run = queue.then(() => schedule(reminders, options));
+  queue = run.catch(() => {});
+  return run;
+}
+
+async function schedule(reminders, { ask = false, keptToday = false, words = 20 } = {}) {
   const Notifications = notifications();
   // Expo Go: nothing to schedule, and no reason to tell the learner to change a permission.
   if (!Notifications) return true;
@@ -51,18 +67,18 @@ export async function syncReminder(reminders, { ask = false } = {}) {
       });
     }
     const [hour, minute] = String(reminders.at || "20:00").split(":").map(Number);
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: "UpKorean",
-        body: "Bugungi so'zlar sizni kutmoqda — seriyani saqlab qoling.",
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour: Number.isFinite(hour) ? hour : 20,
-        minute: Number.isFinite(minute) ? minute : 0,
-        channelId: CHANNEL,
-      },
-    });
+    const now = new Date();
+    for (let i = keptToday ? 1 : 0; i < DAYS_AHEAD; i++) {
+      const at = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i, Number.isFinite(hour) ? hour : 20, Number.isFinite(minute) ? minute : 0);
+      if (at <= now) continue;
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "UpKorean",
+          body: `Bugungi reja hali bajarilmagan — ${words} ta yangi so'z. Seriyani saqlab qoling.`,
+        },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: at, channelId: CHANNEL },
+      });
+    }
     return true;
   } catch {
     return false;

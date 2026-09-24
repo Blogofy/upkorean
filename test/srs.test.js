@@ -233,13 +233,13 @@ test("an achievement is only ever earned once", () => {
 test("today's two targets are ones a learner can finish", () => {
   const state = fresh();
   const now = "2026-09-22";
-  state.profile.pace = 30;
+  state.profile.level = "m";
   state.profile.reviewGoal = 50;
   ids(1).forEach((id) => {
     state.words[id] = { s: 2, due: now, learned: "2026-09-01", seen: 3, ok: 3, bad: 0, lapses: 0, flag: false, forgot: false, last: null };
   });
   const challenge = srs.challenge(state, course, now);
-  assert.equal(challenge.items[0].goal, 30, "the new-word target is the pace");
+  assert.equal(challenge.items[0].goal, 30, "the new-word target is the level's standard");
   assert.equal(challenge.items[1].goal, 10, "the review target is what is really due, not the goal");
   assert.equal(challenge.done, false);
 
@@ -252,18 +252,97 @@ test("today's two targets are ones a learner can finish", () => {
 });
 
 test("state from an older version is filled in rather than rejected", () => {
-  const old = { v: 1, words: { "b-1-0": { s: 1 }, "b-36": { s: 2 } }, days: { 1: { stage: 2 } }, profile: { name: "Aziz", pace: 17 }, xp: 40 };
+  const old = { v: 1, words: { "b-1-0": { s: 1 }, "b-36": { s: 2 } }, days: { 1: { stage: 2 } }, profile: { name: "Aziz", pace: 30 }, xp: 40 };
   const state = srs.normalize(old);
   assert.equal(state.words["b-1-0"], undefined, "a word of the old book course is gone");
   assert.deepEqual(state.words["b-36"], { s: 2 }, "a word of the NIKL course stays");
   assert.equal(state.days, undefined, "and so are its days");
   assert.deepEqual(state.lessons, {});
-  assert.equal(state.profile.pace, srs.DEFAULT_PACE, "a pace that no longer exists falls back");
+  assert.equal(state.profile.pace, undefined, "the pace the learner used to pick is gone: the level sets it");
   assert.equal(state.profile.level, "b");
-  assert.equal(state.profile.reviewGoal, srs.REVIEW_GOALS[srs.DEFAULT_PACE]);
+  assert.equal(state.profile.reviewGoal, srs.DEFAULT_REVIEW_GOAL);
   assert.equal(state.xp, 40, "and nothing real is lost");
   assert.ok(state.typeStats.listen);
   assert.deepEqual(state.quizResults, []);
+});
+
+test("the daily standard comes with the level, and so does how long a level takes", () => {
+  const state = fresh();
+  assert.equal(srs.dailyWords(state), 20);
+  state.profile.level = "m";
+  assert.equal(srs.dailyWords(state), 30);
+  state.profile.level = "a";
+  assert.equal(srs.dailyWords(state), 40);
+  assert.equal(srs.daysFor(1835, "b"), 92);
+  assert.equal(srs.daysFor(3855, "m"), 129);
+});
+
+test("a day counts toward the streak only when its plan was kept", () => {
+  const state = fresh();
+  const now = "2026-09-22";
+  const yesterday = addDays(now, -1), before = addDays(now, -2), older = addDays(now, -3);
+  state.act[older] = { learned: 4, reviewed: 0, xp: 10, min: { learn: 5 } }; // written before goals existed
+  state.act[before] = { learned: 20, reviewed: 3, xp: 90, min: { learn: 12 }, goal: 20 };
+  state.act[yesterday] = { learned: 12, reviewed: 40, xp: 80, min: { learn: 9, review: 12 }, goal: 20 };
+  assert.equal(srs.planMet(state, yesterday), false, "twelve of twenty is not the plan, however long the reviews were");
+  assert.equal(srs.streak(state, now), 0);
+  assert.ok(srs.missedYesterday(state, course, now), "and the home screen says so");
+
+  state.act[yesterday].learned = 20;
+  assert.equal(srs.streak(state, now), 3, "an old day without a goal still counts on any study");
+
+  state.act[now] = { learned: 0, reviewed: 5, xp: 10, min: { review: 3 }, goal: 0 };
+  assert.equal(srs.streak(state, now), 4, "with no new words left, studying at all keeps the plan");
+});
+
+test("today's goal shrinks when the level has fewer new words left", () => {
+  const state = fresh();
+  const now = "2026-09-22";
+  assert.equal(srs.setDayGoal(state, course, now), 20);
+  for (const id of [...ids(1), ...ids(2)]) srs.introduce(state, id, now);
+  for (const id of ids(3).slice(0, 5)) srs.introduce(state, id, now);
+  assert.equal(srs.setDayGoal(state, course, now), 20, "twenty-five learned today already meet it");
+  const next = addDays(now, 1);
+  assert.equal(srs.setDayGoal(state, course, next), 5, "the next day only five are left to learn");
+  for (const id of ids(3).slice(5)) srs.introduce(state, id, next);
+  assert.ok(srs.planMet(state, next));
+  assert.equal(srs.setDayGoal(state, course, addDays(next, 1)), 0, "and after that none");
+});
+
+test("the plan says how far behind the learner is, never counting today", () => {
+  const state = fresh();
+  const now = "2026-09-22";
+  assert.equal(srs.planStatus(state, course, now).behind, 0, "nothing started, nothing late");
+  state.lessons["b-1"] = { done: true, doneAt: now };
+  assert.equal(srs.planStatus(state, course, now).behind, 0, "the first day is not over yet");
+  const later = addDays(now, 1);
+  assert.equal(srs.planStatus(state, course, later).expected, 2, "one day at twenty words is two lessons");
+  assert.equal(srs.planStatus(state, course, later).behind, 1);
+  assert.equal(srs.planStatus(state, course, addDays(now, 5)).expected, 3, "never more lessons than the level has");
+});
+
+test("a word marked known skips ahead nine days and still counts as met", () => {
+  const state = fresh();
+  const now = "2026-09-22";
+  srs.markKnown(state, "b-7", now);
+  const word = state.words["b-7"];
+  assert.equal(word.learned, now);
+  assert.equal(word.s, srs.KNOWN_STEP);
+  assert.ok(word.due >= addDays(now, 7), "the first check comes about nine days later");
+  assert.equal(srs.activity(state, now).learned, 1, "it counts toward today's words");
+  srs.answer(state, "b-7", false, "mc", "review", word.due);
+  assert.equal(state.words["b-7"].s, 0, "a miss at that check drops it like any other word");
+});
+
+test("a well-known word comes back after three and then six months, not every month", () => {
+  assert.equal(srs.INTERVALS[srs.INTERVALS.length - 1], 180);
+  const state = fresh();
+  const id = "b-8";
+  let now = "2026-01-01";
+  srs.answer(state, id, true, "mc", "learn", now);
+  for (let i = 0; i < 10; i++) { now = state.words[id].due; srs.answer(state, id, true, "mc", "review", now); }
+  const gap = Number(new Date(state.words[id].due)) - Number(new Date(now));
+  assert.ok(gap / 86400000 >= 150, "the top of the ladder is half a year");
 });
 
 test("today() and the date helpers agree with each other", () => {

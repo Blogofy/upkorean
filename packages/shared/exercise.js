@@ -300,6 +300,25 @@ export function gradeCard(state, session, g, now = today()) {
   return days;
 }
 
+// "Bilaman" on a new word's card: the word is marked known (srs.markKnown) and everything the sitting still
+// had to ask about it is taken out — its questions, its place in a matching board, its closing round.
+export function introKnown(state, session, now = today()) {
+  const item = current(session);
+  if (!item || item.type !== "intro") return false;
+  trackTime(session);
+  srs.markKnown(state, item.id, now);
+  const kept = session.items.slice(0, session.idx + 1);
+  for (const later of session.items.slice(session.idx + 1)) {
+    if (later.type === "match" && later.ids.includes(item.id)) {
+      const ids = later.ids.filter((id) => id !== item.id);
+      if (ids.length >= 2) kept.push({ ...later, ids, koOrder: later.koOrder.filter((id) => id !== item.id), uzOrder: later.uzOrder.filter((id) => id !== item.id) });
+    } else if (later.id !== item.id) kept.push(later);
+  }
+  session.items.length = 0;
+  session.items.push(...kept);
+  return true;
+}
+
 export function introNext(state, session, now = today()) {
   const item = current(session);
   if (!item || item.type !== "intro") return false;
@@ -408,6 +427,8 @@ export function finish(state, session, course, now = today()) {
     const lesson = srs.lessonAt(course, session.lesson);
     const record2 = (state.lessons[lesson.id] = state.lessons[lesson.id] || { done: false, ok: 0, bad: 0, min: 0, xp: 0 });
     srs.settleIntroduced(state, session.items.filter((item) => item.type === "intro").map((item) => item.id), session.mistakes, now);
+    // The lesson may have been the level's last new words, which lowers what today can still ask for.
+    srs.setDayGoal(state, course, now);
     record2.ok = (record2.ok || 0) + session.ok;
     record2.bad = (record2.bad || 0) + session.bad;
     record2.min = (record2.min || 0) + session.activeMs / 60000;

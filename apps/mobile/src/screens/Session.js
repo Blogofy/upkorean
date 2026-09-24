@@ -199,9 +199,12 @@ export default function Session({ navigation, route }) {
         <FadeIn key={"v" + session.idx} distance={36} duration={220}><Verdict item={item} session={session} onNext={advance} /></FadeIn>
       ) : null}
       {item.type === "intro" ? (
-        <View style={{ paddingHorizontal: 18, paddingTop: 14, paddingBottom: 14, borderTopWidth: 1, borderTopColor: c.line }}>
-          <Button title="Tushundim" onPress={() => { ex.introNext(state, session); store.save(); advance(); }} />
-        </View>
+        // "Bilaman" is for a word already known from elsewhere: it skips the word's practice here, and the
+        // schedule checks it again in about nine days.
+        <Row gap={10} style={{ paddingHorizontal: 18, paddingTop: 14, paddingBottom: 14, borderTopWidth: 1, borderTopColor: c.line }}>
+          <Button title="Bilaman" kind="tint" style={{ flex: 1 }} onPress={() => { ex.introKnown(state, session); store.save(); advance(); }} />
+          <Button title="Tushundim" style={{ flex: 2 }} onPress={() => { ex.introNext(state, session); store.save(); advance(); }} />
+        </Row>
       ) : null}
       {answeredNow && item.type === "match" ? (
         <View style={{ paddingHorizontal: 18, paddingBottom: 26 }}>

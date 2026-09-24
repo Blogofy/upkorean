@@ -1,4 +1,4 @@
-// 04–07 — Onboarding: why, how much a day, which level, and the plan that follows from the three.
+// 04–07 — Onboarding: why, the daily plan, which level, and the plan that follows from them.
 //
 // One screen with four steps rather than four routes: the answers belong together until the last button,
 // and "Orqaga" should step back through them, not out of the app. Nothing is saved until "Birinchi darsni boshlash".
@@ -11,7 +11,7 @@ import { addDays, fmtDayMonth, today } from "@upkorean/shared/dates.js";
 import { useStore } from "../store";
 import { FONTS, useColors } from "../theme";
 import { Button, Choice, Col, FadeIn, Row, Screen, Segmented, Title, Toggle, Txt } from "../ui";
-import { allLevels, LEVEL_BLURB } from "../model";
+import { allLevels, dailyMinutes, LEVEL_BLURB, standardLine } from "../model";
 import { syncReminder } from "../notify";
 
 const TIMES = ["08:00", "13:00", "20:00"];
@@ -25,7 +25,6 @@ export default function Onboarding({ navigation }) {
 
   const [step, setStep] = useState(0);
   const [goal, setGoal] = useState(profile.goal || "topik");
-  const [pace, setPace] = useState(profile.pace || srs.DEFAULT_PACE);
   const [remind, setRemind] = useState(profile.reminders?.on ?? true);
   const [at, setAt] = useState(TIMES.includes(profile.reminders?.at) ? profile.reminders.at : "20:00");
   const [levelId, setLevelId] = useState(() => {
@@ -35,16 +34,14 @@ export default function Onboarding({ navigation }) {
   const [busy, setBusy] = useState(false);
 
   const level = levels.find((l) => l.id === levelId) || levels[0];
-  const paceInfo = srs.PACES[pace];
-  const levelDays = srs.daysAtPace(level.planned, pace);
+  const perDay = srs.DAILY_WORDS[level.id];
+  const levelDays = srs.daysFor(level.planned, level.id);
 
   const finish = async () => {
     if (busy) return;
     setBusy(true);
     const state = store.state;
     state.profile.goal = goal;
-    state.profile.pace = pace;
-    state.profile.reviewGoal = srs.REVIEW_GOALS[pace];
     state.profile.reminders = { on: remind, at };
     try {
       if (state.profile.level !== levelId) await store.switchLevel(levelId);
@@ -52,7 +49,7 @@ export default function Onboarding({ navigation }) {
       store.say(problem.message, "bad");
     }
     if (remind) {
-      const allowed = await syncReminder({ on: true, at }, { ask: true });
+      const allowed = await syncReminder({ on: true, at }, { ask: true, words: srs.DAILY_WORDS[levelId] });
       if (!allowed) store.say("Eslatma uchun bildirishnomalarga ruxsat bering");
     }
     state.profile.onboarded = true;
@@ -82,8 +79,8 @@ export default function Onboarding({ navigation }) {
     const rows = [
       ["Jami so'z", String(level.planned)],
       ["Darslar", `${Math.ceil(level.planned / srs.LESSON_SIZE)} ta, har biri ${srs.LESSON_SIZE} so'z`],
-      ["Kuniga yangi so'z", String(paceInfo.words)],
-      ["Kunlik vaqt", `~${paceInfo.minutes} daq`],
+      ["Kunlik reja", standardLine(perDay)],
+      ["Kunlik vaqt", `~${dailyMinutes(perDay)} daq`],
       ["Daraja davomiyligi", `${levelDays} kun`],
     ];
     return (
@@ -94,7 +91,7 @@ export default function Onboarding({ navigation }) {
               <Text style={{ fontSize: 26, fontWeight: "700", color: c.onGreen }}>{level.ko}</Text>
             </View>
             <Title size={29} style={{ marginTop: 6 }}>Rejangiz tayyor</Title>
-            <Txt c="ink2" style={{ textAlign: "center" }}>{level.uz} daraja · {paceInfo.name.toLowerCase()} sur'at</Txt>
+            <Txt c="ink2" style={{ textAlign: "center" }}>{level.uz} daraja · kuniga {perDay} so'z</Txt>
           </View>
           <View style={{ backgroundColor: c.card, borderRadius: 24, paddingVertical: 8, paddingHorizontal: 22, marginTop: 8 }}>
             {rows.map(([label, value], i) => (
@@ -109,7 +106,7 @@ export default function Onboarding({ navigation }) {
               Tugatish sanasi: {fmtDayMonth(addDays(today(), levelDays - 1))}
             </Text>
             <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, lineHeight: 20, color: c.greenDeep }}>
-              Har kuni bajarsangiz. Sur'atni istalgan payt Profildan o'zgartirasiz.
+              Har kuni rejani bajarsangiz. Reja bajarilgan kun seriyaga qo'shiladi, xohlasangiz ko'proq ham qilasiz.
             </Text>
           </View>
           <View style={{ flex: 1, minHeight: 12 }} />
@@ -136,25 +133,27 @@ export default function Onboarding({ navigation }) {
       next: "Davom etish",
     },
     1: {
-      title: "Kuniga qancha vaqt ajratasiz?",
-      lead: "Keyin Profil'dan istalgan vaqtda o'zgartirasiz.",
+      title: "Kunlik reja",
+      lead: "Tizimli o'qish har kuni bir xil miqdordan boshlanadi. Daraja oshgani sari so'z ko'payadi.",
       body: (
         <Col gap={11}>
-          {srs.PACE_IDS.map((id) => (
-            <Choice
-              key={id}
-              title={srs.PACES[id].name}
-              desc={srs.PACES[id].desc}
-              right={`${srs.daysAtPace(level.planned, id)} kun`}
-              selected={pace === id}
-              onPress={() => setPace(id)}
-            />
-          ))}
+          <View style={{ backgroundColor: c.card, borderRadius: 20, paddingVertical: 6, paddingHorizontal: 20 }}>
+            {levels.map((l, i) => (
+              <Row key={l.id} gap={14} style={{ paddingVertical: 14, borderBottomWidth: i < levels.length - 1 ? 1 : 0, borderBottomColor: c.tint2 }}>
+                <Text style={{ width: 46, fontSize: 16, fontWeight: "700", color: c.ink }}>{l.ko}</Text>
+                <Text style={{ flex: 1, fontFamily: FONTS.bold, fontSize: 15, color: c.ink }}>{standardLine(srs.DAILY_WORDS[l.id])}</Text>
+                <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: c.ink2 }}>~{dailyMinutes(srs.DAILY_WORDS[l.id])} daq</Text>
+              </Row>
+            ))}
+          </View>
+          <Text style={{ fontFamily: FONTS.body, fontSize: 13, lineHeight: 19, color: c.ink2, paddingHorizontal: 4 }}>
+            Reja bajarilgan kun seriyaga qo'shiladi. Vaqtingiz bo'lsa, ko'proq ham qilasiz.
+          </Text>
           <View style={{ marginTop: 11, backgroundColor: c.card, borderRadius: 20, padding: 20, gap: 14 }}>
             <Row gap={14}>
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={{ fontFamily: FONTS.bold, fontSize: 15, color: c.ink }}>Kunlik eslatma</Text>
-                <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: c.ink2 }}>unutmaslik uchun bitta bildirishnoma</Text>
+                <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: c.ink2 }}>reja bajarilmagan kuni bitta bildirishnoma</Text>
               </View>
               <Toggle value={remind} onChange={setRemind} />
             </Row>

@@ -40,6 +40,7 @@ export default function Today({ navigation }) {
   const current = srs.currentLesson(state, course);
   const progress = lessonProgress(state, course, current);
   const daily = todayGoal(state, now);
+  const plan = srs.planStatus(state, course, now);
   const missed = hiddenOn !== now && !(state.act[now] && (state.act[now].learned || state.act[now].reviewed))
     ? srs.missedYesterday(state, course, now) : null;
   // Nothing learned yet: there is nothing to review, and "bugun bajarildi" would praise work not done.
@@ -74,6 +75,8 @@ export default function Today({ navigation }) {
             onSkip={() => { setHiddenOn(now); AsyncStorage.setItem(MISSED_KEY, now).catch(() => {}); }}
           />
         ) : null}
+
+        {plan.behind > 0 && !finished && !missed ? <BehindCard plan={plan} /> : null}
 
         {fresh && !finished ? (
           <View style={{ gap: 4, paddingHorizontal: 4 }}>
@@ -171,6 +174,7 @@ function LessonCard({ progress, daily, course, onOpen, onStart }) {
   const c = useColors();
   const words = progress.ids.map((id) => course.byId[id]).filter(Boolean);
   const shown = Math.min(daily.learned, daily.goal);
+  const ring = daily.goal > 0;
   return (
     <Pressable onPress={onOpen} style={[{ backgroundColor: c.card, borderRadius: 26, padding: 22, gap: 16 }, shadow(c, 2)]}>
       <Row justify="space-between" align="flex-start" gap={14}>
@@ -179,14 +183,16 @@ function LessonCard({ progress, daily, course, onOpen, onStart }) {
           <Title size={23}>{progress.title}</Title>
           <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: c.ink2 }}>{lessonLine(progress)}</Text>
         </View>
-        <View style={{ alignItems: "center", gap: 4 }}>
-          <RingStat value={shown} total={daily.goal} size={52} />
-          <Text style={{ fontFamily: FONTS.semi, fontSize: 11.5, color: c.ink2 }}>{shown}/{daily.goal} so'z</Text>
-        </View>
+        {ring ? (
+          <View style={{ alignItems: "center", gap: 4 }}>
+            <RingStat value={shown} total={daily.goal} size={52} />
+            <Text style={{ fontFamily: FONTS.semi, fontSize: 11.5, color: c.ink2 }}>{shown}/{daily.goal} so'z</Text>
+          </View>
+        ) : null}
       </Row>
       {daily.done ? (
         <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, lineHeight: 19, color: c.ink2, marginTop: -4 }}>
-          Bugungi maqsad bajarildi. Vaqtingiz bo'lsa, yana bitta dars — 10 ta so'z.
+          Bugungi reja bajarildi. Vaqtingiz bo'lsa, yana bitta dars — 10 ta so'z.
         </Text>
       ) : null}
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7 }}>
@@ -206,6 +212,26 @@ function LessonCard({ progress, daily, course, onOpen, onStart }) {
   );
 }
 
+// Days behind the plan, as lessons. Named plainly, with the way back: the plan is kept by catching up, not
+// by starting over.
+function BehindCard({ plan }) {
+  const c = useColors();
+  const n = plan.behind;
+  return (
+    <Row gap={14} style={{ backgroundColor: c.dangerTint, borderRadius: 20, paddingVertical: 15, paddingHorizontal: 16 }}>
+      <View style={{ width: 38, height: 38, borderRadius: 13, backgroundColor: c.card, alignItems: "center", justifyContent: "center" }}>
+        <Text style={{ fontFamily: FONTS.displayBold, fontSize: 16, color: c.danger }}>{n}</Text>
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ fontFamily: FONTS.bold, fontSize: 14.5, color: c.dangerInk }}>Rejadan {n} dars ortdasiz</Text>
+        <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, lineHeight: 17, color: c.dangerInk }}>
+          Reja bo'yicha {Math.floor(plan.expected)}-darsgacha yetgan bo'lishingiz kerak edi. Bugun bir-ikki dars ko'proq qilib yetib oling.
+        </Text>
+      </View>
+    </Row>
+  );
+}
+
 // 31 — the day after a missed one. It names what was lost and offers the straight way back.
 function MissedCard({ missed, best, due, onDo, onSkip }) {
   const c = useColors();
@@ -216,7 +242,7 @@ function MissedCard({ missed, best, due, onDo, onSkip }) {
           <Feather name="clock" size={21} color={c.danger} />
         </View>
         <View style={{ flex: 1, gap: 2 }}>
-          <Title size={20}>Kecha dars qoldi</Title>
+          <Title size={20}>Kechagi reja bajarilmadi</Title>
           <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2 }}>{fmtDayMonth(missed.date)} · seriya uzildi</Text>
         </View>
       </Row>

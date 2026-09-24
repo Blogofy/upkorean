@@ -117,7 +117,12 @@
     const min = {};
     const bmin = b ? b.min || {} : undefined;
     for (const k of keys(l.min, r.min)) min[k] = counter(from(bmin, k), l.min && l.min[k], r.min && r.min[k]);
-    return { learned: counter(from(b, "learned"), l.learned, r.learned), reviewed: counter(from(b, "reviewed"), l.reviewed, r.reviewed), xp: counter(from(b, "xp"), l.xp, r.xp), min };
+    const o = { learned: counter(from(b, "learned"), l.learned, r.learned), reviewed: counter(from(b, "reviewed"), l.reviewed, r.reviewed), xp: counter(from(b, "xp"), l.xp, r.xp), min };
+    // The day's new-word goal is a setting, not a counter: the smaller one when the devices disagree (one of
+    // them saw the level run short of new words), and whichever exists when only one has it.
+    const goals = [l.goal, r.goal].filter(Number.isFinite);
+    if (goals.length) o.goal = Math.min(...goals);
+    return o;
   }
 
   function unionList(l, r, id, order, cap) {
