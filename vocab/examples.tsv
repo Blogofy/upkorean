@@ -3,3 +3,553 @@
 # cloze — "gapni to'ldirish" mashqida yashiriladigan qism (ixtiyoriy); uz — o'zbekcha tarjima, so'z {qavs} ichida;
 # note — ixtiyoriy izoh.
 key	ko	hl	cloze	uz	note
+것	그 사람 것이에요.	것	것	O'sha odamning {narsasi}.	
+하다01	그것을 해요.	해요	해요	O'shani {qilaman}.	
+있다01/있다02	앞에 사람이 있어요.	있어요	있어요	Oldinda odam {bor}.	
+그02/그01	그 사람이 앞에 있어요.	그	그	{O'sha} odam oldinda.	
+되다01	그것도 돼요.	돼요	돼요	U ham {bo'ladi}.	
+나01/나00	나도 있어요.	나	나	{Men}da ham bor.	
+사람	사람이 있어요?	사람	사람	{Odam} bormi?	
+우리02	우리도 해요.	우리	우리	{Biz} ham qilamiz.	
+그것	그것이 있어요?	그것	그것	{O'sha narsa} bormi?	
+앞	그 사람 앞에 있어요.	앞	앞	O'sha odamning {oldida}.	
+이06/이05	이 사람이 해요.	이	이	{Bu} odam qiladi.	
+보다01	앞을 봐요.	봐요	봐요	Oldinga {qarang}.	
+때01	지금이 그 때예요.	때	때	Hozir — o'sha {payt}.	
+같다	우리는 같아요.	같아요	같아요	Biz {bir xilmiz}.	
+년02	일 년 전이에요.	년	년	Bir {yil} oldin.	
+말01	그 말을 해요.	말	말	O'sha {gapni} aytaman.	
+일01	지금 일을 해요.	일	일	Hozir {ish} qilyapman.	
+지금02/지금01	지금 봐요.	지금	지금	{Hozir} qarang.	
+다시	다시 해요.	다시	다시	{Qaytadan} qilaman.	
+전02/전03	그 전에 봐요.	전	전	Undan {oldin} ko'rishamiz.	
+가다01	지금 가요.	가요	가요	Hozir {boraman}.	
+알다	그 사람을 알아요.	알아요	알아요	O'sha odamni {bilaman}.	
+그렇다	네, 그래요.	그래요	그래요	Ha, {shunday}.	
+받다01	그것을 받아요.	받아요	받아요	O'shani {olaman}.	
+크다01/크다02	이것은 커요.	커요	커요	Bu {katta}.	
+씨02	지민 씨가 가요.	씨	씨	Jimin-{ssi} ketyapti.	
+더	더 있어요?	더	더	{Yana} bormi?	
+많다	사람이 많아요.	많아요	많아요	Odam {ko'p}.	
+원01	천 원이에요.	원	원	Ming {von}.	
+가지다01	이것을 가져요.	가져요	가져요	Buni {oling}.	
+없다	사람이 없어요.	없어요	없어요	Odam {yo'q}.	
+그리고	집이 커요. 그리고 좋아요.	그리고	그리고	Uy katta. {Va} yaxshi.	
+좋다	이것이 좋아요.	좋아요	좋아요	Bu {yaxshi}.	
+나오다	집에서 나와요.	나와요	나와요	Uydan {chiqaman}.	
+집01	우리 집이에요.	집	집	Bizning {uy}.	
+살다	한국에 살아요.	살아요	살아요	Koreyada {yashayman}.	
+만들다	그것을 만들어요.	만들어요	만들어요	O'shani {yasayman}.	
+한국	저는 한국 사람이에요.	한국	한국	Men {Koreya}likman.	
+여자	그 여자는 미국 사람이에요.	여자	여자	O'sha {ayol} amerikalik.	
+미국	미국에 가요.	미국	미국	{Amerika}ga boraman.	
+한01	한 사람이 있어요.	한	한	{Bir} odam bor.	
+또	또 봐요!	또	또	{Yana} ko'rishamiz!	
+안02	저는 안 가요.	안	안	Men {bormayman}.	
+두01	두 사람이 있어요.	두	두	{Ikki} odam bor.	
+명02	두 명이에요.	명	명	Ikki {kishi}.	
+시간01/시간02	시간이 없어요.	시간	시간	{Vaqt} yo'q.	
+다른	다른 사람은 없어요.	다른	다른	{Boshqa} odam yo'q.	
+잘	잘 알아요.	잘	잘	{Yaxshi} bilaman.	
+누구	그 사람은 누구예요?	누구	누구	O'sha odam {kim}?	
+어머니	어머니가 집에 있어요.	어머니	어머니	{Onam} uyda.	
+오다01	어머니가 와요.	와요	와요	Onam {kelyapti}.	
+모르다	저는 몰라요.	몰라요	몰라요	Men {bilmayman}.	
+어떤	어떤 사람이에요?	어떤	어떤	{Qanday} odam?	
+생각	좋은 생각이에요.	생각	생각	Yaxshi {fikr}.	
+먹다02	지금 먹어요.	먹어요	먹어요	Hozir {yeyman}.	
+하나01	하나 있어요.	하나	하나	{Bitta} bor.	
+뒤	집 뒤에 있어요.	뒤	뒤	Uyning {orqasida}.	
+아이01	아이가 먹어요.	아이	아이	{Bola} ovqat yeyapti.	
+저01	저는 학생이에요.	저	저	{Men} talabaman.	
+날01/날02	좋은 날이에요.	날	날	Yaxshi {kun}.	
+지나다	시간이 지나요.	지나요	지나요	Vaqt {o'tadi}.	
+어떻다	이것은 어때요?	어때요	어때요	Bu {qanday}?	
+모두01/모두02	우리 모두 가요.	모두	모두	Biz {hammamiz} boramiz.	
+문화	한국 문화를 알아요.	문화	문화	Koreya {madaniyatini} bilaman.	
+눈01	그 아이는 눈이 커요.	눈	눈	O'sha bolaning {ko'zlari} katta.	
+듣다01	그 말을 들어요.	들어요	들어요	O'sha gapni {eshitaman}.	
+함께	함께 가요.	함께	함께	{Birga} boramiz.	
+무엇	이것은 무엇이에요?	무엇	무엇	Bu {nima}?	
+돈01	돈이 없어요.	돈	돈	{Pul} yo'q.	
+여기	여기 있어요.	여기	여기	{Bu yerda}.	
+중03	이 중에서 무엇이 좋아요?	중	중	Bularning {orasidan} qaysi biri yaxshi?	
+나다01	생각이 나요.	나요	나요	Esimga {tushdi}.	
+주다01	돈을 줘요.	줘요	줘요	Pulni {beraman}.	
+곳	좋은 곳이에요.	곳	곳	Yaxshi {joy}.	
+가장01	이것이 가장 좋아요.	가장	가장	Bu {eng} yaxshisi.	
+위01	그것은 위에 있어요.	위	위	U {tepada}.	
+어느	어느 것이 좋아요?	어느	어느	{Qaysi} biri yaxshi?	
+이것	이것도 있어요.	이것	이것	{Bu} ham bor.	
+어디01	어디에 가요?	어디	어디	{Qayerga} borasiz?	
+사이	집과 집 사이에 있어요.	사이	사이	Ikki uyning {orasida}.	
+일06/일05	사 일이 지나요.	일	일	To'rt {kun} o'tadi.	
+들다01	돈이 들어요.	들어요	들어요	Pul {ketadi}.	
+다음	다음에 봐요.	다음	다음	{Keyingi} safar ko'rishamiz.	
+마음	마음이 좋아요.	마음	마음	{Ko'ngli} yaxshi.	
+일본	일본에 가요.	일본	일본	{Yaponiya}ga boraman.	
+바로	바로 가요.	바로	바로	{Darhol} boraman.	
+너01	너도 가?	너	너	{Sen} ham borasanmi?	
+운동	운동을 해요.	운동	운동	{Sport} bilan shug'ullanaman.	
+가지03	두 가지가 있어요.	가지	가지	Ikki {xil} bor.	
+좀	좀 먹어요.	좀	좀	{Ozgina} yeyman.	
+다01/다02	다 먹어요.	다	다	{Hammasini} yeyman.	
+얼굴	얼굴이 좋아요.	얼굴	얼굴	{Yuzingiz} yaxshi ko'rinyapti.	
+많이	많이 먹어요.	많이	많이	{Ko'p} yeyman.	
+아버지	아버지가 집에 와요.	아버지	아버지	{Otam} uyga keladi.	
+길01	이 길로 가요.	길	길	Bu {yo'l}dan boramiz.	
+여러	여러 사람이 있어요.	여러	여러	{Bir necha} odam bor.	
+학교	학교에 가요.	학교	학교	{Maktab}ga boraman.	
+쓰다01	여기에 써요.	써요	써요	Bu yerga {yozing}.	
+이야기	그 이야기를 들어요.	이야기	이야기	O'sha {hikoyani} eshitaman.	
+어렵다	한국 말이 어려워요.	어려워요	어려워요	Koreys tili {qiyin}.	
+안01	집 안에 있어요.	안	안	Uy {ichida}.	
+그런데01	좋아요. 그런데 돈이 없어요.	그런데	그런데	Yaxshi. {Lekin} pul yo'q.	
+서울	서울에 살아요.	서울	서울	{Seul}da yashayman.	
+만나다	친구를 만나요.	만나요	만나요	Do'stim bilan {uchrashaman}.	
+몇01/몇02	몇 명이에요?	몇	몇	{Necha} kishi?	
+처음	처음 봐요.	처음	처음	{Birinchi marta} ko'ryapman.	
+나라	어느 나라 사람이에요?	나라	나라	Qaysi {mamlakat}dansiz?	
+남자02	그 남자는 학생이에요.	남자	남자	O'sha {erkak} talaba.	
+친구	친구가 많아요.	친구	친구	{Do'stlarim} ko'p.	
+학생	저는 학생이에요.	학생	학생	Men {talaba}man.	
+들다04	이것을 들어요.	들어요	들어요	Buni {ko'taraman}.	
+몸	몸이 안 좋아요.	몸	몸	{Tobim} yo'q.	
+손01	손이 커요.	손	손	{Qo'li} katta.	
+찾다	돈을 찾아요.	찾아요	찾아요	Pulni {qidiryapman}.	
+이번	이번에 가요.	이번	이번	{Bu safar} boraman.	
+왜02	왜 안 와요?	왜	왜	{Nega} kelmayapsiz?	
+동안01	일 년 동안 살아요.	동안	동안	Bir yil {davomida} yashayman.	
+저04/저03	저 사람은 누구예요?	저	저	{Anavi} odam kim?	
+쪽05	학교 쪽으로 가요.	쪽	쪽	Maktab {tomon}ga boraman.	
+가운데	가운데에 있어요.	가운데	가운데	{O'rtada} turibdi.	
+쓰다03	돈을 많이 써요.	써요	써요	Pulni ko'p {sarflayman}.	
+생활	한국 생활이 좋아요.	생활	생활	Koreyadagi {hayot} yaxshi.	
+다르다	우리는 달라요.	달라요	달라요	Biz {boshqachamiz}.	
+특히	특히 이것이 좋아요.	특히	특히	{Ayniqsa} bu yaxshi.	
+앉다	여기 앉아요.	앉아요	앉아요	Bu yerga {o'tiring}.	
+아직	아직 몰라요.	아직	아직	{Hali} bilmayman.	
+물01	물이 없어요.	물	물	{Suv} yo'q.	
+뭐01	뭐 먹어요?	뭐	뭐	{Nima} yeysiz?	
+시장02	시장에 가요.	시장	시장	{Bozor}ga boraman.	
+작다	집이 작아요.	작아요	작아요	Uy {kichik}.	
+못02	지금은 못 가요.	못	못	Hozir {bora olmayman}.	
+같이01	같이 먹어요.	같이	같이	{Birga} yeymiz.	
+나가다01	집에서 나가요.	나가요	나가요	Uydan {chiqib ketaman}.	
+책	책이 많아요.	책	책	{Kitob} ko'p.	
+부르다01	친구를 불러요.	불러요	불러요	Do'stimni {chaqiraman}.	
+오늘02/오늘01	오늘 만나요.	오늘	오늘	{Bugun} uchrashamiz.	
+일어나다	지금 일어나요.	일어나요	일어나요	Hozir {turaman}.	
+이름	이름이 뭐예요?	이름	이름	{Ismingiz} nima?	
+중국	중국에 살아요.	중국	중국	{Xitoy}da yashayman.	
+다니다	학교에 다녀요.	다녀요	다녀요	Maktabga {qatnayman}.	
+들어가다	집에 들어가요.	들어가요	들어가요	Uyga {kiraman}.	
+무슨	무슨 책이에요?	무슨	무슨	{Qanday} kitob?	
+읽다	책을 읽어요.	읽어요	읽어요	Kitob {o'qiyman}.	
+대학	대학에 다녀요.	대학	대학	{Universitet}ga qatnayman.	
+너무	너무 커요.	너무	너무	{Juda} katta.	
+사다	시장에서 사요.	사요	사요	Bozordan {sotib olaman}.	
+이유	이유가 뭐예요?	이유	이유	{Sababi} nima?	
+쉽다	이것은 쉬워요.	쉬워요	쉬워요	Bu {oson}.	
+글	글을 써요.	글	글	{Matn} yozaman.	
+컴퓨터	컴퓨터를 써요.	컴퓨터	컴퓨터	{Kompyuter}dan foydalanaman.	
+높다	이것은 너무 높아요.	높아요	높아요	Bu juda {baland}.	
+내리다	여기에서 내려요.	내려요	내려요	Shu yerda {tushaman}.	
+묻다03	길을 물어요.	물어요	물어요	Yo'lni {so'rayman}.	
+보내다	돈을 보내요.	보내요	보내요	Pul {yuboraman}.	
+밖	밖에 나가요.	밖	밖	{Tashqariga} chiqaman.	
+밤01	밤에 책을 읽어요.	밤	밤	{Kechasi} kitob o'qiyman.	
+먼저02/먼저01	먼저 가세요.	먼저	먼저	Siz {oldin} boring.	
+아침	아침을 먹어요.	아침	아침	{Nonushta} qilaman.	
+후02	일 년 후에 와요.	후	후	Bir yildan {keyin} kelaman.	
+분02	십 분 후에 와요.	분	분	O'n {daqiqadan} keyin keladi.	
+선생님	선생님이 와요.	선생님	선생님	{O'qituvchi} kelyapti.	
+넣다	물을 넣어요.	넣어요	넣어요	Suv {solaman}.	
+영화01	영화를 봐요.	영화	영화	{Kino} ko'raman.	
+남편	남편이 회사에 다녀요.	남편	남편	{Erim} kompaniyada ishlaydi.	
+머리	머리가 커요.	머리	머리	{Boshi} katta.	
+열다	책을 열어요.	열어요	열어요	Kitobni {ochaman}.	
+방01	방이 작아요.	방	방	{Xona} kichik.	
+얼마나	얼마나 커요?	얼마나	얼마나	{Qanchalik} katta?	
+입	입이 작아요.	입	입	{Og'zi} kichik.	
+회사	회사에 가요.	회사	회사	{Ishxona}ga boraman.	
+들어오다	들어오세요.	들어오세요	들어오세요	{Kiring}.	
+거기	거기에 있어요.	거기	거기	{U yerda}.	
+사랑01	사랑이 뭐예요?	사랑	사랑	{Sevgi} nima?	
+아주01	아주 좋아요.	아주	아주	{Juda} yaxshi.	
+조금02/조금01	한국 말을 조금 알아요.	조금	조금	Koreys tilini {ozgina} bilaman.	
+필요	돈이 필요해요.	필요	필요	Pul {kerak}.	
+웃다	아이가 웃어요.	웃어요	웃어요	Bola {kulyapti}.	
+하지만	어려워요. 하지만 좋아요.	하지만	하지만	Qiyin. {Lekin} yaxshi.	
+아래	아래에 있어요.	아래	아래	{Pastda}.	
+옆	학교 옆에 있어요.	옆	옆	Maktab {yonida}.	
+타다02	버스를 타요.	타요	타요	Avtobusga {chiqaman}.	
+달01/달02	다음 달에 가요.	달	달	Keyingi {oy} boraman.	
+입다	옷을 입어요.	입어요	입어요	Kiyim {kiyaman}.	
+돌아오다	집에 돌아와요.	돌아와요	돌아와요	Uyga {qaytib kelaman}.	
+치다02	손으로 쳐요.	쳐요	쳐요	Qo'l bilan {uraman}.	
+아름답다	이 곳은 아름다워요.	아름다워요	아름다워요	Bu joy {go'zal}.	
+술01	저는 술을 안 마셔요.	술	술	Men {spirtli ichimlik} ichmayman.	
+끝나다	일이 끝났어요.	끝났어요	끝났어요	Ish {tugadi}.	
+전화	전화를 해요.	전화	전화	{Qo'ng'iroq} qilaman.	
+걸리다01	옷이 걸려 있어요.	걸려	걸려	Kiyim {osilib} turibdi.	
+가족	가족이 많아요.	가족	가족	{Oilam} katta.	
+길다02	머리가 길어요.	길어요	길어요	Sochi {uzun}.	
+계획	계획이 있어요?	계획	계획	{Reja}ngiz bormi?	
+하루	하루가 지났어요.	하루	하루	Bir {kun} o'tdi.	
+세01	세 명이 왔어요.	세	세	{Uch} kishi keldi.	
+아내	아내가 집에 있어요.	아내	아내	{Xotinim} uyda.	
+혼자01/혼자02	혼자 살아요.	혼자	혼자	{Yolg'iz} yashayman.	
+마시다	물을 마셔요.	마셔요	마셔요	Suv {ichaman}.	
+그림	그림이 좋아요.	그림	그림	{Rasm} yaxshi.	
+신문02	신문을 읽어요.	신문	신문	{Gazeta} o'qiyman.	
+정말02/정말01	정말 좋아요!	정말	정말	{Rostdan} yaxshi!	
+문02	문을 열어요.	문	문	{Eshikni} ochaman.	
+프로그램	이 프로그램을 봐요.	프로그램	프로그램	Bu {dasturni} ko'raman.	
+얼마	이거 얼마예요?	얼마	얼마	Bu {qancha}?	
+계속02/계속01	계속 가요.	계속	계속	{To'xtamasdan} boraveraman.	
+바꾸다	돈을 바꿔요.	바꿔요	바꿔요	Pul {almashtiraman}.	
+꼭02	꼭 오세요.	꼭	꼭	{Albatta} keling.	
+그리다02	그림을 그려요.	그려요	그려요	Rasm {chizaman}.	
+맞다01	네, 맞아요.	맞아요	맞아요	Ha, {to'g'ri}.	
+밥	밥을 먹어요.	밥	밥	{Ovqat} yeyman.	
+돌아가다	집에 돌아가요.	돌아가요	돌아가요	Uyga {qaytib ketaman}.	
+바람01	바람이 좋아요.	바람	바람	{Shamol} yoqimli.	
+배우다	한국 말을 배워요.	배워요	배워요	Koreys tilini {o'rganaman}.	
+나무	나무가 많아요.	나무	나무	{Daraxt} ko'p.	
+옷	옷을 사요.	옷	옷	{Kiyim} sotib olaman.	
+꽃	꽃이 아름다워요.	꽃	꽃	{Gul} go'zal.	
+언제01/언제02	언제 와요?	언제	언제	{Qachon} kelasiz?	
+잠시02/잠시01	잠시 앉으세요.	잠시	잠시	{Biroz} o'tiring.	
+기간02	기간이 지났어요.	기간	기간	{Muddat} o'tdi.	
+분01	그 분은 선생님이에요.	분	분	U {kishi} o'qituvchi.	
+음식	한국 음식을 좋아해요.	음식	음식	Koreys {taomlarini} yoqtiraman.	
+산01	산에 가요.	산	산	{Tog'}ga boraman.	
+그래01	그래, 가자.	그래	그래	{Mayli}, ketdik.	
+좋아하다	꽃을 좋아해요.	좋아해요	좋아해요	Gulni {yoqtiraman}.	
+바다	바다에 가고 싶어요.	바다	바다	{Dengiz}ga borgim keladi.	
+노래	노래를 불러요.	노래	노래	{Qo'shiq} aytaman.	
+은행01	은행에 가요.	은행	은행	{Bank}ka boraman.	
+월02/월01	몇 월이에요?	월	월	Qaysi {oy}?	
+못하다01/못하다02	노래를 못해요.	못해요	못해요	Qo'shiqni {yaxshi aytolmayman}.	
+맛	맛이 좋아요.	맛	맛	{Ta'mi} yaxshi.	
+불01	불이 났어요.	불	불	{Yong'in} chiqdi.	
+요즘	요즘 어때요?	요즘	요즘	{Shu kunlarda} qalaysiz?	
+걷다02	길을 걸어요.	걸어요	걸어요	Yo'lda {yuraman}.	
+회의01	회의가 있어요.	회의	회의	{Majlis} bor.	
+아02	아, 그래요?	아	아	{A}, shundaymi?	
+힘들다	일이 힘들어요.	힘들어요	힘들어요	Ish {og'ir}.	
+알리다	친구에게 알려요.	알려요	알려요	Do'stimga {xabar beraman}.	
+할머니	할머니 집에 가요.	할머니	할머니	{Buvim}nikiga boraman.	
+딸	딸이 한 명 있어요.	딸	딸	Bitta {qizim} bor.	
+살03	아이가 세 살이에요.	살	살	Bola uch {yosh}da.	
+기분	기분이 좋아요.	기분	기분	{Kayfiyatim} yaxshi.	
+둘	우리 둘이 가요.	둘	둘	{Ikkimiz} boramiz.	
+자다	밤에 자요.	자요	자요	Kechasi {uxlayman}.	
+배02	배를 타요.	배	배	{Kema}ga chiqaman.	
+울다01	아이가 울어요.	울어요	울어요	Bola {yig'layapti}.	
+오후02	오후에 만나요.	오후	오후	{Tushdan keyin} uchrashamiz.	
+지난해	지난해에 한국에 왔어요.	지난해	지난해	{O'tgan yili} Koreyaga keldim.	
+적다02	사람이 적어요.	적어요	적어요	Odam {kam}.	
+기다리다	친구를 기다려요.	기다려요	기다려요	Do'stimni {kutyapman}.	
+지내다	잘 지내요?	지내요	지내요	Yaxshi {yuribsizmi}?	
+놀다	친구와 놀아요.	놀아요	놀아요	Do'stim bilan {o'ynayman}.	
+발01	발이 커요.	발	발	{Oyog'i} katta.	
+팔다	시장에서 옷을 팔아요.	팔아요	팔아요	Bozorda kiyim {sotadi}.	
+가깝다	학교가 가까워요.	가까워요	가까워요	Maktab {yaqin}.	
+저녁	저녁을 먹어요.	저녁	저녁	{Kechki ovqat} yeyman.	
+음악	음악을 들어요.	음악	음악	{Musiqa} tinglayman.	
+형01	형이 한 명 있어요.	형	형	Bitta {akam} bor.	
+병원	병원에 가요.	병원	병원	{Kasalxona}ga boraman.	
+잠	잠이 와요.	잠	잠	{Uyqum} kelyapti.	
+밑	나무 밑에 앉아요.	밑	밑	Daraxt {tagida} o'tiraman.	
+공부	한국어를 공부해요.	공부	공부	Koreys tilini {o'qiyman}.	
+아기	아기가 자요.	아기	아기	{Chaqaloq} uxlayapti.	
+주로	주로 집에서 밥을 먹어요.	주로	주로	{Asosan} uyda ovqatlanaman.	
+고향	고향이 어디예요?	고향	고향	{Tug'ilgan joyingiz} qayer?	
+올라가다	산에 올라가요.	올라가요	올라가요	Tog'ga {chiqaman}.	
+그럼01	그럼 같이 가요.	그럼	그럼	{Unda} birga boramiz.	
+아프다	머리가 아파요.	아파요	아파요	Boshim {og'riyapti}.	
+걸다02	그림을 걸어요.	걸어요	걸어요	Rasmni {ilaman}.	
+사진	사진을 봐요.	사진	사진	{Surat}ni ko'raman.	
+가르치다	한국어를 가르쳐요.	가르쳐요	가르쳐요	Koreys tilini {o'rgataman}.	
+건물	저 건물이 학교예요.	건물	건물	Anavi {bino} — maktab.	
+물건	물건을 사요.	물건	물건	{Buyum} sotib olaman.	
+담배	담배는 안 돼요.	담배	담배	{Sigaret} chekish mumkin emas.	
+외국	외국에 가고 싶어요.	외국	외국	{Chet el}ga borgim keladi.	
+만04/만03	만 원이에요.	만	만	{O'n ming} von.	
+빠르다	그 사람은 말이 빨라요.	빨라요	빨라요	U odam {tez} gapiradi.	
+말다03	가지 마세요.	마세요	마세요	{Bormang}.	
+넓다	방이 넓어요.	넓어요	넓어요	Xona {keng}.	
+아파트	아파트에 살아요.	아파트	아파트	{Kvartira}da yashayman.	
+층	몇 층이에요?	층	층	Nechanchi {qavat}?	
+멀다02	학교가 멀어요.	멀어요	멀어요	Maktab {uzoq}.	
+올해	올해 한국에 가요.	올해	올해	{Shu yil} Koreyaga boraman.	
+빨리	빨리 오세요.	빨리	빨리	{Tez} keling.	
+일02/일03	일 층에 있어요.	일	일	{Birinchi} qavatda.	
+약02	약 한 시간 걸려요.	약	약	{Taxminan} bir soat ketadi.	
+비01	비가 와요.	비	비	{Yomg'ir} yog'yapti.	
+대화	친구와 대화를 해요.	대화	대화	Do'stim bilan {suhbat} qilaman.	
+커피	커피를 마셔요.	커피	커피	{Qahva} ichaman.	
+자주	자주 만나요.	자주	자주	{Tez-tez} uchrashamiz.	
+자동차	자동차가 많아요.	자동차	자동차	{Mashina} ko'p.	
+프랑스	프랑스에 가고 싶어요.	프랑스	프랑스	{Fransiya}ga borgim keladi.	
+주인	이 집 주인이에요.	주인	주인	Bu uyning {egasi}.	
+영국	영국 사람이에요.	영국	영국	{Angliya}lik.	
+잘못02/잘못01	제 잘못이에요.	잘못	잘못	Mening {xatoim}.	
+아저씨	아저씨, 이거 얼마예요?	아저씨	아저씨	{Amaki}, bu qancha?	
+잘하다	노래를 잘해요.	잘해요	잘해요	Qo'shiqni {yaxshi aytadi}.	
+연극	연극을 봤어요.	연극	연극	{Spektakl} ko'rdim.	
+그러면01	그러면 다음에 봐요.	그러면	그러면	{Unda} keyingi safar ko'rishamiz.	
+천03/천02	사람이 천 명 있어요.	천	천	{Ming} kishi bor.	
+언니	언니가 한 명 있어요.	언니	언니	Bitta {opam} bor.	
+늦다02/늦다01	오늘 늦었어요.	늦었어요	늦었어요	Bugun {kechikdim}.
+보다04	보다 빨리 가요.	보다	보다	{Yanada} tez boraman.
+버스	버스를 기다려요.	버스	버스	{Avtobus}ni kutyapman.
+다리01	다리가 아파요.	다리	다리	{Oyog'im} og'riyapti.
+말씀	선생님 말씀을 들어요.	말씀	말씀	O'qituvchining {so'zlarini} tinglayman.
+보통01/보통02	보통 아침에 운동해요.	보통	보통	{Odatda} ertalab sport qilaman.
+시험	시험이 어려웠어요.	시험	시험	{Imtihon} qiyin bo'ldi.
+동생	동생이 학교에 다녀요.	동생	동생	{Ukam} maktabga qatnaydi.
+귀01	귀가 아파요.	귀	귀	{Qulog'im} og'riyapti.
+값	값이 얼마예요?	값	값	{Narxi} qancha?
+낮다	이 산은 낮아요.	낮아요	낮아요	Bu tog' {past}.
+참02	참 좋아요.	참	참	{Juda} yaxshi.
+건강	할머니는 건강이 좋아요.	건강	건강	Buvimning {salomatligi} yaxshi.
+할아버지	할아버지가 신문을 읽어요.	할아버지	할아버지	{Bobom} gazeta o'qiyapti.
+여름	여름에 바다에 가요.	여름	여름	{Yozda} dengizga boraman.
+시키다	커피를 시켜요.	시켜요	시켜요	Qahva {buyurtma qilaman}.
+네03	네, 알겠어요.	네	네	{Ha}, tushundim.
+싫다	저는 그것이 싫어요.	싫어요	싫어요	Men uni {yoqtirmayman}.
+나쁘다	그 사람은 나빠요.	나빠요	나빠요	U odam {yomon}.
+겨울	겨울이 길어요.	겨울	겨울	{Qish} uzun.
+열심히	열심히 공부해요.	열심히	열심히	{Tirishib} o'qiyman.
+독일	독일에서 왔어요.	독일	독일	{Germaniya}dan keldim.
+별로01	별로 안 좋아요.	별로	별로	{Unchalik} yaxshi emas.
+제01	제 이름은 지민이에요.	제	제	{Mening} ismim Jimin.
+손님	손님이 왔어요.	손님	손님	{Mehmon} keldi.
+편지	편지를 써요.	편지	편지	{Xat} yozaman.
+설명	설명을 들어요.	설명	설명	{Tushuntirishni} tinglayman.
+질문	질문이 있어요.	질문	질문	{Savolim} bor.
+영어	영어를 잘해요.	영어	영어	{Ingliz tili}ni yaxshi biladi.
+수업02	수업이 끝났어요.	수업	수업	{Dars} tugadi.
+가격02	가격이 좋아요.	가격	가격	{Narxi} yaxshi.
+그러니까	시간이 없어요. 그러니까 빨리 가요.	그러니까	그러니까	Vaqt yo'q. {Shuning uchun} tez boraylik.
+여행	여행을 가고 싶어요.	여행	여행	{Sayohat}ga borgim keladi.
+의사03	제 언니는 의사예요.	의사	의사	Opam {shifokor}.
+반01	한 시 반에 만나요.	반	반	Bir {yarim}da uchrashamiz.
+준비	여행 준비를 해요.	준비	준비	Sayohatga {tayyorgarlik} ko'raman.
+텔레비전	텔레비전을 봐요.	텔레비전	텔레비전	{Televizor} ko'raman.
+봄	봄이 왔어요.	봄	봄	{Bahor} keldi.
+재미있다	이 책은 재미있어요.	재미있어요	재미있어요	Bu kitob {qiziqarli}.
+내일01/내일02	내일 만나요.	내일	내일	{Ertaga} uchrashamiz.
+식사	식사를 했어요?	식사	식사	{Ovqatlandingiz}mi?
+직원	회사 직원이에요.	직원	직원	Kompaniya {xodimi}man.
+구월	구월에 학교가 시작해요.	구월	구월	{Sentabr}da maktab boshlanadi.
+배01	배가 아파요.	배	배	{Qornim} og'riyapti.
+뉴스	아침에 뉴스를 봐요.	뉴스	뉴스	Ertalab {yangiliklar} ko'raman.
+바쁘다	요즘 바빠요.	바빠요	바빠요	Shu kunlarda {bandman}.
+잔	커피 한 잔 주세요.	잔	잔	Bir {piyola} qahva bering.
+매일02/매일01	매일 운동해요.	매일	매일	{Har kuni} sport qilaman.
+찍다02	사진을 찍어요.	찍어요	찍어요	Surat {olaman}.
+고기01	고기를 좋아해요.	고기	고기	{Go'sht}ni yoqtiraman.
+목01	목이 아파요.	목	목	{Tomog'im} og'riyapti.
+며칠	며칠 동안 쉬었어요.	며칠	며칠	{Bir necha kun} dam oldim.
+팔01	팔이 길어요.	팔	팔	{Qo'li} uzun.
+나중	나중에 봐요.	나중	나중	{Keyinroq} ko'rishamiz.
+병01	병이 났어요.	병	병	{Kasal} bo'lib qoldim.
+괜찮다	괜찮아요?	괜찮아요	괜찮아요	{Yaxshimisiz}?
+게임	게임을 해요.	게임	게임	{O'yin} o'ynayman.
+쉬다03	집에서 쉬어요.	쉬어요	쉬어요	Uyda {dam olaman}.
+예쁘다	꽃이 예뻐요.	예뻐요	예뻐요	Gul {chiroyli}.
+키01	키가 커요.	키	키	{Bo'yi} baland.
+오전	오전에 수업이 있어요.	오전	오전	{Tushgacha} darsim bor.
+돕다	어머니를 도와요.	도와요	도와요	Onamga {yordam beraman}.
+호04	몇 호에 살아요?	호	호	Nechanchi {xonada} yashaysiz?
+사용	이것은 사용이 쉬워요.	사용	사용	Bundan {foydalanish} oson.
+부산02	부산에 가요.	부산	부산	{Pusan}ga boraman.
+피우다	담배를 피워요.	피워요	피워요	Sigaret {chekadi}.
+네02	네 명이 있어요.	네	네	{To'rt} kishi bor.
+마흔02∙마흔01	아버지는 마흔 살이에요.	마흔	마흔	Otam {qirq} yoshda.
+가볍다	가방이 가벼워요.	가벼워요	가벼워요	Sumka {yengil}.
+어제02/어제01	어제 친구를 만났어요.	어제	어제	{Kecha} do'stim bilan uchrashdim.
+작년	작년 겨울은 추웠어요.	작년	작년	{O'tgan yil} qishi sovuq edi.
+백02∙백01	백 원이에요.	백	백	{Yuz} von.
+백만02∙백만01	백만 원이 있어요.	백만	백만	{Million} vonim bor.
+오빠	오빠가 한 명 있어요.	오빠	오빠	Bitta {akam} bor.
+러시아	러시아 사람이에요.	러시아	러시아	{Rossiya}lik.
+장소	장소가 좋아요.	장소	장소	{Joy} yaxshi.
+대답	대답을 해요.	대답	대답	{Javob} beraman.
+가게	가게에 가요.	가게	가게	{Do'kon}ga boraman.
+씻다	손을 씻어요.	씻어요	씻어요	Qo'limni {yuvaman}.
+십이월	십이월은 추워요.	십이월	십이월	{Dekabr} sovuq.
+가을	가을에 산에 가요.	가을	가을	{Kuzda} tog'ga boraman.
+서른02·서른01	형은 서른 살이에요.	서른	서른	Akam {o'ttiz} yoshda.
+맑다	물이 맑아요.	맑아요	맑아요	Suv {tiniq}.
+약속	친구와 약속이 있어요.	약속	약속	Do'stim bilan {uchrashuvim} bor.
+그렇지만	비싸요. 그렇지만 사고 싶어요.	그렇지만	그렇지만	Qimmat. {Shunday bo'lsa-da}, olgim keladi.
+인사02	선생님께 인사를 해요.	인사	인사	O'qituvchiga {salom} beraman.
+불다	바람이 불어요.	불어요	불어요	Shamol {esyapti}.
+빌리다	책을 빌려요.	빌려요	빌려요	Kitob {qarzga olaman}.
+개01	개가 있어요.	개	개	{It}im bor.
+다섯02/다섯01	다섯 명이 왔어요.	다섯	다섯	{Besh} kishi keldi.
+예04	예, 알겠습니다.	예	예	{Ha}, tushundim.
+드리다01	어머니께 꽃을 드려요.	드려요	드려요	Onamga gul {beraman}.
+교통	서울은 교통이 좋아요.	교통	교통	Seulda {transport} yaxshi.
+일찍	일찍 일어나요.	일찍	일찍	{Erta} turaman.
+따뜻하다	물이 따뜻해요.	따뜻해요	따뜻해요	Suv {iliq}.
+열02/열01	열 명이 있어요.	열	열	{O'n} kishi bor.
+눈04	눈이 와요.	눈	눈	{Qor} yog'yapti.
+찾아보다	책에서 찾아봐요.	찾아봐요	찾아봐요	Kitobdan {qidirib ko'raman}.
+잠깐02/잠깐01	잠깐 기다리세요.	잠깐	잠깐	{Bir zum} kuting.
+시02/시03	지금 몇 시예요?	시	시	Hozir {soat} nechchi?
+코01	코가 커요.	코	코	{Burni} katta.
+낮	낮에 일해요.	낮	낮	{Kunduzi} ishlayman.
+외국인	외국인이 많아요.	외국인	외국인	{Chet elliklar} ko'p.
+축구02	축구를 좋아해요.	축구	축구	{Futbol}ni yoqtiraman.
+근처	집 근처에 있어요.	근처	근처	Uy {yaqinida}.
+주06/주04	이번 주에 시험이 있어요.	주	주	Shu {hafta} imtihon bor.
+춤	춤을 좋아해요.	춤	춤	{Raqs}ni yoqtiraman.
+시작01	시작이 좋아요.	시작	시작	{Boshlanishi} yaxshi.
+여러분	여러분, 안녕하세요!	여러분	여러분	{Hammangizga} salom!
+삼01/삼02	삼 년 동안 살았어요.	삼	삼	{Uch} yil yashadim.
+비행기	비행기를 타요.	비행기	비행기	{Samolyot}ga chiqaman.
+직업	직업이 뭐예요?	직업	직업	{Kasbingiz} nima?
+누나	누나가 두 명 있어요.	누나	누나	Ikkita {opam} bor.
+교실	교실에 학생이 많아요.	교실	교실	{Sinfxona}da o'quvchi ko'p.
+드라마	한국 드라마를 봐요.	드라마	드라마	Koreys {seriallarini} ko'raman.
+인터넷	인터넷으로 찾아봐요.	인터넷	인터넷	{Internet}dan qidirib ko'raman.
+무겁다	이것은 무거워요.	무거워요	무거워요	Bu {og'ir}.
+깨끗하다	방이 깨끗해요.	깨끗해요	깨끗해요	Xona {toza}.
+계시다01	할머니가 집에 계세요.	계세요	계세요	Buvim uyda {turadilar}.
+자전거	자전거를 타요.	자전거	자전거	{Velosiped} haydayman.
+식당	식당에서 밥을 먹어요.	식당	식당	{Oshxona}da ovqatlanaman.
+사무실	사무실에 있어요.	사무실	사무실	{Ofis}daman.
+고르다01	옷을 골라요.	골라요	골라요	Kiyim {tanlayman}.
+어서	어서 오세요!	어서	어서	{Xush kelibsiz}!
+날씨	날씨가 좋아요.	날씨	날씨	{Ob-havo} yaxshi.
+내년	내년에 한국에 가고 싶어요.	내년	내년	{Kelasi yili} Koreyaga borgim keladi.
+부모님	부모님이 고향에 계세요.	부모님	부모님	{Ota-onam} tug'ilgan joyimda yashaydilar.
+약03	약을 먹어요.	약	약	{Dori} ichaman.
+가방	가방이 무거워요.	가방	가방	{Sumka} og'ir.
+맛있다	이 음식은 맛있어요.	맛있어요	맛있어요	Bu taom {mazali}.
+특별하다	오늘은 특별한 날이에요.	특별한	특별한	Bugun {alohida} kun.
+십01/십02	십 분만 기다리세요.	십	십	{O'n} daqiqa kuting.
+주부	어머니는 주부예요.	주부	주부	Onam {uy bekasi}.
+그릇	그릇이 깨끗해요.	그릇	그릇	{Idish} toza.
+책상	책상 위에 책이 있어요.	책상	책상	{Stol} ustida kitob bor.
+카드	카드를 써요.	카드	카드	{Karta} ishlataman.
+그래서01	비가 와요. 그래서 집에 있어요.	그래서	그래서	Yomg'ir yog'yapti. {Shuning uchun} uydaman.
+의자	의자에 앉으세요.	의자	의자	{Stul}ga o'tiring.
+대학생	형은 대학생이에요.	대학생	대학생	Akam {talaba}.
+단어	단어를 공부해요.	단어	단어	{So'zlarni} o'rganaman.
+소금	소금을 넣어요.	소금	소금	{Tuz} solaman.
+침대	침대에서 자요.	침대	침대	{Karavot}da uxlayman.
+선물	선물을 받았어요.	선물	선물	{Sovg'a} oldim.
+춥다	오늘은 추워요.	추워요	추워요	Bugun {sovuq}.
+택시	택시를 타요.	택시	택시	{Taksi}ga chiqaman.
+아주머니	아주머니, 이거 얼마예요?	아주머니	아주머니	{Xola}, bu qancha?
+기쁘다	만나서 기뻐요.	기뻐요	기뻐요	Uchrashganimdan {xursandman}.
+배우	그 배우를 좋아해요.	배우	배우	U {aktyor}ni yoqtiraman.
+호텔	호텔에 있어요.	호텔	호텔	{Mehmonxona}daman.
+비싸다	이 옷은 너무 비싸요.	비싸요	비싸요	Bu kiyim juda {qimmat}.
+천천히	천천히 말해 주세요.	천천히	천천히	{Sekin} gapirib bering.
+요리02	요리를 잘해요.	요리	요리	{Ovqat pishirishni} yaxshi biladi.
+방학	방학에 여행을 가요.	방학	방학	{Ta'tilda} sayohatga boraman.
+과일	과일을 좋아해요.	과일	과일	{Meva}ni yoqtiraman.
+화장실	화장실이 어디예요?	화장실	화장실	{Hojatxona} qayerda?
+인천	인천에 살아요.	인천	인천	{Inchon}da yashayman.
+백화점	백화점에서 옷을 사요.	백화점	백화점	{Univermag}dan kiyim olaman.
+닫다	문을 닫아요.	닫아요	닫아요	Eshikni {yopaman}.
+왼쪽	왼쪽으로 가세요.	왼쪽	왼쪽	{Chap tomonga} boring.
+개03	이거 두 개 주세요.	개	개	Bundan ikki {dona} bering.
+십일월	십일월에 눈이 와요.	십일월	십일월	{Noyabr}da qor yog'adi.
+박물관	박물관에 가요.	박물관	박물관	{Muzey}ga boraman.
+병02	물 한 병 주세요.	병	병	Bir {shisha} suv bering.
+반갑다	만나서 반가워요.	반가워요	반가워요	Tanishganimdan {xursandman}.
+이07/이08	이 층에 있어요.	이	이	{Ikkinchi} qavatda.
+극장	극장에서 영화를 봐요.	극장	극장	{Kinoteatr}da kino ko'raman.
+지하철	지하철을 타요.	지하철	지하철	{Metro}ga chiqaman.
+부엌	어머니가 부엌에 계세요.	부엌	부엌	Onam {oshxona}da.
+다녀오다	학교에 다녀왔어요.	다녀왔어요	다녀왔어요	Maktabga {borib keldim}.
+지난달	지난달에 여행을 갔어요.	지난달	지난달	{O'tgan oy} sayohatga bordim.
+슬프다	그 영화는 슬퍼요.	슬퍼요	슬퍼요	U kino {g'amgin}.
+창문	창문을 열어요.	창문	창문	{Deraza}ni ochaman.
+점심	점심을 먹었어요?	점심	점심	{Tushlik} qildingizmi?
+일주일	일주일 동안 여행했어요.	일주일	일주일	Bir {hafta} sayohat qildim.
+시원하다	바람이 시원해요.	시원해요	시원해요	Shamol {salqin}.
+도서관	도서관에서 공부해요.	도서관	도서관	{Kutubxona}da o'qiyman.
+타다01	고기가 타요.	타요	타요	Go'sht {kuyyapti}.
+우산	우산이 있어요?	우산	우산	{Soyabon}ingiz bormi?
+표02	표를 샀어요.	표	표	{Chipta} oldim.
+가수	그 가수를 좋아해요.	가수	가수	U {qo'shiqchi}ni yoqtiraman.
+고맙다01	정말 고마워요.	고마워요	고마워요	Rostdan {rahmat}.
+오른쪽	오른쪽에 있어요.	오른쪽	오른쪽	{O'ng tomonda}.
+일요일	일요일에 쉬어요.	일요일	일요일	{Yakshanba} kuni dam olaman.
+빵01	아침에 빵을 먹어요.	빵	빵	Ertalab {non} yeyman.
+고양이	고양이를 좋아해요.	고양이	고양이	{Mushuk}ni yoqtiraman.
+켜다01	불을 켜요.	켜요	켜요	Chiroqni {yoqaman}.
+저기01	저기에 앉으세요.	저기	저기	{Ana u yerga} o'tiring.
+우유	우유를 마셔요.	우유	우유	{Sut} ichaman.
+숙제	숙제를 해요.	숙제	숙제	{Uy vazifasi}ni qilaman.
+도와주다	좀 도와주세요.	도와주세요	도와주세요	Iltimos, {yordam bering}.
+컵	컵에 물을 넣어요.	컵	컵	{Stakan}ga suv solaman.
+여섯02/여섯01	여섯 시에 일어나요.	여섯	여섯	Soat {oltida} turaman.
+김치	김치를 좋아해요.	김치	김치	{Kimchi}ni yoqtiraman.
+연습02	매일 연습해요.	연습	연습	Har kuni {mashq} qilaman.
+조용하다	도서관은 조용해요.	조용해요	조용해요	Kutubxona {jim}.
+카메라	카메라로 사진을 찍어요.	카메라	카메라	{Fotoapparat} bilan surat olaman.
+내03	내 책이에요.	내	내	{Mening} kitobim.
+저쪽	저쪽으로 가세요.	저쪽	저쪽	{Ana u tomonga} boring.
+싸다03	이 가게는 싸요.	싸요	싸요	Bu do'kon {arzon}.
+신발	신발을 샀어요.	신발	신발	{Oyoq kiyim} oldim.
+신다	구두를 신어요.	신어요	신어요	Tufli {kiyaman}.
+추다	춤을 춰요.	춰요	춰요	Raqs {tushaman}.
+주말	주말에 뭐 해요?	주말	주말	{Dam olish kunlari} nima qilasiz?
+이쪽	이쪽으로 오세요.	이쪽	이쪽	{Bu tomonga} keling.
+계절	어느 계절을 좋아해요?	계절	계절	Qaysi {fasl}ni yoqtirasiz?
+공항	공항에 가요.	공항	공항	{Aeroport}ga boraman.
+바지	바지를 입어요.	바지	바지	{Shim} kiyaman.
+치마	치마가 예뻐요.	치마	치마	{Yubka} chiroyli.
+구두01	구두가 비싸요.	구두	구두	{Tufli} qimmat.
+안경	안경을 써요.	안경	안경	{Ko'zoynak} taqaman.
+공원02	공원에서 놀아요.	공원	공원	{Bog'}da o'ynayman.
+생일	오늘은 제 생일이에요.	생일	생일	Bugun mening {tug'ilgan kunim}.
+기차	기차를 타고 부산에 가요.	기차	기차	{Poyezd}da Pusanga boraman.
+종업원	종업원을 불러요.	종업원	종업원	{Ofitsiant}ni chaqiraman.
+싫어하다	저는 고기를 싫어해요.	싫어해요	싫어해요	Men go'shtni {yoqtirmayman}.
+제주도01	제주도에 여행을 가요.	제주도	제주도	{Chejudo}ga sayohatga boraman.
+운동장	운동장에서 축구를 해요.	운동장	운동장	{Stadion}da futbol o'ynayman.
+제일03/제일02	이것이 제일 맛있어요.	제일	제일	Bu {eng} mazali.
+끄다	불을 꺼요.	꺼요	꺼요	Chiroqni {o'chiraman}.
+휴가	휴가를 가요.	휴가	휴가	{Ta'til}ga chiqaman.
+셋	하나, 둘, 셋!	셋	셋	Bir, ikki, {uch}!
+토요일	토요일에 만나요.	토요일	토요일	{Shanba} kuni uchrashamiz.
+거실	거실에서 텔레비전을 봐요.	거실	거실	{Mehmonxona}da televizor ko'raman.
+청소	방을 청소해요.	청소	청소	Xonani {tozalayman}.
+마리	고양이 두 마리가 있어요.	마리	마리	Ikki{ta} mushugim bor.
+졸업	학교를 졸업했어요.	졸업	졸업	Maktabni {bitirdim}.
+일곱02/일곱01	일곱 시에 만나요.	일곱	일곱	Soat {yettida} uchrashamiz.
+덥다	여름은 더워요.	더워요	더워요	Yoz {issiq}.
+야구	야구를 봐요.	야구	야구	{Beysbol} ko'raman.
+취미	취미가 뭐예요?	취미	취미	{Qiziqishingiz} nima?
+구경	시장 구경을 해요.	구경	구경	Bozorni {tomosha} qilaman.
+삼십01/삼십02	삼십 분 걸려요.	삼십	삼십	{O'ttiz} daqiqa ketadi.
+출발	출발 시간이 몇 시예요?	출발	출발	{Jo'nash} vaqti soat nechchida?
+부탁	부탁이 있어요.	부탁	부탁	{Iltimosim} bor.
+역03	역에서 만나요.	역	역	{Bekat}da uchrashamiz.
+친하다	우리는 친해요.	친해요	친해요	Biz {yaqin do'stmiz}.
+저05	저, 질문이 있어요.	저	저	{Anu}, savolim bor.
+그쪽	그쪽은 어때요?	그쪽	그쪽	{U tomonda} qanday?
+소개	친구를 소개해요.	소개	소개	Do'stimni {tanishtiraman}.
+유명	이 식당은 유명해요.	유명	유명	Bu oshxona {mashhur}.
+음01	음, 잘 모르겠어요.	음	음	{Hm}, bilmadim.
+날짜	날짜가 언제예요?	날짜	날짜	{Sana} qachon?
+사과01	사과를 먹어요.	사과	사과	{Olma} yeyman.
+라면	라면을 먹어요.	라면	라면	{Ramyon} yeyman.
+사귀다	한국 친구를 사귀고 싶어요.	사귀고	사귀고	Koreys do'st {orttirgim} keladi.
+죄송하다	늦어서 죄송해요.	죄송해요	죄송해요	Kechikkanim uchun {uzr}.
+베트남	베트남에서 왔어요.	베트남	베트남	{Vyetnam}dan keldim.
+캐나다	캐나다에 살아요.	캐나다	캐나다	{Kanada}da yashayman.
+주소	주소가 어디예요?	주소	주소	{Manzilingiz} qayer?
+전화번호	전화번호가 뭐예요?	전화번호	전화번호	{Telefon raqamingiz} qanday?
