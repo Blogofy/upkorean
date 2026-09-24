@@ -153,7 +153,16 @@ for (const fileName of recordings) {
     const to = end + 0.1;
     const out = clip(line.ids[0]);
     execFileSync(FFMPEG, ["-y", "-hide_banner", "-loglevel", "error", "-ss", from.toFixed(3), "-to", to.toFixed(3), "-i", file,
-      "-af", "afade=t=in:d=0.02,areverse,afade=t=in:d=0.04,areverse", "-c:a", "libmp3lame", "-b:a", "128k", out]);
+      // The pause the split fell in can hold a breath quieter than the split's threshold; a clip must start
+      // on the word, or a tap on ▶ seems to lag. So the quiet ends are trimmed to a few hundredths first.
+      "-af", [
+        "silenceremove=start_periods=1:start_silence=0.03:start_threshold=-50dB",
+        "areverse",
+        "silenceremove=start_periods=1:start_silence=0.08:start_threshold=-50dB",
+        "afade=t=in:d=0.04",
+        "areverse",
+        "afade=t=in:d=0.02",
+      ].join(","), "-c:a", "libmp3lame", "-b:a", "128k", out]);
     for (const id of line.ids.slice(1)) fs.copyFileSync(out, clip(id));
   });
   console.log(`${fileName}: ${want} ta so'z kesildi`);
