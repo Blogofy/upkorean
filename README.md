@@ -10,7 +10,8 @@ packages/
   shared/     Progress sync mantiqi va kurs ma'lumoti (uch darajaning fayllari)
 data/         SQLite bazasi va backup'lar (git'ga tushmaydi)
 audio/        Diktor audiosi, so'z id'si bo'yicha: audio/words/b-1-0.mp3 (git'ga tushmaydi)
-scripts/      Kontentni tekshirish, backup, audio nomlash, OCR yordamchilari
+scripts/      Kontentni tekshirish, backup, audio nomlash, OCR yordamchilari, so'z rejasi
+vocab/        NIKL darajali so'z ro'yxati va undan tuzilgan kunlik reja (vocab/README.md)
 test/         node:test — API, sync, progress, SRS, mashqlar va kontent testlari
 deploy/       Apache konfigi, systemd unit'i, deploy skripti va server qo'llanmasi
 docs/         API ma'lumotnomasi
@@ -55,6 +56,7 @@ Dev rejimida ilova API manzilini o'zi topadi: bundle'ni qaysi kompyuterdan yukla
 | `npm start` | Serverni prod rejimida |
 | `npm test` | Butun test to'plami |
 | `npm run check:content` | Har bir darajaning tuzilishini tekshiradi |
+| `npm run plan:vocab` | NIKL ro'yxatidan `vocab/plan.tsv` ni qayta tuzadi (Python 3 + openpyxl) |
 | `npm run backup` | SQLite bazasining nusxasini `data/backups/` ga oladi |
 | `npm run mobile` | `apps/mobile` dagi Expo dev serverini ochadi |
 

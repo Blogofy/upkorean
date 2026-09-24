@@ -7,3 +7,6 @@ tmp/
 # Narrator clips: 45 MB that never change with the code. They are uploaded once with rsync
 # (see deploy/README.md) instead of riding along in every git archive deploy.
 audio/
+
+# Generated from vocab/plan.tsv for reading in Excel; rerun scripts/plan-vocab.py to get it.
+vocab/plan.xlsx
