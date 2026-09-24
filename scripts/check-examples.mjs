@@ -103,7 +103,7 @@ const ENDING = new Set("으요고서세시셨지면며러려자기게어아았�
 // A few nouns spelled like a common verb form: 가요 (a song) is almost always 가다 + 요.
 const RARE = new Set(["가요"]);
 // Grammar that is not a word of the list (-고 싶다, -ㄹ 수 있다) and the names the sentences use.
-const FREE = /^(때문|싶|수$|수가|수도|수는|제$|제가$|마세요|지민|민수|수진|준호|영수|유나)/;
+const FREE = /^(않|때문|싶|수$|수가|수도|수는|제$|제가$|마세요|지민|민수|수진|준호|영수|유나)/;
 
 const entries = [];
 for (const word of course.words) {
