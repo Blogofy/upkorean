@@ -118,7 +118,7 @@ for (const word of course.words) {
     // same (한 "one", 안 "not") comes first.
     // 새로운 and 강한 are longer than any noun they could be confused with, so they are not weak.
     const weak = (form) => form !== stem && (finalJamo(stem) === "ㄹ"
-      || (/[ㄴㄹ]$/.test(finalJamo(form)) && form.length <= stem.length && !(stem.length > 1 && stem.endsWith("하"))));
+      || (/[ㄴㄹ]$/.test(finalJamo(form)) && form.length === 1));
     for (const form of forms) entries.push({ form, word, verb: true, weak: weak(form) });
   } else {
     entries.push({ form: ko, word, verb: false, weak: RARE.has(ko) });
