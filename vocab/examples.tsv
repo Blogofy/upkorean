@@ -1479,7 +1479,7 @@ key	ko	hl	cloze	uz	note
 넘어지다	얼음 위에서 넘어졌어요.	넘어졌어요	넘어졌어요	Muz ustida {yiqildim}.
 야채	야채를 씻어서 썰어요.	야채	야채	{Sabzavot}ni yuvib to'grayman.
 시끄럽다	밖이 너무 시끄러워요.	시끄러워요	시끄러워요	Tashqari juda {shovqinli}.
-국	한국 사람들은 밥과 국을 같이 먹어요.	국	국	Koreyslar guruch bilan {sho'rva}ni birga yeydi.
+국	한국 사람들은 밥과 국을 같이 먹어요.	국을	국을	Koreyslar guruch bilan {sho'rva}ni birga yeydi.
 똑똑하다	그 아이는 정말 똑똑해요.	똑똑해요	똑똑해요	U bola rostdan {aqlli}.
 한잔	퇴근 후에 한잔할까요?	한잔	한잔	Ishdan keyin {bir piyola} ichamizmi?
 배추	배추로 김치를 만들어요.	배추	배추	{Karam}dan kimchi tayyorlanadi.
@@ -1623,3 +1623,218 @@ key	ko	hl	cloze	uz	note
 튀기다02	닭을 기름에 튀겨요.	튀겨요	튀겨요	Tovuqni yog'da {qovuraman}.
 스무	제 동생은 스무 살이에요.	스무	스무	Ukam {yigirma} yoshda.
 쌀쌀하다	아침저녁으로 날씨가 쌀쌀해요.	쌀쌀해요	쌀쌀해요	Ertalab va kechqurun havo {salqin}.
+고추장	비빔밥에 고추장을 넣어서 먹어요.	고추장	고추장	Pibimbapga {kochujang} solib yeyman.
+검정01	검정 치마를 입었어요.	검정	검정	{Qora} yubka kiydim.
+오이	오이를 썰어서 샐러드를 만들었어요.	오이	오이	{Bodring}ni to'g'rab salat tayyorladim.
+계란	계란 두 개로 요리를 했어요.	계란	계란	Ikkita {tuxum} bilan ovqat pishirdim.
+햄버거	점심에 햄버거를 먹었어요.	햄버거	햄버거	Tushlikda {gamburger} yedim.
+찌개	추운 날에는 뜨거운 찌개가 좋아요.	찌개	찌개	Sovuq kunda issiq {jjigae} yaxshi.
+인삼	인삼은 건강에 좋아요.	인삼	인삼	{Jenshen} sog'liq uchun foydali.
+날씬하다	언니는 키가 크고 날씬해요.	날씬해요	날씬해요	Opam bo'yli va {xipcha}.
+켜다02	친구가 바이올린을 켜요.	켜요	켜요	Do'stim skripka {chalyapti}.
+편찮다	할머니가 요즘 편찮으세요.	편찮으세요	편찮으세요	Buvim shu kunlarda {betoblar}.
+위쪽	위쪽으로 올라가 보세요.	위쪽	위쪽	{Yuqori tomonga} chiqib ko'ring.
+손수건	손수건으로 땀을 닦았어요.	손수건	손수건	{Dastro'mol} bilan terimni artdim.
+메모	책상 위에 메모를 남겼어요.	메모	메모	Stol ustida {eslatma} qoldirdim.
+엽서	여행지에서 엽서를 보냈어요.	엽서	엽서	Sayohat joyidan {otkritka} yubordim.
+환영02	따뜻한 환영을 받았어요.	환영	환영	Iliq {kutib olindim}.
+바깥쪽	바깥쪽 자리에 앉을게요.	바깥쪽	바깥쪽	{Tashqi tomondagi} joyga o'tiraman.
+고등학생	형은 고등학생이에요.	고등학생	고등학생	Akam {yuqori sinf o'quvchisi}.
+저분	저분이 누구세요?	저분	저분	{Anavi kishi} kim?
+예순02/예순01	아버지는 올해 예순이세요.	예순	예순	Otam bu yil {oltmish} yoshdalar.
+귀여워하다	할머니는 손자를 아주 귀여워하세요.	귀여워하세요	귀여워하세요	Buvim nevarasini juda {erkalaydilar}.
+코끼리	코끼리는 코가 길어요.	코끼리	코끼리	{Fil}ning xartumi uzun.
+앞쪽	앞쪽에 앉으면 잘 보여요.	앞쪽	앞쪽	{Old tomonda} o'tirsangiz, yaxshi ko'rinadi.
+스웨터	추워서 스웨터를 입었어요.	스웨터	스웨터	Sovuq bo'lgani uchun {sviter} kiydim.
+청바지	청바지에 운동화를 신었어요.	청바지	청바지	{Jinsi shim}ga krossovka kiydim.
+단추	단추가 떨어졌어요.	단추	단추	{Tugma} uzilib tushdi.
+장갑	겨울에는 장갑을 껴요.	장갑	장갑	Qishda {qo'lqop} kiyaman.
+목걸이	생일 선물로 목걸이를 받았어요.	목걸이	목걸이	Tug'ilgan kunga {marjon} sovg'a oldim.
+첫째02‧첫째01/첫째03	첫째, 매일 단어를 외우세요.	첫째	첫째	{Birinchidan}, har kuni so'z yodlang.
+거01	먹을 거 좀 있어요?	거	거	Yeydigan {narsa} bormi?
+선선하다	가을 바람이 선선해요.	선선해요	선선해요	Kuzgi shamol {salqin}.
+장미	빨간 장미를 선물했어요.	장미	장미	Qizil {atirgul} sovg'a qildim.
+예약	식당을 예약했어요.	예약	예약	Oshxonada joy {bron qildim}.
+큰소리	옆방에서 큰소리가 났어요.	큰소리	큰소리	Qo'shni xonadan {baland ovoz} keldi.
+피자	친구들과 피자를 시켜 먹었어요.	피자	피자	Do'stlarim bilan {pitsa} buyurtma qilib yedik.
+자장면	중국집에서 자장면을 먹었어요.	자장면	자장면	Xitoy oshxonasida {jajangmyon} yedim.
+닭고기	저는 소고기보다 닭고기를 좋아해요.	닭고기	닭고기	Men mol go'shtidan ko'ra {tovuq go'shti}ni yoqtiraman.
+식초	샐러드에 식초를 조금 넣어요.	식초	식초	Salatga ozgina {sirka} solaman.
+화내다	작은 일로 화내지 마세요.	화내지	화내지	Arzimas narsaga {jahl qilmang}.
+저곳	저곳에 가 본 적이 있어요?	저곳	저곳	{Ana u yerga} borib ko'rganmisiz?
+여쭙다	선생님께 여쭤볼게요.	여쭤볼게요	여쭤볼게요	O'qituvchidan {so'rab ko'raman}.
+앨범	앨범에서 어릴 때 사진을 봤어요.	앨범	앨범	{Albom}dan bolaligimdagi suratlarni ko'rdim.
+수고	오늘도 수고하셨습니다.	수고	수고	Bugun ham {charchadingiz} (rahmat).
+점심시간	점심시간에 회사 근처 식당에 가요.	점심시간	점심시간	{Tushlik vaqtida} ishxona yaqinidagi oshxonaga boraman.
+약사	약사에게 약에 대해 물어봤어요.	약사	약사	{Farmatsevt}dan dori haqida so'radim.
+낮잠	점심을 먹고 낮잠을 잤어요.	낮잠	낮잠	Tushlikdan keyin {kunduzgi uyqu}ga yotdim.
+시계01	시계가 고장 났어요.	시계	시계	{Soat} buzildi.
+저번	저번 주에 서울에 갔어요.	저번	저번	{O'tgan} hafta Seulga bordim.
+둘째02∙둘째01/둘째03	둘째 아들은 대학생이에요.	둘째	둘째	{Ikkinchi} o'g'lim talaba.
+받아쓰다	선생님 말씀을 받아썼어요.	받아썼어요	받아썼어요	O'qituvchining so'zlarini {yozib oldim}.
+셋째02‧셋째01/셋째03	셋째 줄에 앉으세요.	셋째	셋째	{Uchinchi} qatorga o'tiring.
+정거장	다음 정거장에서 내리세요.	정거장	정거장	Keyingi {bekatda} tushing.
+강아지	강아지가 꼬리를 흔들어요.	강아지	강아지	{Kuchukcha} dumini likillatyapti.
+신호등	신호등이 빨간색이에요.	신호등	신호등	{Svetofor} qizil.
+발바닥	오래 걸어서 발바닥이 아파요.	발바닥	발바닥	Ko'p yurganimdan {oyoq kaftim} og'riyapti.
+관광지	경주는 유명한 관광지예요.	관광지	관광지	Kyonju — mashhur {sayyohlik joyi}.
+음악가	그 음악가의 연주를 들었어요.	음악가	음악가	U {musiqachi}ning ijrosini tingladim.
+오래간만	오래간만에 가족 여행을 갔어요.	오래간만	오래간만	{Ancha vaqtdan beri} birinchi marta oilaviy sayohatga bordik.
+원피스	파티에 원피스를 입고 갔어요.	원피스	원피스	Bazmga {ko'ylak} kiyib bordim.
+와이셔츠	아버지의 와이셔츠를 다렸어요.	와이셔츠	와이셔츠	Otamning {ko'ylagini} dazmolladim.
+수저	식탁에 수저를 놓아 주세요.	수저	수저	Stolga {qoshiq va cho'p} qo'yib bering.
+답장	친구에게 답장을 보냈어요.	답장	답장	Do'stimga {javob xati} yubordim.
+세탁기	세탁기에 옷을 넣었어요.	세탁기	세탁기	{Kir yuvish mashinasi}ga kiyim soldim.
+노란색	노란색 우산을 샀어요.	노란색	노란색	{Sariq} soyabon oldim.
+치과	이가 아파서 치과에 갔어요.	치과	치과	Tishim og'rigani uchun {stomatolog}ga bordim.
+블라우스	하얀 블라우스를 입었어요.	블라우스	블라우스	Oq {bluzka} kiydim.
+식빵	식빵에 잼을 발라 먹어요.	식빵	식빵	{Tost noni}ga murabbo surtib yeyman.
+신혼여행	신혼여행으로 제주도에 갔어요.	신혼여행	신혼여행	{Asal oyi sayohati}ga Chejudoga bordik.
+요리사	제 꿈은 요리사예요.	요리사	요리사	Mening orzuim — {oshpaz} bo'lish.
+마중	공항에 친구 마중을 나갔어요.	마중	마중	Aeroportga do'stimni {kutib olgani} chiqdim.
+칫솔	여행 가방에 칫솔을 넣었어요.	칫솔	칫솔	Sayohat sumkasiga {tish cho'tkasi}ni soldim.
+해외여행	방학에 해외여행을 가고 싶어요.	해외여행	해외여행	Ta'tilda {chet elga sayohat} qilgim keladi.
+세탁	빨래가 많아서 세탁을 맡겼어요.	세탁	세탁	Kir ko'p bo'lgani uchun {yuvishga} berdim.
+치약	치약이 다 떨어졌어요.	치약	치약	{Tish pastasi} tugab qoldi.
+간식	오후에 간식으로 과일을 먹어요.	간식	간식	Tushdan keyin {tamaddi} uchun meva yeyman.
+평일	평일에는 회사에 가요.	평일	평일	{Ish kunlari} ishxonaga boraman.
+동물원	아이들과 동물원에 갔어요.	동물원	동물원	Bolalar bilan {hayvonot bog'i}ga bordik.
+자판기	자판기에서 커피를 뽑았어요.	자판기	자판기	{Avtomat}dan qahva oldim.
+송편	추석에 송편을 만들어요.	송편	송편	Chusokda {songpyon} tayyorlaymiz.
+빨간색	빨간색 사과가 맛있어 보여요.	빨간색	빨간색	{Qizil} olma mazali ko'rinyapti.
+단풍	가을에 단풍을 보러 산에 가요.	단풍	단풍	Kuzda {qizil barglarni} tomosha qilgani tog'ga boraman.
+횡단보도	횡단보도로 건너세요.	횡단보도	횡단보도	{Piyodalar o'tish joyi}dan o'ting.
+출퇴근	출퇴근 시간에는 지하철이 복잡해요.	출퇴근	출퇴근	{Ishga borib-kelish} vaqtida metro gavjum.
+다이어트	요즘 다이어트를 하고 있어요.	다이어트	다이어트	Shu kunlarda {parhez} qilyapman.
+상추	삼겹살을 상추에 싸서 먹어요.	상추	상추	Samgyopsalni {salat bargi}ga o'rab yeymiz.
+거절	친구의 부탁을 거절했어요.	거절	거절	Do'stimning iltimosini {rad etdim}.
+옷장	옷장에 옷이 너무 많아요.	옷장	옷장	{Shkaf}da kiyim juda ko'p.
+공휴일	오늘은 공휴일이라서 회사에 안 가요.	공휴일	공휴일	Bugun {bayram kuni}, shuning uchun ishga bormayman.
+꽃다발	졸업식에서 꽃다발을 받았어요.	꽃다발	꽃다발	Bitiruv marosimida {guldasta} oldim.
+재채기	감기 때문에 재채기가 나와요.	재채기	재채기	Shamollashdan {aksiryapman}.
+선풍기	더워서 선풍기를 켰어요.	선풍기	선풍기	Issiq bo'lgani uchun {ventilyator}ni yoqdim.
+손녀	할머니가 손녀와 산책해요.	손녀	손녀	Buvi {nevarasi} bilan sayr qilyapti.
+스키장	겨울 방학에 스키장에 갔어요.	스키장	스키장	Qishki ta'tilda {chang'i maydoni}ga bordik.
+아래쪽	아래쪽에 이름을 쓰세요.	아래쪽	아래쪽	{Pastki qismiga} ismingizni yozing.
+주차	여기에 주차하면 안 돼요.	주차	주차	Bu yerga {mashina qo'yish} mumkin emas.
+분홍색	분홍색 꽃이 예뻐요.	분홍색	분홍색	{Pushti} gul chiroyli.
+휴지통	휴지통을 비웠어요.	휴지통	휴지통	{Axlat qutisi}ni bo'shatdim.
+사계절	한국은 사계절이 뚜렷해요.	사계절	사계절	Koreyada {to'rt fasl} aniq ajralib turadi.
+내과	배가 아파서 내과에 갔어요.	내과	내과	Qornim og'rigani uchun {terapevt}ga bordim.
+나흘	나흘 동안 여행했어요.	나흘	나흘	{To'rt kun} sayohat qildim.
+다음날	다음날 아침에 일찍 출발했어요.	다음날	다음날	{Ertasi kuni} ertalab erta jo'nadik.
+신분증	신분증을 보여 주세요.	신분증	신분증	{Shaxsiy guvohnoma}ngizni ko'rsating.
+영수증	영수증 드릴까요?	영수증	영수증	{Chek} beraymi?
+배드민턴	공원에서 배드민턴을 쳤어요.	배드민턴	배드민턴	Bog'da {badminton} o'ynadik.
+튀김	떡볶이와 튀김을 같이 먹어요.	튀김	튀김	Ttokpokki bilan {qovurma}ni birga yeymiz.
+중국집	배달은 중국집이 제일 빨라요.	중국집	중국집	Yetkazib berishda {xitoy oshxonasi} eng tez.
+고속버스	고속버스를 타고 부산에 가요.	고속버스	고속버스	{Shaharlararo avtobus}da Pusanga boraman.
+지하도	지하도로 길을 건너세요.	지하도	지하도	Yo'lni {yer osti o'tish joyi}dan kesib o'ting.
+초록색	초록색 나뭇잎이 예뻐요.	초록색	초록색	{Yashil} barglar chiroyli.
+미역국	생일에는 미역국을 먹어요.	미역국	미역국	Tug'ilgan kunda {miyokguk} yeyiladi.
+체육관	체육관에서 농구를 해요.	체육관	체육관	{Sport zali}da basketbol o'ynaymiz.
+연락처	연락처를 알려 주시겠어요?	연락처	연락처	{Aloqa ma'lumotingiz}ni aytib berasizmi?
+홍차	아침에 홍차를 마셔요.	홍차	홍차	Ertalab {qora choy} ichaman.
+출석	선생님이 출석을 부르세요.	출석	출석	O'qituvchi {davomat} qilyaptilar.
+사탕	아이에게 사탕을 줬어요.	사탕	사탕	Bolaga {konfet} berdim.
+메일	메일로 서류를 보냈어요.	메일	메일	Hujjatlarni {elektron pochta} orqali yubordim.
+파란색	파란색 셔츠가 잘 어울려요.	파란색	파란색	{Ko'k} ko'ylak sizga yarashibdi.
+볶음밥	냉장고에 있는 재료로 볶음밥을 만들었어요.	볶음밥	볶음밥	Muzlatgichdagi masalliqlardan {qovurilgan guruch} tayyorladim.
+한글	한글은 배우기 쉬워요.	한글	한글	{Hangul}ni o'rganish oson.
+세배	설날에 할아버지께 세배를 드려요.	세배	세배	Sollalda bobomga {yangi yil ta'zimi} qilaman.
+콧물	감기에 걸려서 콧물이 나요.	콧물	콧물	Shamollab, {burnim oqyapti}.
+녹차	녹차 한 잔 드릴까요?	녹차	녹차	Bir piyola {ko'k choy} beraymi?
+조심	감기 조심하세요.	조심	조심	Shamollashdan {ehtiyot} bo'ling.
+보라색	보라색은 제가 좋아하는 색이에요.	보라색	보라색	{Binafsha} — men yoqtirgan rang.
+소포	고향에서 소포가 왔어요.	소포	소포	Tug'ilgan joyimdan {posilka} keldi.
+스케이트	겨울에 호수에서 스케이트를 타요.	스케이트	스케이트	Qishda ko'lda {konki} uchamiz.
+반바지	더워서 반바지를 입었어요.	반바지	반바지	Issiq bo'lgani uchun {shortik} kiydim.
+만두	설날에 가족들과 만두를 빚어요.	만두	만두	Sollalda oila bilan {chuchvara} tugamiz.
+퇴원	할아버지가 내일 퇴원하세요.	퇴원	퇴원	Bobom ertaga {kasalxonadan chiqadilar}.
+매표소	매표소에서 표를 사세요.	매표소	매표소	Chiptani {kassa}dan oling.
+카레	카레는 조금 매워요.	카레	카레	{Karri} biroz achchiq.
+이삿짐	이삿짐을 트럭에 실었어요.	이삿짐	이삿짐	{Ko'chish yukini} yuk mashinasiga yukladik.
+시간표	새 학기 시간표가 나왔어요.	시간표	시간표	Yangi semestr {jadvali} chiqdi.
+휴게실	휴게실에서 잠깐 쉬었어요.	휴게실	휴게실	{Dam olish xonasi}da biroz dam oldim.
+하늘색	하늘색 원피스를 입었어요.	하늘색	하늘색	{Havorang} ko'ylak kiydim.
+책장02	책장에 책이 가득해요.	책장	책장	{Kitob javoni} kitobga to'la.
+입장권	박물관 입장권을 샀어요.	입장권	입장권	Muzeyga {kirish chiptasi} oldim.
+스카프	목에 스카프를 맸어요.	스카프	스카프	Bo'ynimga {ro'mol} bog'ladim.
+출입국	출입국 사무소에서 비자를 연장했어요.	출입국	출입국	{Migratsiya} idorasida vizani uzaytirdim.
+꽃병	꽃병에 장미를 꽂았어요.	꽃병	꽃병	{Guldon}ga atirgul qo'ydim.
+한옥	한옥 마을을 구경했어요.	한옥	한옥	{Hanok} qishlog'ini tomosha qildim.
+태극기	국경일에 태극기를 달아요.	태극기	태극기	Milliy bayramda {Tegukki} osiladi.
+세탁소	세탁소에 코트를 맡겼어요.	세탁소	세탁소	Paltoni {kimyoviy tozalash}ga berdim.
+저금	매달 월급의 일부를 저금해요.	저금	저금	Har oy maoshimning bir qismini {jamg'araman}.
+스파게티	이 식당은 스파게티가 맛있어요.	스파게티	스파게티	Bu oshxonada {spagetti} mazali.
+연세	할아버지 연세가 어떻게 되세요?	연세	연세	Bobongiz {necha yoshdalar}?
+떡국	설날 아침에 떡국을 먹었어요.	떡국	떡국	Sollal ertalabi {tokguk} yedik.
+프라이팬	프라이팬에 계란을 부쳤어요.	프라이팬	프라이팬	{Tova}da tuxum qovurdim.
+축구공	아이들이 축구공을 차요.	축구공	축구공	Bolalar {futbol to'pi}ni tepyapti.
+칼국수	비 오는 날에는 칼국수가 생각나요.	칼국수	칼국수	Yomg'irli kunda {kalguksu} esga tushadi.
+빵집	빵집에서 케이크를 샀어요.	빵집	빵집	{Nonvoyxona}dan tort oldim.
+귀걸이	예쁜 귀걸이를 했네요.	귀걸이	귀걸이	Chiroyli {sirg'a} taqibsiz.
+사이즈	이 신발 다른 사이즈 있어요?	사이즈	사이즈	Bu oyoq kiyimning boshqa {o'lchami} bormi?
+환전	공항에서 환전했어요.	환전	환전	Aeroportda {valyuta almashtirdim}.
+감기약	감기약을 먹고 푹 쉬세요.	감기약	감기약	{Shamollash dorisi}ni ichib, yaxshilab dam oling.
+결석	아파서 학교에 결석했어요.	결석	결석	Kasal bo'lganim uchun {darsga bormadim}.
+지각02	오늘 지각해서 선생님께 혼났어요.	지각	지각	Bugun {kechikkanim} uchun o'qituvchidan tanbeh oldim.
+삼거리	삼거리에서 왼쪽으로 가세요.	삼거리	삼거리	{Uch yo'l chorrahasi}dan chapga buriling.
+하숙비	하숙비는 한 달에 오십만 원이에요.	하숙비	하숙비	{Ijara haqi} oyiga besh yuz ming von.
+수영복	수영장에 갈 때 수영복을 가져가요.	수영복	수영복	Basseynga borganda {suzish kiyimi}ni olib boraman.
+운동복	운동복으로 갈아입으세요.	운동복	운동복	{Sport kiyimi}ga almashtiring.
+교통비	서울은 교통비가 비싸지 않아요.	교통비	교통비	Seulda {yo'l kira} qimmat emas.
+초대장	결혼식 초대장을 받았어요.	초대장	초대장	To'y {taklifnomasini} oldim.
+휴대폰	휴대폰을 집에 두고 왔어요.	휴대폰	휴대폰	{Telefonimni} uyda qoldirib keldim.
+옷걸이	옷걸이에 코트를 거세요.	옷걸이	옷걸이	Paltoni {ilgich}ga iling.
+우동	추워서 따뜻한 우동을 먹었어요.	우동	우동	Sovuq bo'lgani uchun issiq {udon} yedim.
+편리	이 동네는 교통이 편리해요.	편리	편리	Bu mahallada transport {qulay}.
+다양	이 가게에는 다양한 물건이 있어요.	다양	다양	Bu do'konda {xilma-xil} mollar bor.
+항공권	인터넷으로 항공권을 예약했어요.	항공권	항공권	Internet orqali {aviachipta} bron qildim.
+기차역	기차역에서 친구를 만났어요.	기차역	기차역	{Vokzal}da do'stim bilan uchrashdim.
+기차표	추석 기차표를 미리 샀어요.	기차표	기차표	Chusok uchun {poyezd chiptasi}ni oldindan oldim.
+꽃집	꽃집에서 꽃다발을 샀어요.	꽃집	꽃집	{Gul do'koni}dan guldasta oldim.
+치킨	주말에 치킨을 시켜 먹었어요.	치킨	치킨	Dam olish kunlari {qovurilgan tovuq} buyurtma qilib yedik.
+육교	육교를 건너서 학교에 가요.	육교	육교	{Piyodalar ko'prigi}dan o'tib maktabga boraman.
+여행지	추천할 만한 여행지가 있어요?	여행지	여행지	Tavsiya qiladigan {sayohat joyi} bormi?
+복습	수업이 끝나면 꼭 복습하세요.	복습	복습	Dars tugagach, albatta {takrorlang}.
+소화제	과식해서 소화제를 먹었어요.	소화제	소화제	Ko'p yeganim uchun {hazm dorisi} ichdim.
+자기소개	첫 수업에서 자기소개를 했어요.	자기소개	자기소개	Birinchi darsda {o'zimni tanishtirdim}.
+설렁탕	추운 날에는 설렁탕이 좋아요.	설렁탕	설렁탕	Sovuq kunda {sollongtang} yaxshi.
+한턱	오늘은 제가 한턱낼게요.	한턱	한턱	Bugun men {mehmon qilaman}.
+마트	마트에서 장을 봤어요.	마트	마트	{Supermarket}dan xarid qildim.
+사거리	사거리에서 오른쪽으로 도세요.	사거리	사거리	{Chorraha}dan o'ngga buriling.
+주황색	주황색 옷을 입은 사람이 제 동생이에요.	주황색	주황색	{To'q sariq} kiyim kiygan odam — ukam.
+윷놀이	설날에 가족들과 윷놀이를 해요.	윷놀이	윷놀이	Sollalda oila bilan {yut o'yini} o'ynaymiz.
+안내문	안내문을 잘 읽어 보세요.	안내문	안내문	{Yo'riqnoma}ni yaxshilab o'qib chiqing.
+짬뽕	저는 짬뽕을 시킬게요.	짬뽕	짬뽕	Men {jjamppong} buyurtma qilaman.
+목도리	추우니까 목도리를 하세요.	목도리	목도리	Sovuq, {sharf} o'rang.
+양치질	밥을 먹은 후에는 양치질을 해요.	양치질	양치질	Ovqatdan keyin {tish yuvaman}.
+배탈	상한 음식을 먹어서 배탈이 났어요.	배탈	배탈	Buzilgan ovqat yeb, {oshqozonim buzildi}.
+성함	성함이 어떻게 되세요?	성함	성함	{Ismingiz} nima?
+집들이	새 집으로 이사해서 집들이를 했어요.	집들이	집들이	Yangi uyga ko'chib, {uy to'yi} qildik.
+헬스클럽	퇴근 후에 헬스클럽에 가요.	헬스클럽	헬스클럽	Ishdan keyin {fitnes klub}ga boraman.
+초등학생	조카는 초등학생이에요.	초등학생	초등학생	Jiyanim {boshlang'ich sinf o'quvchisi}.
+분식	학교 앞 분식집에서 떡볶이를 먹었어요.	분식	분식	Maktab oldidagi {arzon taomlar} oshxonasida ttokpokki yedim.
+한식03	외국 친구가 한식을 좋아해요.	한식	한식	Chet ellik do'stim {koreys taomlarini} yoqtiradi.
+올림01	지민 올림	올림	올림	{Hurmat bilan}, Jimin
+돈가스	돈가스는 아이들이 좋아하는 음식이에요.	돈가스	돈가스	{Tonkatsu} — bolalar yoqtiradigan taom.
+소고기	소고기로 국을 끓였어요.	소고기	소고기	{Mol go'shti}dan sho'rva pishirdim.
+자동판매기	역에 자동판매기가 있어요.	자동판매기	자동판매기	Bekatda {savdo avtomati} bor.
+병문안	입원한 친구 병문안을 갔어요.	병문안	병문안	Kasalxonaga yotgan do'stimni {ko'rgani} bordim.
+테니스장	주말마다 테니스장에 가요.	테니스장	테니스장	Har dam olish kuni {tennis korti}ga boraman.
+예습	수업 전에 예습을 하면 좋아요.	예습	예습	Darsdan oldin {tayyorlanib kelsangiz}, yaxshi.
+까만색	까만색 가방을 잃어버렸어요.	까만색	까만색	{Qora} sumkamni yo'qotib qo'ydim.
+하얀색	하얀색 운동화를 신었어요.	하얀색	하얀색	{Oq} krossovka kiydim.
+삼겹살	친구들과 삼겹살을 구워 먹었어요.	삼겹살	삼겹살	Do'stlarim bilan {samgyopsal} qovurib yedik.
+예매	영화표를 인터넷으로 예매했어요.	예매	예매	Kino chiptasini internet orqali {oldindan oldim}.
+한식집	부모님과 한식집에서 식사했어요.	한식집	한식집	Ota-onam bilan {koreys oshxonasi}da ovqatlandik.
+택배	택배가 도착했어요.	택배	택배	{Posilka} yetib keldi.
+정확	시간을 정확하게 지켜 주세요.	정확	정확	Vaqtga {aniq} rioya qiling.
+양식03	오늘 저녁은 양식을 먹을까요?	양식	양식	Bugun kechqurun {g'arb taomi} yeymizmi?
+탕수육	중국집에서 탕수육을 시켰어요.	탕수육	탕수육	Xitoy oshxonasida {tangsuyuk} buyurtma qildik.
+일식집	회사 근처 일식집에서 점심을 먹었어요.	일식집	일식집	Ishxona yaqinidagi {yapon oshxonasi}da tushlik qildim.
+일식01	저는 일식보다 한식을 좋아해요.	일식	일식	Men {yapon taomidan} ko'ra koreys taomini yoqtiraman.
+편안	집에 오니까 마음이 편안해요.	편안	편안	Uyga kelib, ko'nglim {osoyishta}.
+양식집	양식집에서 스테이크를 먹었어요.	양식집	양식집	{G'arb oshxonasi}da steyk yedim.
+순두부찌개	순두부찌개는 맵지만 맛있어요.	순두부찌개	순두부찌개	{Sundubu-jjigae} achchiq, lekin mazali.
