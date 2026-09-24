@@ -15,6 +15,8 @@
     "plan:vocab": "python scripts/plan-vocab.py",
     "build:course": "node scripts/build-course.mjs",
     "voice": "node scripts/voice.mjs",
+    "voice:lists": "node scripts/voice-cut.mjs lists",
+    "voice:cut": "node scripts/voice-cut.mjs cut",
     "backup": "node --no-warnings=ExperimentalWarning scripts/backup-db.js",
     "test": "node --no-warnings=ExperimentalWarning --test --test-reporter=spec \"test/**/*.test.js\"",
     "mobile": "npm --prefix apps/mobile run start"
