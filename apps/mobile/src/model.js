@@ -1,8 +1,8 @@
 // What the screens say about the course, worked out once.
 //
 // srs.js knows the schedule and exercise.js the questions; this is the thin layer between them and the
-// screens — a level's name and size, where a lesson stands, an example sentence split for highlighting —
-// so that the home screen and the course screen can never describe the same lesson in two different ways.
+// screens — a level's name and size, where today's lesson and each part stand, an example sentence split for
+// highlighting — so that the home screen and the course screen can never describe the same thing two ways.
 import * as srs from "@upkorean/shared/srs.js";
 import { LEVELS, levelMeta } from "@upkorean/shared/course/levels.js";
 import { syllableReading } from "@upkorean/shared/hangul.js";
@@ -16,7 +16,7 @@ export const LEVEL_BLURB = {
 };
 
 // A level as the screens need it: its names from the course, its size and lock from the server's manifest.
-// `words` and `lessons` are what is published; `planned` is every word the level will hold, and `ready` says
+// `words` and `parts` are what is published; `planned` is every word the level will hold, and `ready` says
 // whether the two are the same yet.
 export function levelInfo(levels, id) {
   const meta = levelMeta(id) || LEVELS[0];
@@ -26,7 +26,7 @@ export function levelInfo(levels, id) {
     ...meta,
     locked: live.locked ?? meta.id !== "b",
     words,
-    lessons: live.lessons || 0,
+    parts: live.parts || 0,
     planned: live.planned || meta.planned,
     ready: words >= (live.planned || meta.planned),
   };
@@ -42,37 +42,43 @@ export function nextLevel(levels, id) {
 export const firstName = (name) => String(name || "").trim().split(/\s+/)[0] || "do'stim";
 export const initial = (name) => (String(name || "?").trim()[0] || "?").toUpperCase();
 
-// Where a lesson stands: its words, its parts and how many are behind, whether it is done, how many of its
-// words are learned and mastered.
-export function lessonProgress(state, course, n) {
-  const lesson = srs.lessonAt(course, n);
-  const ids = lesson ? lesson.ids : [];
-  const done = srs.lessonDone(state, course, n);
-  const parts = lesson ? lesson.parts.length : 1;
+// Today's lesson as the screens show it: srs.todayLesson, plus the words of the sitting to do now (or of the
+// ten on top once it is done) and the lines the cards print.
+export function todayProgress(state, course, now = today()) {
+  const lesson = srs.todayLesson(state, course, now);
+  const nextIds = lesson.done ? lesson.extra : lesson.sittings[lesson.next] || [];
+  return {
+    ...lesson,
+    nextIds,
+    words: lesson.ids.length,
+    minutes: Math.max(1, lesson.sittings.length - lesson.sittingsDone) * srs.PART_MINUTES,
+  };
+}
+
+export const todayLine = (progress) => (progress.sittings.length > 1
+  ? `${progress.words} so'z · ${progress.sittings.length} qism · ~${progress.sittings.length * srs.PART_MINUTES} daqiqa`
+  : `${progress.words} so'z · ~${srs.PART_MINUTES} daqiqa`);
+// What the button that opens today's lesson says: where it starts, not just that it starts.
+export const todayAction = (progress) => (progress.done ? (progress.extra.length ? "Yana 10 so'z" : "Yangi so'z qolmadi")
+  : progress.sittingsDone ? `${progress.sittingsDone + 1}-qismni boshlash` : "Boshlash");
+
+// One part of the path as the course list and the part screen show it.
+export function partProgress(state, course, n) {
+  const part = srs.partAt(course, n);
+  const ids = part ? part.ids : [];
   return {
     n,
-    lesson,
-    title: lesson ? lesson.title : `${n}-dars`,
+    part,
+    title: part ? part.title : `${n}-qism`,
     ids,
     words: ids.length,
-    parts,
-    part: srs.nextPart(state, course, n),
-    partsDone: done ? parts : Math.min(parts, (lesson && srs.lessonState(state, lesson.id).part) || 0),
-    done,
-    status: srs.lessonStatus(state, course, n),
+    status: srs.partStatus(state, course, n),
     learned: ids.filter((id) => srs.isLearned(state, id)).length,
     mastered: ids.filter((id) => srs.isMastered(state, id)).length,
   };
 }
 
-export const lessonLine = (progress) => (progress.parts > 1
-  ? `${progress.words} so'z · ${progress.parts} qism · ~${progress.parts * srs.PART_MINUTES} daqiqa`
-  : `${progress.words} so'z · ~${srs.PART_MINUTES} daqiqa`);
-// What the button that opens a lesson says: where it starts, not just that it starts.
-export const lessonAction = (progress) => (progress.done ? "Darsni mashq qilish"
-  : progress.partsDone ? `${progress.partsDone + 1}-qismni boshlash` : "Boshlash");
-
-// The level's NIKL grade a lesson belongs to, as the course list heads its sections: "1급".
+// The level's NIKL grade a part belongs to, as the course list heads its sections: "1급".
 export const gradeName = (grade) => `${grade}급`;
 
 // Today's plan in words — what was learned today against the level's standard — for the home screen's ring.
@@ -83,8 +89,9 @@ export function todayGoal(state, now = today()) {
   return { goal, learned, left: Math.max(0, goal - learned), done: srs.planMet(state, now) || (goal > 0 && learned >= goal) };
 }
 
-// "1 dars · 20 so'z" — a daily standard as the plan screens say it.
-export const standardLine = (words) => `1 dars · ${words} so'z`;
+// "kuniga 20 so'z" — a daily standard as the plan screens say it; with a range, where it can grow to.
+export const standardLine = (words) => `kuniga ${words} so'z`;
+export const rangeLine = (range) => (range.from === range.to ? `kuniga ${range.from} so'z` : `kuniga ${range.from} → ${range.to} so'z`);
 // A rough price for a day at that standard: its parts, and about ten minutes of review on top.
 export const dailyMinutes = (words) => Math.round(words / srs.PART_SIZE) * srs.PART_MINUTES + 10;
 
@@ -165,19 +172,21 @@ export function lastDays(state, days = 14, now = today()) {
   });
 }
 
-// Every screen that starts a lesson goes through here, so a lesson is always opened the same way: a new one
-// as a lesson, a finished one as practice over its words.
-export function openLesson(navigation, state, course, n) {
-  const progress = lessonProgress(state, course, n);
-  if (!progress.lesson) return;
-  if (progress.done) {
-    navigation.navigate("Session", {
-      kind: "quiz", quizType: "mixed", title: `${n}-dars mashqi`,
-      ids: progress.ids.filter((id) => srs.isLearned(state, id)), count: 15,
-    });
-    return;
-  }
-  navigation.navigate("Session", { kind: "learn", lesson: n });
+// Every screen that starts today's lesson goes through here: the sitting it carries on from, or ten words on
+// top once it is done.
+export function openToday(navigation, state, course) {
+  const lesson = srs.todayLesson(state, course);
+  if (!lesson.done) navigation.navigate("Session", { kind: "learn" });
+  else if (lesson.extra.length) navigation.navigate("Session", { kind: "learn", extra: true });
+}
+
+// A part opened from the course list: its words not met yet as a sitting, or practice once all are met.
+export function openPart(navigation, state, course, n) {
+  const progress = partProgress(state, course, n);
+  if (!progress.part) return;
+  const fresh = progress.ids.filter((id) => !srs.isLearned(state, id));
+  if (fresh.length) navigation.navigate("Session", { kind: "learn", ids: fresh });
+  else navigation.navigate("Session", { kind: "quiz", quizType: "mixed", title: `${n}-qism mashqi`, ids: progress.ids, count: 15 });
 }
 
 export function openReview(navigation, mode = "due", extra = {}) {

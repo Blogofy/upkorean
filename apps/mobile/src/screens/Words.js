@@ -8,7 +8,7 @@ import * as srs from "@upkorean/shared/srs.js";
 import { useStore } from "../store";
 import { FONTS, useColors } from "../theme";
 import { Button, Chip, Feather, Row, Screen, Ticks, Title, tapped } from "../ui";
-import { levelInfo, openLesson } from "../model";
+import { levelInfo, openToday } from "../model";
 import WordSheet from "./WordSheet";
 
 const norm = (text) => String(text || "").toLowerCase().replace(/[’'`ʻʼ]/g, "'").trim();
@@ -61,8 +61,8 @@ export default function Words({ navigation }) {
           ko="시작"
           title="Hali so'z o'rganilmagan"
           body="Birinchi darsdan keyin so'zlaringiz shu yerda o'zlashtirish darajasi bilan chiqadi."
-          action="1-darsni boshlash"
-          onAction={() => openLesson(navigation, state, course, srs.currentLesson(state, course))}
+          action="Birinchi darsni boshlash"
+          onAction={() => openToday(navigation, state, course)}
         />
       );
     }
@@ -128,7 +128,7 @@ export default function Words({ navigation }) {
                   <View style={{ flex: 1, gap: 2, opacity: known ? 1 : 0.5 }}>
                     <Text style={{ fontSize: 19, fontWeight: "700", color: c.ink }} numberOfLines={1}>{item.ko}</Text>
                     <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: weak ? c.danger : c.ink2 }} numberOfLines={1}>
-                      {known ? `${item.uz} · ${weak ? `${memory.bad} xato` : `${item.lesson}-dars`}` : `${item.lesson}-darsda o'rganiladi`}
+                      {known ? `${item.uz} · ${weak ? `${memory.bad} xato` : `${item.part}-qism`}` : `${item.part}-qismda o'rganiladi`}
                     </Text>
                   </View>
                   {known ? <Ticks level={srs.mastery(state, item.id)} weak={weak} width={6} height={16} /> : <Feather name="lock" size={15} color={c.ink4} />}

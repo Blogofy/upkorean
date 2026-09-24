@@ -11,7 +11,7 @@ import { fmtDayMonth, fmtLong, today } from "@upkorean/shared/dates.js";
 import { useStore } from "../store";
 import { FONTS, shadow, useColors } from "../theme";
 import { Button, Col, Feather, Kicker, RingStat, Row, Screen, Segments, Title, Txt, tapped } from "../ui";
-import { firstName, lessonAction, lessonLine, lessonProgress, levelInfo, openLesson, openReview, todayGoal } from "../model";
+import { firstName, levelInfo, openReview, openToday, todayAction, todayGoal, todayLine, todayProgress } from "../model";
 
 const MISSED_KEY = "uk_missed_hidden_on";
 
@@ -35,11 +35,11 @@ export default function Today({ navigation }) {
   const streak = srs.streak(state, now);
   const goal = srs.reviewGoal(state, course, now);
   const week = srs.weekRhythm(state, now);
-  const doneLessons = srs.lessonsDone(state, course);
+  const learnedAll = srs.learnedIds(state, course).length;
   const finished = srs.courseDone(state, course);
-  const current = srs.currentLesson(state, course);
-  const progress = lessonProgress(state, course, current);
+  const progress = todayProgress(state, course, now);
   const daily = todayGoal(state, now);
+  const note = state.profile.dailyNote && state.profile.dailyNote.at === now ? state.profile.dailyNote : null;
   const plan = srs.planStatus(state, course, now);
   const missed = hiddenOn !== now && !(state.act[now] && (state.act[now].learned || state.act[now].reviewed))
     ? srs.missedYesterday(state, course, now) : null;
@@ -71,12 +71,13 @@ export default function Today({ navigation }) {
             missed={missed}
             best={state.bestStreak}
             due={goal.due}
-            onDo={() => openLesson(navigation, state, course, current)}
+            onDo={() => openToday(navigation, state, course)}
             onSkip={() => { setHiddenOn(now); AsyncStorage.setItem(MISSED_KEY, now).catch(() => {}); }}
           />
         ) : null}
 
-        {plan.behind > 0 && !finished && !missed ? <BehindCard plan={plan} /> : null}
+        {note ? <DailyNoteCard note={note} /> : null}
+        {plan.behind >= 10 && !finished && !missed ? <BehindCard plan={plan} /> : null}
 
         {fresh && !finished ? (
           <View style={{ gap: 4, paddingHorizontal: 4 }}>
@@ -99,8 +100,7 @@ export default function Today({ navigation }) {
             progress={progress}
             daily={daily}
             course={course}
-            onOpen={() => navigation.navigate("Lesson", { lesson: current })}
-            onStart={() => openLesson(navigation, state, course, current)}
+            onStart={() => openToday(navigation, state, course)}
           />
         )}
 
@@ -150,12 +150,12 @@ export default function Today({ navigation }) {
           <View style={{ flex: 1, gap: 7 }}>
             <Row gap={7} align="baseline">
               <Text style={{ fontFamily: FONTS.bold, fontSize: 14, color: c.ink }}>Kurs</Text>
-              <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: c.ink2 }}>{level.ko} · {doneLessons} / {course.lessonCount} dars</Text>
+              <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: c.ink2 }}>{level.ko} · {learnedAll} / {course.words.length} so'z</Text>
             </Row>
             <Segments
               total={20}
-              filled={Math.round((doneLessons / Math.max(1, course.lessonCount)) * 20)}
-              current={finished ? -1 : Math.min(19, Math.floor(((current - 1) / Math.max(1, course.lessonCount)) * 20))}
+              filled={Math.floor((learnedAll / Math.max(1, course.words.length)) * 20)}
+              current={finished ? -1 : Math.min(19, Math.floor((learnedAll / Math.max(1, course.words.length)) * 20))}
             />
           </View>
           <Feather name="chevron-right" size={16} color={c.ink4} />
@@ -168,20 +168,22 @@ export default function Today({ navigation }) {
 
 const label = (c) => ({ fontFamily: FONTS.bold, fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", color: c.ink4 });
 
-// The lesson card: today's lesson, a taste of the part it carries on from, and today's goal as a ring beside
-// it. Once the goal is met it says so and still offers the next lesson — the goal is a floor, not a ceiling.
-function LessonCard({ progress, daily, course, onOpen, onStart }) {
+// Today's lesson: a taste of the sitting it carries on from, the day's goal as a ring beside it, and the
+// button that starts the right sitting. Once the lesson is done it says so and offers ten words more — the
+// plan is a floor, not a ceiling.
+function LessonCard({ progress, daily, course, onStart }) {
   const c = useColors();
-  const words = (progress.lesson?.parts[progress.part] || progress.ids).map((id) => course.byId[id]).filter(Boolean);
+  const words = progress.nextIds.map((id) => course.byId[id]).filter(Boolean);
   const shown = Math.min(daily.learned, daily.goal);
   const ring = daily.goal > 0;
+  const sittings = progress.sittings.length;
   return (
-    <Pressable onPress={onOpen} style={[{ backgroundColor: c.card, borderRadius: 26, padding: 22, gap: 16 }, shadow(c, 2)]}>
+    <Pressable onPress={onStart} style={[{ backgroundColor: c.card, borderRadius: 26, padding: 22, gap: 16 }, shadow(c, 2)]}>
       <Row justify="space-between" align="flex-start" gap={14}>
         <View style={{ flex: 1, gap: 3 }}>
-          <Kicker>{progress.n}-dars · {daily.done ? "bonus" : "bugungi"}{progress.parts > 1 ? ` · ${progress.partsDone}/${progress.parts} qism` : ""}</Kicker>
-          <Title size={23}>{progress.title}</Title>
-          <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: c.ink2 }}>{lessonLine(progress)}</Text>
+          <Kicker>Bugungi dars{sittings > 1 && !progress.done ? ` · ${progress.sittingsDone}/${sittings} qism` : ""}</Kicker>
+          <Title size={23}>{progress.done ? "Bajarildi" : `${progress.goal} ta yangi so'z`}</Title>
+          <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: c.ink2 }}>{todayLine(progress)}</Text>
         </View>
         {ring ? (
           <View style={{ alignItems: "center", gap: 4 }}>
@@ -190,42 +192,65 @@ function LessonCard({ progress, daily, course, onOpen, onStart }) {
           </View>
         ) : null}
       </Row>
-      {daily.done ? (
+      {progress.done ? (
         <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, lineHeight: 19, color: c.ink2, marginTop: -4 }}>
-          Bugungi reja bajarildi. Vaqtingiz bo'lsa, ertangi darsni hozir boshlashingiz mumkin.
+          Bugungi reja bajarildi. Vaqtingiz bo'lsa, yana 10 so'z o'rganishingiz mumkin.
         </Text>
       ) : null}
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7 }}>
-        {words.slice(0, 5).map((word) => (
-          <View key={word.id} style={{ paddingVertical: 8, paddingHorizontal: 13, borderRadius: 12, backgroundColor: c.tint }}>
-            <Text style={{ fontSize: 15, fontWeight: "700", color: c.ink }}>{word.ko}</Text>
-          </View>
-        ))}
-        {words.length > 5 ? (
-          <View style={{ paddingVertical: 8, paddingHorizontal: 13, borderRadius: 12, backgroundColor: c.tint, justifyContent: "center" }}>
-            <Text style={{ fontFamily: FONTS.semi, fontSize: 13, color: c.ink2 }}>+{words.length - 5}</Text>
-          </View>
-        ) : null}
-      </View>
-      <Button title={daily.done && !progress.partsDone ? "Yana bir dars" : lessonAction(progress)} kind={daily.done ? "tint" : "primary"} size="md" onPress={onStart} />
+      {words.length ? (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7 }}>
+          {words.slice(0, 5).map((word) => (
+            <View key={word.id} style={{ paddingVertical: 8, paddingHorizontal: 13, borderRadius: 12, backgroundColor: c.tint }}>
+              <Text style={{ fontSize: 15, fontWeight: "700", color: c.ink }}>{word.ko}</Text>
+            </View>
+          ))}
+          {words.length > 5 ? (
+            <View style={{ paddingVertical: 8, paddingHorizontal: 13, borderRadius: 12, backgroundColor: c.tint, justifyContent: "center" }}>
+              <Text style={{ fontFamily: FONTS.semi, fontSize: 13, color: c.ink2 }}>+{words.length - 5}</Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+      <Button title={todayAction(progress)} kind={progress.done ? "tint" : "primary"} size="md" disabled={progress.done && !progress.extra.length} onPress={onStart} />
     </Pressable>
   );
 }
 
-// Days behind the plan, as lessons. Named plainly, with the way back: the plan is kept by catching up, not
-// by starting over.
+// The day the standard moved, it says so — up is earned, and down is not a punishment but a fit.
+function DailyNoteCard({ note }) {
+  const c = useColors();
+  const up = note.to > note.from;
+  return (
+    <Row gap={14} style={{ backgroundColor: up ? c.greenTint : c.tint, borderRadius: 20, paddingVertical: 15, paddingHorizontal: 16 }}>
+      <Feather name={up ? "trending-up" : "trending-down"} size={20} color={up ? c.greenDeep : c.ink2} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ fontFamily: FONTS.bold, fontSize: 14.5, color: up ? c.greenDeep : c.ink }}>
+          Kunlik dars {note.to} so'zga {up ? "oshirildi" : "kamaytirildi"}
+        </Text>
+        <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, lineHeight: 17, color: up ? c.greenDeep : c.ink2 }}>
+          {up
+            ? "Oxirgi kunlarda so'zlarni yaxshi eslab qolyapsiz va takrorlashni bajaryapsiz."
+            : "So'zlar yaxshi o'rnashishi uchun yuk biroz yengillashtirildi. Natija yaxshilansa, yana oshadi."}
+        </Text>
+      </View>
+    </Row>
+  );
+}
+
+// Words behind the plan. Named plainly, with the way back: the plan is kept by catching up, not by starting
+// over.
 function BehindCard({ plan }) {
   const c = useColors();
   const n = plan.behind;
   return (
     <Row gap={14} style={{ backgroundColor: c.dangerTint, borderRadius: 20, paddingVertical: 15, paddingHorizontal: 16 }}>
-      <View style={{ width: 38, height: 38, borderRadius: 13, backgroundColor: c.card, alignItems: "center", justifyContent: "center" }}>
-        <Text style={{ fontFamily: FONTS.displayBold, fontSize: 16, color: c.danger }}>{n}</Text>
+      <View style={{ minWidth: 38, height: 38, paddingHorizontal: 6, borderRadius: 13, backgroundColor: c.card, alignItems: "center", justifyContent: "center" }}>
+        <Text style={{ fontFamily: FONTS.displayBold, fontSize: 15, color: c.danger }}>{n}</Text>
       </View>
       <View style={{ flex: 1, gap: 2 }}>
-        <Text style={{ fontFamily: FONTS.bold, fontSize: 14.5, color: c.dangerInk }}>Rejadan {n} dars ortdasiz</Text>
+        <Text style={{ fontFamily: FONTS.bold, fontSize: 14.5, color: c.dangerInk }}>Rejadan {n} so'z ortdasiz</Text>
         <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, lineHeight: 17, color: c.dangerInk }}>
-          Reja bo'yicha {Math.floor(plan.expected)}-darsgacha yetgan bo'lishingiz kerak edi. Bugun bir-ikki dars ko'proq qilib yetib oling.
+          Bugungi darsdan keyin "Yana 10 so'z" bilan asta-sekin yetib oling.
         </Text>
       </View>
     </Row>

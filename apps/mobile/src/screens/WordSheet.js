@@ -52,7 +52,7 @@ export default function WordSheet({ id, onClose, navigation }) {
           <View style={{ flex: 1, gap: 5 }}>
             <Text style={{ fontSize: 40, lineHeight: 48, fontWeight: "700", color: c.ink }} adjustsFontSizeToFit numberOfLines={1}>{word.ko}</Text>
             <Text style={{ fontFamily: FONTS.body, fontSize: 14, color: c.ink2 }}>
-              {word.lesson}-dars · {gradeName(word.grade)}
+              {word.part}-qism · {gradeName(word.grade)}
             </Text>
           </View>
           <Row gap={8}>
@@ -100,7 +100,7 @@ export default function WordSheet({ id, onClose, navigation }) {
           <View style={{ flex: 1, gap: 3 }}>
             <Text style={label(c)}>O'zlashtirish</Text>
             <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2 }}>
-              {learned ? nextReviewText(memory) : `${word.lesson}-darsda o'rganiladi`}
+              {learned ? nextReviewText(memory) : `${word.part}-qismda o'rganiladi`}
             </Text>
           </View>
           <Ticks level={srs.mastery(state, word.id)} weak={weak} width={7} height={22} gap={4} />
@@ -119,13 +119,13 @@ export default function WordSheet({ id, onClose, navigation }) {
           onPress={() => { srs.flag(state, word.id); store.save(); }}
         />
         <Button
-          title={learned ? "Mashq qilish" : `${word.lesson}-darsni ochish`}
+          title={learned ? "Mashq qilish" : `${word.part}-qismni ochish`}
           size="md"
           style={{ flex: 1 }}
           onPress={() => {
             onClose();
-            if (!learned) { navigation.navigate("Lesson", { lesson: word.lesson }); return; }
-            const ids = (course.lessons[word.lesson]?.ids || []).filter((wid) => wid !== word.id && srs.isLearned(state, wid));
+            if (!learned) { navigation.navigate("Lesson", { part: word.part }); return; }
+            const ids = (course.parts[word.part]?.ids || []).filter((wid) => wid !== word.id && srs.isLearned(state, wid));
             navigation.navigate("Session", {
               kind: "quiz", quizType: "mixed", title: `${word.ko} mashqi`, ids: [word.id, ...ids], count: Math.min(10, ids.length + 1),
             });

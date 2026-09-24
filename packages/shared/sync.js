@@ -99,7 +99,7 @@
     // Scheduling (step, due date) comes from the device that practised the word last.
     const newer = (l.last || "") !== (r.last || "") ? ((l.last || "") > (r.last || "") ? l : r) : num(l.seen) >= num(r.seen) ? l : r;
     const o = Object.assign({}, newer);
-    for (const k of ["seen", "ok", "bad", "miss", "lapses"]) o[k] = counter(from(b, k), l[k], r[k]);
+    for (const k of ["seen", "ok", "bad", "miss", "typed", "lapses"]) o[k] = counter(from(b, k), l[k], r[k]);
     o.learned = earliest(l.learned, r.learned);
     o.flag = pick(b && b.flag, l.flag, r.flag);
     return o;
@@ -120,6 +120,10 @@
     const bmin = b ? b.min || {} : undefined;
     for (const k of keys(l.min, r.min)) min[k] = counter(from(bmin, k), l.min && l.min[k], r.min && r.min[k]);
     const o = { learned: counter(from(b, "learned"), l.learned, r.learned), reviewed: counter(from(b, "reviewed"), l.reviewed, r.reviewed), xp: counter(from(b, "xp"), l.xp, r.xp), min };
+    // How the day's reviews went and its flawless sittings add up like the rest; the lesson's bonus, once paid
+    // on either device, stays paid.
+    for (const k of ["rok", "rbad", "flawless"]) if (has(l, k) || has(r, k)) o[k] = counter(from(b, k), l[k], r[k]);
+    if (l.lessonDone || r.lessonDone) o.lessonDone = true;
     // The day's new-word goal is a setting, not a counter: the smaller one when the devices disagree (one of
     // them saw the level run short of new words), and whichever exists when only one has it.
     const goals = [l.goal, r.goal].filter(Number.isFinite);

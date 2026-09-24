@@ -61,13 +61,13 @@ bilan solishtirib, kerak bo'lsa "yangilang" ekranini ko'rsatadi.
 ## Kurs ma'lumoti
 
 Kurs uch darajaga bo'lingan: `b` (초급 = NIKL 1급+2급), `m` (중급 = 3급+4급), `a` (고급 = 5급+6급). Har bir
-daraja — darslardan iborat bitta yo'l, har bir dars bir kunlik reja (초급 20, 중급 30, 고급 40 so'z) va
-10 so'zlik qismlarga bo'lingan. Daraja tarjimasi tayyor bo'lgan
-darslar bilan bosqichma-bosqich ochiladi (`scripts/build-course.mjs`). Tizimga kirish shart emas.
+daraja — 10 so'zlik qismlardan iborat bitta yo'l. Kunlik dars shu yo'lning keyingi so'zlaridan qurilmada
+tuziladi (`srs.todayLesson`), hajmi o'quvchining natijasiga qarab o'zgaradi. Daraja tarjimasi tayyor bo'lgan
+qismlar bilan bosqichma-bosqich ochiladi (`scripts/build-course.mjs`). Tizimga kirish shart emas.
 
 So'z id'si — daraja va NIKL ro'yxatidagi raqami: `"b-36"` — 것. Raqam hech qachon o'zgarmaydi, shuning
-uchun darslar qayta tartiblansa ham so'zning progressi va audiosi joyida qoladi
-(`/media/clip/words/b-36.mp3`). Dars id'si xuddi shunday: `"b-12"` — 초급 ning 12-darsi.
+uchun qismlar qayta tartiblansa ham so'zning progressi va audiosi joyida qoladi
+(`/media/clip/words/b-36.mp3`). Qism id'si xuddi shunday: `"b-12"` — 초급 ning 12-qismi.
 
 ### `GET /api/content`
 
@@ -75,19 +75,19 @@ uchun darslar qayta tartiblansa ham so'zning progressi va audiosi joyida qoladi
 {
   "version": "91cdce023148",
   "levels": [
-    { "id": "b", "ko": "초급", "uz": "Boshlang'ich", "lessons": 36, "words": 710, "planned": 1835, "locked": false,
-      "parts": [
+    { "id": "b", "ko": "초급", "uz": "Boshlang'ich", "parts": 71, "words": 710, "planned": 1835, "locked": false,
+      "files": [
         { "name": "vocab",    "url": "/api/content/b/vocab?v=91cdce023148",    "bytes": 67288 },
         { "name": "examples", "url": "/api/content/b/examples?v=91cdce023148", "bytes": 59 }
       ] },
-    { "id": "m", "ko": "중급", "uz": "O'rta", "lessons": 0, "words": 0, "planned": 3855, "locked": true, "parts": [] },
-    { "id": "a", "ko": "고급", "uz": "Yuqori", "lessons": 0, "words": 0, "planned": 4945, "locked": true, "parts": [] }
+    { "id": "m", "ko": "중급", "uz": "O'rta", "parts": 0, "words": 0, "planned": 3855, "locked": true, "files": [] },
+    { "id": "a", "ko": "고급", "uz": "Yuqori", "parts": 0, "words": 0, "planned": 4945, "locked": true, "files": [] }
   ]
 }
 ```
 
-`planned` — darajaning barcha so'zlari, `lessons`/`words` — hozir ochiq bo'lgani. Hali bitta darsi ham
-tayyor bo'lmagan daraja `locked: true` bilan keladi va `parts` bo'sh: ilova uni ko'rsatadi, lekin ochmaydi.
+`planned` — darajaning barcha so'zlari, `parts`/`words` — hozir ochiq bo'lgani. Hali bitta qismi ham
+tayyor bo'lmagan daraja `locked: true` bilan keladi va `files` bo'sh: ilova uni ko'rsatadi, lekin ochmaydi.
 
 ### `GET /api/content/:level/:part`
 
@@ -96,8 +96,8 @@ tayyor bo'lmagan daraja `locked: true` bilan keladi va `parts` bo'sh: ilova uni 
 ```jsonc
 // vocab
 { "version": "…", "id": "b", "ko": "초급", "uz": "Boshlang'ich", "count": 710,
-  "lessons": [{ "id": "b-1", "n": 1, "grade": 1, "theme": "", "title": "Bu, men, biz", "parts": 2 }, …],
-  "words": [{ "id": "b-36", "level": "b", "lesson": 1, "part": 0, "i": 0, "grade": 1, "ko": "것", "uz": "narsa", "aw": 1 }, …] }
+  "parts": [{ "id": "b-1", "n": 1, "grade": 1, "theme": "", "title": "Bu, men, biz" }, …],
+  "words": [{ "id": "b-36", "level": "b", "part": 1, "i": 0, "grade": 1, "ko": "것", "uz": "narsa", "aw": 1 }, …] }
 
 // examples
 { "version": "…", "id": "b", "count": 710,

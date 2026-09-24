@@ -1,6 +1,6 @@
-// 09 — Kurs. The level as one path of lessons, grouped by the NIKL grade they teach, with the lesson in
-// progress as a card at the top. Nothing is locked: the order is advice, and a learner who already knows a
-// lesson's words may walk past it.
+// 09 — Kurs. The level as one path of ten-word parts, grouped by the NIKL grade they teach, with today's lesson
+// as a card at the top. Nothing is locked: the order is advice, and a learner who already knows a part's words
+// may walk past it.
 import { Pressable, SectionList, Text, View } from "react-native";
 
 import * as srs from "@upkorean/shared/srs.js";
@@ -8,7 +8,7 @@ import * as srs from "@upkorean/shared/srs.js";
 import { useStore } from "../store";
 import { FONTS, shadow, useColors } from "../theme";
 import { Bar, Button, Feather, Kicker, Row, Screen, TabHeader, Title, tapped } from "../ui";
-import { gradeName, lessonAction, lessonLine, lessonProgress, levelInfo, openLesson } from "../model";
+import { gradeName, levelInfo, openToday, partProgress, todayAction, todayLine, todayProgress } from "../model";
 
 export default function Course({ navigation }) {
   const c = useColors();
@@ -17,16 +17,15 @@ export default function Course({ navigation }) {
   if (!state || !course) return null;
 
   const level = levelInfo(store.levels, course.level);
-  const done = srs.lessonsDone(state, course);
-  const current = srs.currentLesson(state, course);
   const finished = srs.courseDone(state, course);
   const learned = srs.learnedIds(state, course).length;
+  const today = todayProgress(state, course);
 
   const sections = [];
-  for (const lesson of course.lessons.slice(1)) {
+  for (const part of course.parts.slice(1)) {
     let section = sections[sections.length - 1];
-    if (!section || section.grade !== lesson.grade) sections.push(section = { grade: lesson.grade, data: [] });
-    section.data.push(lesson.n);
+    if (!section || section.grade !== part.grade) sections.push(section = { grade: part.grade, data: [] });
+    section.data.push(part.n);
   }
 
   const switcher = () => { tapped(); navigation.navigate("LevelSwitch"); };
@@ -35,7 +34,7 @@ export default function Course({ navigation }) {
     <Screen>
       <TabHeader
         title="Kurs"
-        subtitle={`${level.ko} · ${done} / ${course.lessonCount} dars  ·  darajani almashtirish ›`}
+        subtitle={`${level.ko} · ${learned} / ${course.words.length} so'z  ·  darajani almashtirish ›`}
         onSubtitle={switcher}
         right={
           <Pressable onPress={switcher} style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 8, paddingHorizontal: 13, borderRadius: 99, backgroundColor: c.card }}>
@@ -59,33 +58,24 @@ export default function Course({ navigation }) {
                 <Text style={{ fontFamily: FONTS.bold, fontSize: 13, color: c.ink }}>{learned} / {course.words.length}</Text>
               </Row>
               <Bar value={learned} total={Math.max(1, course.words.length)} height={8} />
-              {!level.ready ? (
-                <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, lineHeight: 18, color: c.ink2 }}>
-                  Hozircha {course.lessonCount} dars ochiq. Darajaning qolgan {Math.max(0, level.planned - course.words.length)} so'zi tayyorlanmoqda.
-                </Text>
-              ) : null}
+              <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, lineHeight: 18, color: c.ink2 }}>
+                Kunlik dars: {srs.dailyWords(state)} so'z.{!level.ready ? ` Hozircha ${course.words.length} so'z ochiq, qolgan ${Math.max(0, level.planned - course.words.length)} tasi tayyorlanmoqda.` : ""}
+              </Text>
             </View>
-            {finished ? null : (
-              <CurrentCard
-                progress={lessonProgress(state, course, current)}
-                course={course}
-                onStart={() => openLesson(navigation, state, course, current)}
-                onOpen={() => { tapped(); navigation.navigate("Lesson", { lesson: current }); }}
-              />
-            )}
+            {finished ? null : <TodayCard progress={today} course={course} onStart={() => openToday(navigation, state, course)} />}
           </View>
         }
         renderSectionHeader={({ section }) => (
           <Row justify="space-between" style={{ paddingTop: 18, paddingBottom: 8, paddingHorizontal: 4 }}>
             <Text style={{ fontSize: 17, fontWeight: "800", color: c.ink }}>{gradeName(section.grade)}</Text>
-            <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, color: c.ink2 }}>{section.data.length} dars</Text>
+            <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, color: c.ink2 }}>{section.data.length * srs.PART_SIZE} so'z</Text>
           </Row>
         )}
         renderItem={({ item: n }) => (
-          <LessonRow
-            progress={lessonProgress(state, course, n)}
+          <PartRow
+            progress={partProgress(state, course, n)}
             course={course}
-            onPress={() => { tapped(); navigation.navigate("Lesson", { lesson: n }); }}
+            onPress={() => { tapped(); navigation.navigate("Lesson", { part: n }); }}
           />
         )}
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
@@ -94,30 +84,33 @@ export default function Course({ navigation }) {
   );
 }
 
-function CurrentCard({ progress, course, onStart, onOpen }) {
+function TodayCard({ progress, course, onStart }) {
   const c = useColors();
-  const words = progress.ids.map((id) => course.byId[id]).filter(Boolean);
+  const words = progress.nextIds.map((id) => course.byId[id]).filter(Boolean);
+  const sittings = progress.sittings.length;
   return (
-    <Pressable onPress={onOpen} style={[{ backgroundColor: c.card, borderRadius: 26, padding: 22, gap: 14 }, shadow(c, 2)]}>
+    <Pressable onPress={onStart} style={[{ backgroundColor: c.card, borderRadius: 26, padding: 22, gap: 14 }, shadow(c, 2)]}>
       <View style={{ gap: 3 }}>
-        <Kicker>{progress.n}-dars · hozirgi{progress.parts > 1 ? ` · ${progress.partsDone}/${progress.parts} qism` : ""}</Kicker>
-        <Title size={23}>{progress.title}</Title>
-        <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: c.ink2 }}>{lessonLine(progress)}</Text>
+        <Kicker>Bugungi dars{sittings > 1 && !progress.done ? ` · ${progress.sittingsDone}/${sittings} qism` : ""}</Kicker>
+        <Title size={23}>{progress.done ? "Bajarildi" : `${progress.goal} ta yangi so'z`}</Title>
+        <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: c.ink2 }}>{todayLine(progress)}</Text>
       </View>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7 }}>
-        {words.slice(0, 6).map((word) => (
-          <View key={word.id} style={{ paddingVertical: 8, paddingHorizontal: 13, borderRadius: 12, backgroundColor: c.tint }}>
-            <Text style={{ fontSize: 15, fontWeight: "700", color: c.ink }}>{word.ko}</Text>
-          </View>
-        ))}
-      </View>
-      <Button title={lessonAction(progress)} size="md" onPress={onStart} />
+      {words.length ? (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7 }}>
+          {words.slice(0, 6).map((word) => (
+            <View key={word.id} style={{ paddingVertical: 8, paddingHorizontal: 13, borderRadius: 12, backgroundColor: c.tint }}>
+              <Text style={{ fontSize: 15, fontWeight: "700", color: c.ink }}>{word.ko}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+      <Button title={todayAction(progress)} kind={progress.done ? "tint" : "primary"} size="md" disabled={progress.done && !progress.extra.length} onPress={onStart} />
     </Pressable>
   );
 }
 
-// One lesson in the list: a circle that says where it stands, its name, and the first of its words.
-function LessonRow({ progress, course, onPress }) {
+// One part in the list: a circle that says where it stands, its name, and the first of its words.
+function PartRow({ progress, course, onPress }) {
   const c = useColors();
   const { status } = progress;
   const done = status === "done" || status === "mastered";
@@ -145,8 +138,8 @@ function LessonRow({ progress, course, onPress }) {
         <Text numberOfLines={1} style={{ fontFamily: FONTS.bold, fontSize: 14.5, color: c.ink }}>{progress.title}</Text>
         <Text numberOfLines={1} style={{ fontSize: 13, color: c.ink2 }}>{words}</Text>
       </View>
-      {progress.partsDone && !done ? (
-        <Text style={{ fontFamily: FONTS.semi, fontSize: 12, color: c.ink2 }}>{progress.partsDone}/{progress.parts} qism</Text>
+      {progress.learned && !done ? (
+        <Text style={{ fontFamily: FONTS.semi, fontSize: 12, color: c.ink2 }}>{progress.learned}/{progress.words}</Text>
       ) : null}
       <Feather name="chevron-right" size={16} color={c.ink4} />
     </Pressable>

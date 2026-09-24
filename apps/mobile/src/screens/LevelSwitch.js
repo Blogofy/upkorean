@@ -53,7 +53,7 @@ export default function LevelSwitch({ navigation }) {
                 <View style={{ flex: 1, gap: 5 }}>
                   <Text style={{ fontFamily: FONTS.bold, fontSize: 15.5, color: c.onGreen }}>{level.uz} · joriy</Text>
                   <Segments total={10} filled={Math.round((learned / Math.max(1, course.words.length)) * 10)} height={5} on="#FFFFFF" off="rgba(255,255,255,0.3)" />
-                  <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, color: c.greenTint }}>{learned} / {course.words.length} so'z · {srs.lessonsDone(state, course)} / {course.lessonCount} dars</Text>
+                  <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, color: c.greenTint }}>{learned} / {course.words.length} so'z · kuniga {srs.dailyWords(state)} ta</Text>
                 </View>
               </View>
             );

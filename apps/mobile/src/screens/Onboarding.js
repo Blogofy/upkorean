@@ -11,7 +11,7 @@ import { addDays, fmtDayMonth, today } from "@upkorean/shared/dates.js";
 import { useStore } from "../store";
 import { FONTS, useColors } from "../theme";
 import { Button, Choice, Col, FadeIn, Row, Screen, Segmented, Title, Toggle, Txt } from "../ui";
-import { allLevels, dailyMinutes, LEVEL_BLURB, standardLine } from "../model";
+import { allLevels, dailyMinutes, LEVEL_BLURB, rangeLine } from "../model";
 import { syncReminder } from "../notify";
 
 const TIMES = ["08:00", "13:00", "20:00"];
@@ -34,8 +34,11 @@ export default function Onboarding({ navigation }) {
   const [busy, setBusy] = useState(false);
 
   const level = levels.find((l) => l.id === levelId) || levels[0];
-  const perDay = srs.DAILY_WORDS[level.id];
-  const levelDays = srs.daysFor(level.planned, level.id);
+  const range = srs.dailyRange(level.id);
+  const perDay = range.from;
+  // The standard grows with results, so a level takes somewhere between the two ends of its range.
+  const levelDays = srs.daysFor(level.planned, perDay);
+  const fastDays = srs.daysFor(level.planned, range.to);
 
   const finish = async () => {
     if (busy) return;
@@ -49,7 +52,7 @@ export default function Onboarding({ navigation }) {
       store.say(problem.message, "bad");
     }
     if (remind) {
-      const allowed = await syncReminder({ on: true, at }, { ask: true, words: srs.DAILY_WORDS[levelId] });
+      const allowed = await syncReminder({ on: true, at }, { ask: true, words: srs.dailyRange(levelId).from });
       if (!allowed) store.say("Eslatma uchun bildirishnomalarga ruxsat bering");
     }
     state.profile.onboarded = true;
@@ -79,9 +82,9 @@ export default function Onboarding({ navigation }) {
     const rows = [
       ["Jami so'z", String(level.planned)],
       ["Darslar", `${Math.ceil(level.planned / perDay)} ta, kuniga bittadan`],
-      ["Kunlik reja", standardLine(perDay)],
+      ["Kunlik reja", rangeLine(range)],
       ["Kunlik vaqt", `~${dailyMinutes(perDay)} daq`],
-      ["Daraja davomiyligi", `${levelDays} kun`],
+      ["Daraja davomiyligi", fastDays < levelDays ? `${fastDays}–${levelDays} kun` : `${levelDays} kun`],
     ];
     return (
       <Screen edges={["top", "bottom"]}>
@@ -106,7 +109,7 @@ export default function Onboarding({ navigation }) {
               Tugatish sanasi: {fmtDayMonth(addDays(today(), levelDays - 1))}
             </Text>
             <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, lineHeight: 20, color: c.greenDeep }}>
-              Har kuni rejani bajarsangiz. Reja bajarilgan kun seriyaga qo'shiladi, xohlasangiz ko'proq ham qilasiz.
+              Har kuni rejani bajarsangiz. So'zlarni yaxshi eslab qolsangiz, kunlik dars o'sib boradi va daraja ertaroq tugaydi.
             </Text>
           </View>
           <View style={{ flex: 1, minHeight: 12 }} />
@@ -134,20 +137,21 @@ export default function Onboarding({ navigation }) {
     },
     1: {
       title: "Kunlik reja",
-      lead: "Har kuni bitta dars. Daraja oshgani sari darsdagi so'z ko'payadi. Dars 10 so'zlik qismlarga bo'lingan — orasida tanaffus qilsa bo'ladi.",
+      lead: "Har kuni bitta dars, 10 so'zlik qismlarda — orasida tanaffus qilsa bo'ladi. So'zlarni yaxshi eslab qolsangiz, darsdagi so'z soni o'zi oshib boradi.",
       body: (
         <Col gap={11}>
           <View style={{ backgroundColor: c.card, borderRadius: 20, paddingVertical: 6, paddingHorizontal: 20 }}>
             {levels.map((l, i) => (
               <Row key={l.id} gap={14} style={{ paddingVertical: 14, borderBottomWidth: i < levels.length - 1 ? 1 : 0, borderBottomColor: c.tint2 }}>
                 <Text style={{ width: 46, fontSize: 16, fontWeight: "700", color: c.ink }}>{l.ko}</Text>
-                <Text style={{ flex: 1, fontFamily: FONTS.bold, fontSize: 15, color: c.ink }}>{standardLine(srs.DAILY_WORDS[l.id])}</Text>
-                <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: c.ink2 }}>~{dailyMinutes(srs.DAILY_WORDS[l.id])} daq</Text>
+                <Text style={{ flex: 1, fontFamily: FONTS.bold, fontSize: 15, color: c.ink }}>{rangeLine(srs.dailyRange(l.id))}</Text>
+                <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: c.ink2 }}>~{dailyMinutes(srs.dailyRange(l.id).from)} daq</Text>
               </Row>
             ))}
           </View>
           <Text style={{ fontFamily: FONTS.body, fontSize: 13, lineHeight: 19, color: c.ink2, paddingHorizontal: 4 }}>
-            Reja bajarilgan kun seriyaga qo'shiladi. Vaqtingiz bo'lsa, ko'proq ham qilasiz.
+            Takrorlashda so'zlarni 85% dan yaxshi eslab qolsangiz va takrorlash to'planib qolmasa, kunlik dars 5 so'zga
+            oshadi. Qiyin bo'lsa, 5 so'zga kamayadi. Reja bajarilgan kun seriyaga qo'shiladi.
           </Text>
           <View style={{ marginTop: 11, backgroundColor: c.card, borderRadius: 20, padding: 20, gap: 14 }}>
             <Row gap={14}>
@@ -174,7 +178,7 @@ export default function Onboarding({ navigation }) {
               titleKo={l.ko}
               title={l.uz}
               desc={LEVEL_BLURB[l.id].desc}
-              note={l.locked ? "Tez kunda · tayyorlanmoqda" : `${l.planned} so'z · ${Math.ceil(l.planned / srs.DAILY_WORDS[l.id])} dars`}
+              note={l.locked ? "Tez kunda · tayyorlanmoqda" : `${l.planned} so'z · ${rangeLine(srs.dailyRange(l.id))}`}
               selected={levelId === l.id}
               disabled={l.locked}
               align="flex-start"

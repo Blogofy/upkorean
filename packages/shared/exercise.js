@@ -26,10 +26,10 @@ const weighted = (weights) => {
 
 const sameMeaning = (a, b) => String(a.uz).trim().toLowerCase() === String(b.uz).trim().toLowerCase();
 
-// Wrong options come from the word's own lesson first — met together, so the choice is about the word and
+// Wrong options come from the word's own part first — met together, so the choice is about the word and
 // not about which option looks out of place — then from anywhere in the level.
 function distractors(course, word, n, field) {
-  const own = (course.lessons[word.lesson]?.ids || []).map((id) => course.byId[id]).filter(Boolean);
+  const own = (course.parts[word.part]?.ids || []).map((id) => course.byId[id]).filter(Boolean);
   const pool = shuffle(own).concat(shuffle(course.words).slice(0, 80));
   const out = [];
   const seen = new Set([word[field]]);
@@ -64,7 +64,7 @@ function chooseType(course, id, weights, opts) {
 // One question, with its options already drawn.
 export function makeItem(course, type, id) {
   const word = course.byId[id];
-  const item = { type, id, ko: word.ko, uz: word.uz, lesson: word.lesson };
+  const item = { type, id, ko: word.ko, uz: word.uz, part: word.part };
   // Hearing a word is answered with its meaning. Offering the Korean instead would let anyone pick the
   // shape that sounds like what was just said, without knowing what it means.
   if (type === "mc" || type === "listen") {
@@ -129,7 +129,7 @@ export function recallItems(course, ids, opts) {
   return items.concat(questions.sort((a, b) => ORDER[a.type] - ORDER[b.type]));
 }
 
-// A lesson in one sitting: meet five words and put them to work at once, then the other five, then a short
+// One sitting of a lesson: meet five words and put them to work at once, then the other five, then a short
 // mixed round over all ten. Each word is recalled minutes after it was first seen and again a little later,
 // before the schedule takes over — the first retrievals are the ones that make a word stick.
 export const LESSON_HALF = 5;
@@ -150,10 +150,11 @@ export function mixedItems(state, course, ids, opts, count = 12) {
   return shuffle(ordered.slice(0, Math.min(count, ordered.length))).map((id) => makeItem(course, chooseType(course, id, weights, opts), id));
 }
 
-// A review sitting. Flash cards carry the self-assessment that moves a word up or down the ladder; the rest
-// test recall, so a session is not thirty taps of "I knew that".
+// A review sitting. Mostly typing, because a word typed from its meaning is the evidence the fast track runs
+// on (srs.answer): the better the evidence, the sooner a known word leaves the schedule. The other forms stay
+// in the mix so a sitting is not twenty rounds of the same thing.
 export function reviewItems(course, ids, opts) {
-  const weights = { card: 3, mc: 3, mcr: 3, type: 2, listen: 2, sent: 1 };
+  const weights = { type: 4, mcr: 2, mc: 2, listen: 2, card: 1, sent: 1 };
   return ids.map((id) => {
     const type = chooseType(course, id, weights, opts);
     if (type === "card") return cardItem(course, id);
@@ -213,7 +214,8 @@ export function record(state, session, course, correct, now = today()) {
   session.correct = correct;
   session[correct ? "ok" : "bad"]++;
   session.results.push({ id: item.id, type: item.type, correct });
-  srs.answer(state, item.id, correct, item.type, modeOf(session), now);
+  // A word typed from its meaning without the hint is the evidence the fast track runs on.
+  srs.answer(state, item.id, correct, item.type, modeOf(session), now, { strong: item.type === "type" && !session.hinted });
   session.requeued = false;
   if (!correct) {
     session.mistakes[item.id] = true;
@@ -382,6 +384,7 @@ export function next(session) {
   session.correct = null;
   session.revealed = false;
   session.requeued = false;
+  session.hinted = false;
   session.matched = [];
   session.sel = {};
   session.flash = null;
@@ -424,29 +427,24 @@ export function finish(state, session, course, now = today()) {
   const outcome = { kind: session.kind, ok: session.ok, bad: session.bad, total: session.items.length };
 
   if (session.kind === "learn") {
-    // A sitting is one part of a lesson. The lesson is done when its last part is, however many breaks lay
-    // between them; `part` is what the next sitting carries on from.
-    const lesson = srs.lessonAt(course, session.lesson);
-    const part = session.part || 0;
-    const record2 = (state.lessons[lesson.id] = state.lessons[lesson.id] || { done: false, part: 0, ok: 0, bad: 0, min: 0, xp: 0 });
-    if (!record2.startedAt) record2.startedAt = now;
-    // The lesson may have been the level's last new words, which lowers what today can still ask for.
+    // One sitting of today's lesson, or ten words on top of it. The lesson is read off the path of words, so
+    // all this writes is the day's goal, a sitting without a mistake, and the lesson's bonus the first time
+    // it is found done.
     srs.setDayGoal(state, course, now);
-    record2.ok = (record2.ok || 0) + session.ok;
-    record2.bad = (record2.bad || 0) + session.bad;
-    record2.min = (record2.min || 0) + session.activeMs / 60000;
-    record2.xp = (record2.xp || 0) + (state.xp - session.xpStart);
-    record2.part = Math.max(record2.part || 0, part + 1);
-    outcome.lesson = lesson.n;
-    outcome.part = part;
-    outcome.parts = lesson.parts.length;
-    outcome.lessonDone = record2.part >= lesson.parts.length;
-    outcome.firstTime = outcome.lessonDone && !record2.done;
+    const act = srs.activity(state, now);
+    if (session.ok > 0 && !session.bad) act.flawless = (act.flawless || 0) + 1;
+    const lesson = srs.todayLesson(state, course, now);
+    outcome.extra = !!session.extra;
+    outcome.lessonDone = lesson.done;
+    outcome.sittings = lesson.sittings.length;
+    outcome.sittingsDone = lesson.sittingsDone;
+    outcome.goal = lesson.goal;
+    outcome.learnedToday = lesson.learned;
+    outcome.firstTime = lesson.done && !act.lessonDone;
     if (outcome.firstTime) {
-      record2.done = true;
-      record2.doneAt = now;
+      act.lessonDone = true;
       srs.addXP(state, 50, now);
-      srs.log(state, `${lesson.n}-dars tugatildi — ${lesson.title}`, "ok");
+      srs.log(state, `Bugungi dars tugatildi — ${lesson.learned} so'z`, "ok");
     }
   } else if (session.kind === "review") {
     state.reviewSessions++;

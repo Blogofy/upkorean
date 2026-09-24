@@ -20,17 +20,12 @@ if (!written.length) errors.push("Hech bir darajada so'z yo'q");
 for (const level of written) {
   const tag = `${level.ko} (${level.id})`;
   if (level.words.length < level.planned) {
-    warnings.push(`${tag}: ${level.words.length}/${level.planned} so'z ochiq (${level.lessonCount} dars) — qolgani tarjima qilinmoqda`);
+    warnings.push(`${tag}: ${level.words.length}/${level.planned} so'z ochiq (${level.partCount} qism) — qolgani tarjima qilinmoqda`);
   }
 
-  // Every part but the level's last is a full one, and so is every lesson; a short one in the middle means
-  // the plan was cut.
-  const parts = level.lessons.slice(1).flatMap((lesson) => lesson.parts.map((ids, p) => ({ lesson, p, ids })));
-  parts.slice(0, -1).forEach(({ lesson, p, ids }) => {
-    if (ids.length !== PART_SIZE) errors.push(`${tag} ${lesson.n}-dars ${p + 1}-qism: ${ids.length} so'z (${PART_SIZE} bo'lishi kerak)`);
-  });
-  level.lessons.slice(1, -1).forEach((lesson) => {
-    if (lesson.ids.length !== level.perDay) errors.push(`${tag} ${lesson.n}-dars: ${lesson.ids.length} so'z (${level.perDay} bo'lishi kerak)`);
+  // Every part but the level's last is a full one; a short part in the middle means the plan was cut.
+  level.parts.slice(1, -1).forEach((part) => {
+    if (part.ids.length !== PART_SIZE) errors.push(`${tag} ${part.n}-qism: ${part.ids.length} so'z (${PART_SIZE} bo'lishi kerak)`);
   });
 
   const seenIds = new Set();
@@ -59,7 +54,7 @@ for (const level of written) {
   }
 
   const cloze = examples.filter((example) => example.cloze).length;
-  console.log(`${tag}: ${level.lessonCount} dars, ${level.words.length} so'z, ${examples.length} misol (cloze ${cloze}), audio ${wordClips}/${sentenceClips}`);
+  console.log(`${tag}: ${level.partCount} qism, ${level.words.length} so'z, ${examples.length} misol (cloze ${cloze}), audio ${wordClips}/${sentenceClips}`);
 }
 
 for (const level of LEVELS) {

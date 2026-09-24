@@ -1,8 +1,7 @@
 // The course on the device: three levels, each downloaded once and then read from storage.
 //
-// A level is a path of lessons, one day of its standard each, in parts of ten words
-// (packages/shared/course/model.js builds the same shape on the server); `lessons[n]` is lesson n, so index 0
-// stays empty.
+// A level is a path of words in parts of ten (packages/shared/course/model.js builds the same shape on the
+// server); `parts[n]` is part n, so index 0 stays empty. A day's lesson is read off this path (srs.todayLesson).
 //
 // On every start the app asks for the manifest and compares versions. Same version, nothing is
 // downloaded; new version, only the parts that actually changed. Offline, the stored copy is used and no
@@ -48,26 +47,21 @@ function assemble(levelId, stored, offline) {
   const words = stored.vocab.words || [];
   const byId = Object.fromEntries(words.map((word) => [word.id, word]));
   const examples = Object.fromEntries((stored.examples.examples || []).map((example) => [example.id, example]));
-  const lessons = [null];
-  for (const lesson of stored.vocab.lessons || []) lessons[lesson.n] = { ...lesson, ids: [], parts: Array.from({ length: lesson.parts || 1 }, () => []) };
-  for (const word of words) {
-    const lesson = lessons[word.lesson];
-    if (!lesson) continue;
-    lesson.ids.push(word.id);
-    (lesson.parts[word.part || 0] ||= []).push(word.id);
-  }
+  const parts = [null];
+  for (const part of stored.vocab.parts || []) parts[part.n] = { ...part, ids: [] };
+  for (const word of words) parts[word.part]?.ids.push(word.id);
   return {
     level: levelId,
     version: stored.vocab.version,
     offline,
-    lessonCount: lessons.length - 1,
+    partCount: parts.length - 1,
     words,
     byId,
     examples,
-    lessons,
+    parts,
     word: (id) => byId[id] || null,
     example: (id) => examples[id] || null,
-    lessonWords: (n) => (lessons[n]?.ids || []).map((id) => byId[id]),
+    partWords: (n) => (parts[n]?.ids || []).map((id) => byId[id]),
   };
 }
 

@@ -142,6 +142,14 @@ test("a day's goal is kept through a merge, the smaller one when the devices dis
   const m = mergeStates(base, phone, laptop);
   assert.equal(m.act["2026-09-16"].goal, 5);
   assert.equal(m.act["2026-09-16"].learned, 25);
+
+  phone.act["2026-09-17"] = { learned: 20, reviewed: 12, xp: 90, min: {}, goal: 20, rok: 10, rbad: 2, lessonDone: true };
+  laptop.act["2026-09-17"] = { learned: 0, reviewed: 8, xp: 20, min: {}, goal: 20, rok: 7, rbad: 1, flawless: 1 };
+  const day = mergeStates(base, phone, laptop).act["2026-09-17"];
+  assert.equal(day.rok, 17, "the day's recalled reviews add up across devices");
+  assert.equal(day.rbad, 3);
+  assert.equal(day.flawless, 1);
+  assert.equal(day.lessonDone, true, "a bonus paid on one device stays paid");
   const old = mergeStates(base, base, clone(base));
   assert.equal(old.act["2026-09-15"].goal, undefined, "a day written before goals stays without one");
 });

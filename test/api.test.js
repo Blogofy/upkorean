@@ -266,14 +266,14 @@ test("course content is served per level, versioned and revalidatable", async ()
   const [beginner, ...rest] = manifest.levels;
   assert.equal(beginner.locked, false);
   assert.ok(beginner.words > 0);
-  assert.ok(beginner.lessons > 0);
+  assert.ok(beginner.parts > 0);
   assert.equal(beginner.planned, 1835, "every word of 1급 and 2급, published or not");
-  assert.deepEqual(beginner.parts.map((p) => p.name), ["vocab", "examples"]);
+  assert.deepEqual(beginner.files.map((p) => p.name), ["vocab", "examples"]);
   // A level whose words are not written yet is announced and shut, not hidden.
   for (const level of rest) {
     assert.equal(level.locked, true);
     assert.equal(level.words, 0);
-    assert.deepEqual(level.parts, []);
+    assert.deepEqual(level.files, []);
   }
 
   const config = await (await fetch(`${BASE}/api/config`)).json();
@@ -286,16 +286,15 @@ test("course content is served per level, versioned and revalidatable", async ()
   assert.match(vocab.headers.get("cache-control"), /immutable/);
   const data = await vocab.json();
   assert.equal(data.words.length, beginner.words);
-  assert.equal(data.lessons.length, beginner.lessons);
-  assert.deepEqual(Object.keys(data.lessons[0]).sort(), ["grade", "id", "n", "parts", "theme", "title"]);
-  assert.equal(data.lessons[0].parts, 2, "a 초급 lesson is twenty words in two parts");
-  for (const key of ["grade", "i", "id", "ko", "lesson", "level", "part", "uz"]) assert.ok(key in data.words[0], key);
-  assert.equal(data.words.filter((word) => word.lesson === 1).length, 20);
+  assert.equal(data.parts.length, beginner.parts);
+  assert.deepEqual(Object.keys(data.parts[0]).sort(), ["grade", "id", "n", "theme", "title"]);
+  for (const key of ["grade", "i", "id", "ko", "level", "part", "uz"]) assert.ok(key in data.words[0], key);
+  assert.equal(data.words.filter((word) => word.part === 1).length, 10, "a part is ten words");
   // A word carries its level and its NIKL number in its name, so progress from two levels can never
   // collide and never moves when the lessons are rearranged. 것 opens the course.
   assert.equal(data.words[0].id, "b-36");
   assert.equal(data.words[0].ko, "것");
-  assert.equal(data.words[0].lesson, 1);
+  assert.equal(data.words[0].part, 1);
 
   // Asked for without the version, an unchanged part comes back as a 304 with no body.
   const etag = vocab.headers.get("etag");

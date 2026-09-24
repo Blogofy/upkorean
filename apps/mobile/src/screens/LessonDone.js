@@ -1,7 +1,7 @@
-// 18 — Dars tugadi. A green screen: what the lesson took, where today's goal stands, when its words come back,
-// and the next lesson one tap away — the moment someone is most willing to do one more is right now. After a
-// part that is not the lesson's last it says so instead, and offers the next part or a break: the lesson
-// carries on from there whenever the learner comes back.
+// 18 — Dars tugadi. A green screen after a sitting. Mid-lesson it says which part is done and offers the next
+// one or a break — the lesson carries on from there whenever the learner comes back. Once today's lesson is
+// done it says what the day took and when its words come back, and offers ten more words straight away: the
+// moment someone is most willing to do more is right now.
 import { ScrollView, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 
@@ -19,21 +19,19 @@ export default function LessonDone({ navigation, route }) {
   const outcome = route.params?.outcome || {};
   if (!state || !course) return null;
 
-  const lesson = srs.lessonAt(course, outcome.lesson);
-  if (!lesson) return null;
-  const partOnly = outcome.lessonDone === false;
+  const lesson = srs.todayLesson(state, course);
+  const partOnly = !lesson.done;
   const streak = srs.streak(state);
   const daily = todayGoal(state);
   const buckets = reviewBuckets(state, lesson.ids);
   const most = Math.max(1, ...buckets.map((b) => b.n));
   const missed = (outcome.missed || []).slice(0, 4);
   const levelDone = srs.courseDone(state, course);
-  const next = srs.currentLesson(state, course);
-  const hasNext = !levelDone && next !== lesson.n;
   const home = () => navigation.navigate("Tabs", { screen: "Today" });
   const goalLine = daily.done
-    ? `Bugungi maqsad bajarildi: ${daily.learned} so'z.`
-    : `Bugun ${daily.learned} / ${daily.goal} so'z — maqsadgacha ${daily.left} ta.`;
+    ? `Bugungi reja bajarildi: ${daily.learned} so'z.`
+    : `Bugun ${daily.learned} / ${daily.goal} so'z — rejagacha ${daily.left} ta.`;
+  const title = partOnly ? `${lesson.sittingsDone}-qism tugadi` : outcome.extra ? "Yana 10 so'z o'rganildi" : "Bugungi dars tugadi";
 
   return (
     <Screen edges={["top", "bottom"]} style={{ backgroundColor: c.green }}>
@@ -42,12 +40,10 @@ export default function LessonDone({ navigation, route }) {
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 22, paddingBottom: 26, gap: 16 }} showsVerticalScrollIndicator={false}>
         <View style={{ paddingTop: 36, alignItems: "center", gap: 10 }}>
           <Text style={{ fontSize: 44, fontWeight: "900", letterSpacing: 2, color: "rgba(255,255,255,0.34)" }}>완료</Text>
-          <Title size={32} c="#FFFFFF" style={{ textAlign: "center" }}>
-            {partOnly ? `${outcome.part + 1}-qism tugadi` : `${lesson.n}-dars tugadi`}
-          </Title>
+          <Title size={32} c="#FFFFFF" style={{ textAlign: "center" }}>{title}</Title>
           <Text style={{ fontFamily: FONTS.body, fontSize: 15, lineHeight: 21, color: c.greenTint, textAlign: "center" }}>
             {partOnly
-              ? `${lesson.n}-dars · ${outcome.part + 1}/${outcome.parts} qism. Tanaffus qilsangiz ham bo'ladi — dars shu joydan davom etadi.`
+              ? `Bugungi dars · ${lesson.sittingsDone}/${lesson.sittings.length} qism. Tanaffus qilsangiz ham bo'ladi — dars shu joydan davom etadi.`
               : `${goalLine}${streak > 1 ? ` Seriya: ${streak} kun.` : ""}`}
           </Text>
         </View>
@@ -95,18 +91,14 @@ export default function LessonDone({ navigation, route }) {
         <Col gap={10}>
           {partOnly ? (
             <Button
-              title={`${outcome.part + 2}-qismni boshlash`}
+              title={`${lesson.sittingsDone + 1}-qismni boshlash`}
               kind="inverse"
-              onPress={() => navigation.replace("Session", { kind: "learn", lesson: lesson.n })}
+              onPress={() => navigation.replace("Session", { kind: "learn" })}
             />
           ) : levelDone ? (
             <Button title="Darajani yakunlash" kind="inverse" onPress={() => navigation.replace("LevelDone")} />
-          ) : hasNext ? (
-            <Button
-              title={`Keyingi dars: ${next}-dars`}
-              kind="inverse"
-              onPress={() => navigation.replace("Session", { kind: "learn", lesson: next })}
-            />
+          ) : lesson.extra.length ? (
+            <Button title="Yana 10 so'z" kind="inverse" onPress={() => navigation.replace("Session", { kind: "learn", extra: true })} />
           ) : null}
           {outcome.missed?.length ? (
             <Button

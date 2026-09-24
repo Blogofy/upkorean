@@ -22,7 +22,7 @@ export default function LevelDone({ navigation }) {
   const level = levelInfo(store.levels, course.level);
   const next = nextLevel(store.levels, course.level);
   const learned = srs.learnedIds(state, course).length;
-  const firstDay = course.lessons.slice(1).map((lesson) => srs.lessonState(state, lesson.id).doneAt).filter(Boolean).sort()[0];
+  const firstDay = course.words.map((word) => state.words[word.id]?.learned).filter(Boolean).sort()[0];
   const spent = firstDay ? diffDays(firstDay, today()) + 1 : 1;
   const home = () => navigation.navigate("Tabs", { screen: "Today" });
 
@@ -48,7 +48,7 @@ export default function LevelDone({ navigation }) {
           <Text style={{ fontSize: 48, fontWeight: "900", letterSpacing: 2, color: "rgba(255,255,255,0.34)" }}>수료</Text>
           <Title size={31} c="#FFFFFF" style={{ textAlign: "center" }}>{level.ready ? `${level.ko} darajasi tugadi` : "Barcha ochiq darslar tugadi"}</Title>
           <Text style={{ fontFamily: FONTS.body, fontSize: 15, lineHeight: 21, color: c.greenTint, textAlign: "center" }}>
-            {learned} so'z, {course.lessonCount} dars.{!level.ready
+            {learned} so'z.{!level.ready
               ? ` ${level.ko}ning qolgan ${Math.max(0, level.planned - course.words.length)} so'zi tayyorlanmoqda.`
               : next ? (next.locked ? ` ${next.ko} tez orada ochiladi.` : ` Endi ${next.ko} ochildi.`) : ""}
           </Text>

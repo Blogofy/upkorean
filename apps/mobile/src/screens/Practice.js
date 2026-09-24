@@ -31,8 +31,8 @@ export default function Practice({ navigation, route }) {
   if (!state || !course) return null;
 
   const weak = srs.weakIds(state, course);
-  const started = Array.from({ length: course.lessonCount }, (_, i) => i + 1).filter((n) => srs.lessonLearned(state, course, n) > 0);
-  let ids = source === "weak" ? weak : source === "lessons" ? learned.filter((id) => picked.includes(course.byId[id].lesson)) : learned;
+  const started = Array.from({ length: course.partCount }, (_, i) => i + 1).filter((n) => srs.partLearned(state, course, n) > 0);
+  let ids = source === "weak" ? weak : source === "parts" ? learned.filter((id) => picked.includes(course.byId[id].part)) : learned;
   if (type === "sent") ids = ids.filter((id) => course.examples[id]?.cloze);
   const questions = Math.min(count, ids.length);
   const typeInfo = TYPES.find((t) => t.id === type);
@@ -87,9 +87,9 @@ export default function Practice({ navigation, route }) {
               <View style={{ gap: 7 }}>
                 <Source label={`Hamma o'rganilgan · ${learned.length}`} on={source === "all"} onPress={() => setSource("all")} />
                 <Source label={`Faqat qiyin so'zlar · ${weak.length}`} on={source === "weak"} disabled={!weak.length} onPress={() => setSource("weak")} />
-                <Source label="Tanlangan darslar" on={source === "lessons"} onPress={() => setSource("lessons")} />
+                <Source label="Tanlangan qismlar" on={source === "parts"} onPress={() => setSource("parts")} />
               </View>
-              {source === "lessons" ? (
+              {source === "parts" ? (
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7 }}>
                   {started.map((n) => {
                     const on = picked.includes(n);

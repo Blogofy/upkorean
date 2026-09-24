@@ -58,13 +58,13 @@ export const manifest = () => ({
       id: level.id,
       ko: level.ko,
       uz: level.uz,
-      lessons: level.lessonCount,
+      parts: level.partCount,
       words: level.words.length,
       // Every word of the level's grades — what it will hold once all of it is translated.
       planned: level.planned,
       // Nothing to download yet. The app shows the level and what it will hold, and keeps it shut.
       locked,
-      parts: locked ? [] : partNames.map((name) => ({
+      files: locked ? [] : partNames.map((name) => ({
         name,
         url: `/api/content/${level.id}/${name}?v=${VERSION}`,
         bytes: Buffer.byteLength(BODIES[`${level.id}/${name}`]),

@@ -1,4 +1,4 @@
-// 11–17 — Dars sessiyasi. One screen for every sitting: a lesson, a review, free practice.
+// 11–17 — Dars sessiyasi. One screen for every sitting: a part of today's lesson, a review, free practice.
 //
 // packages/shared/exercise.js owns the sitting — which questions, in what order, what an answer does to
 // the schedule. This screen only draws the current item and hands taps back to it. The session object is
@@ -24,11 +24,12 @@ const TIME_LIMIT_MS = 20000;
 function build(params, state, course, opts) {
   const xpStart = state.xp;
   if (params.kind === "learn") {
-    // One part of the lesson per sitting — the one it carries on from, unless the caller named another.
-    const lesson = srs.lessonAt(course, params.lesson);
-    if (!lesson) return null;
-    const part = Number.isInteger(params.part) ? params.part : srs.nextPart(state, course, lesson.n);
-    return ex.newSession("learn", ex.lessonItems(state, course, lesson.parts[part], opts), { lesson: lesson.n, part, category: "learn", xpStart });
+    // One sitting: the words a part screen asked for, ten on top of a finished lesson, or — most often — the
+    // sitting today's lesson carries on from.
+    const lesson = srs.todayLesson(state, course);
+    const ids = (params.ids || (params.extra ? lesson.extra : lesson.sittings[lesson.next]) || []).filter((id) => course.byId[id]);
+    if (!ids.length) return null;
+    return ex.newSession("learn", ex.lessonItems(state, course, ids, opts), { extra: !!params.extra, category: "learn", xpStart });
   }
   if (params.kind === "review") {
     const ids = params.ids || srs.reviewQueue(state, course, params.mode || "due", params.extra ? srs.EXTRA_ROUND : undefined);
@@ -172,7 +173,7 @@ export default function Session({ navigation, route }) {
     case "type": body = (
       <Typing
         item={item} session={session} typed={typed} hint={hint}
-        onHint={() => setHint(true)}
+        onHint={() => { setHint(true); session.hinted = true; }}
         onSkip={() => { ex.skip(state, session, course); answered(false); }}
       />
     ); break;
@@ -448,12 +449,12 @@ function Choose({ item, session, onChoose, onConfirm }) {
         {fromKorean ? (
           <>
             <Text style={{ fontSize: 52, lineHeight: 66, fontWeight: "700", color: c.ink }} adjustsFontSizeToFit numberOfLines={1}>{item.ko}</Text>
-            <Text style={{ fontFamily: FONTS.body, fontSize: 15, color: c.ink2 }}>{item.lesson}-dars</Text>
+            <Text style={{ fontFamily: FONTS.body, fontSize: 15, color: c.ink2 }}>{item.part}-qism</Text>
           </>
         ) : (
           <>
             <Title size={30} style={{ textAlign: "center" }}>{item.uz}</Title>
-            <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2 }}>{item.lesson}-dars</Text>
+            <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2 }}>{item.part}-qism</Text>
           </>
         )}
         {fromKorean && hasClip(store, "words", item.id) ? (
@@ -514,7 +515,7 @@ function Typing({ item, session, typed, hint, onHint, onSkip }) {
       <View style={{ backgroundColor: c.card, borderRadius: 26, paddingVertical: 30, paddingHorizontal: 22, alignItems: "center", gap: 8 }}>
         <Text style={eyebrow(c)}>Koreyscha yozing</Text>
         <Title size={30} style={{ textAlign: "center" }}>{item.uz}</Title>
-        <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2 }}>{item.syllables} bo'g'in · {item.lesson}-dars</Text>
+        <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2 }}>{item.syllables} bo'g'in · {item.part}-qism</Text>
       </View>
       <View style={{
         paddingVertical: 18, paddingHorizontal: 20, borderRadius: 20, backgroundColor: c.card, borderWidth: 2,

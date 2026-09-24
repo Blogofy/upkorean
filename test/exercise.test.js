@@ -9,8 +9,8 @@ import * as ex from "../packages/shared/exercise.js";
 import * as srs from "../packages/shared/srs.js";
 import { buildLevel } from "../packages/shared/course/model.js";
 
-// Four parts of ten, which 초급 groups into two lessons of twenty. Part 1 is "b-1" … "b-10" and has a
-// sentence for every word; the others have none.
+// A path of four parts of ten. Part 1 is "b-1" … "b-10" and has a sentence for every word; the others have
+// none.
 const vocab = Array.from({ length: 4 }, (_, p) => ({
   g: 1, t: "", w: Array.from({ length: 10 }, (_, i) => [p * 10 + i + 1, `${["가나", "다라", "마바", "사아"][p]}${i}`, `${["birinchi", "ikkinchi", "uchinchi", "to'rtinchi"][p]} ${i}`]),
 }));
@@ -19,9 +19,9 @@ const examples = vocab[0].w.map(([nid, ko]) => ({
 }));
 const course = buildLevel("b", { vocab, examples });
 const fresh = () => srs.normalize(srs.freshState({}));
-// Part n of the level, counted from 1 across lessons: parts 1 and 2 are lesson 1, parts 3 and 4 lesson 2.
-const partIds = (n) => course.lessons[Math.ceil(n / 2)].parts[(n - 1) % 2];
-const lessonIds = (n) => course.lessons[n].ids;
+const partIds = (n) => course.parts[n].ids;
+// Twenty words: what a first day's lesson holds at 초급.
+const lessonIds = () => [...partIds(1), ...partIds(2)];
 
 const answerAll = (state, session, correct) => {
   let guard = 0;
@@ -46,7 +46,7 @@ const answerAll = (state, session, correct) => {
 
 test("every item a builder makes carries a real answer among its options", () => {
   const state = fresh();
-  for (const item of ex.recallItems(course, lessonIds(1))) {
+  for (const item of ex.recallItems(course, lessonIds())) {
     if (item.type === "match") {
       assert.equal(item.ids.length, item.koOrder.length);
       assert.ok(item.koOrder.some((id, i) => id !== item.ids[i]) || item.ids.length < 3, "the columns are not the teaching order");
@@ -58,11 +58,11 @@ test("every item a builder makes carries a real answer among its options", () =>
     assert.equal(new Set(item.opts).size, 4, `${item.type} offers four different options`);
     assert.ok(item.opts.includes(item.answer), `${item.type} includes the right one`);
   }
-  assert.equal(ex.mixedItems(state, course, lessonIds(1), {}, 6).length, 6);
+  assert.equal(ex.mixedItems(state, course, lessonIds(), {}, 6).length, 6);
 });
 
 test("a listening question needs audio on, and the word's own recording", () => {
-  const items = ex.reviewItems(course, lessonIds(1), { audio: false });
+  const items = ex.reviewItems(course, lessonIds(), { audio: false });
   assert.ok(items.every((item) => item.type !== "listen"));
   const recorded = buildLevel("b", { vocab, examples });
   assert.ok(!ex.canUse(recorded, "listen", "b-1", { audio: true }), "not recorded yet");
@@ -71,7 +71,7 @@ test("a listening question needs audio on, and the word's own recording", () => 
   assert.ok(!ex.canUse(recorded, "listen", "b-1", { audio: false }));
   assert.ok(!ex.canUse(course, "sent", "b-11"), "part two has no example sentences");
 
-  const round = ex.quizItems(fresh(), recorded, recorded.lessons[1].parts[0], "listen", { audio: true }, 10);
+  const round = ex.quizItems(fresh(), recorded, recorded.parts[1].ids, "listen", { audio: true }, 10);
   assert.equal(round.filter((item) => item.type === "listen").length, 1, "only the recorded word is asked by ear");
   assert.equal(round.length, 10, "the others are still asked, some other way");
 });
@@ -88,36 +88,38 @@ test("a part is two halves of meeting and practice, then a mixed round", () => {
   assert.ok(items.slice(-6).every((item) => item.type !== "intro" && item.type !== "match"), "it ends on a mixed round");
 });
 
-const playPart = (state, n, part) => {
-  const session = ex.newSession("learn", ex.lessonItems(state, course, course.lessons[n].parts[part], { audio: false }), { lesson: n, part, category: "learn", xpStart: state.xp });
+// One sitting of today's lesson — the one it carries on from — or, with `extra`, ten words on top of it.
+const sitting = (state, { extra = false } = {}) => {
+  const lesson = srs.todayLesson(state, course);
+  const ids = extra ? lesson.extra : lesson.sittings[lesson.next];
+  const session = ex.newSession("learn", ex.lessonItems(state, course, ids, { audio: false }), { extra, category: "learn", xpStart: state.xp });
   answerAll(state, session, true);
   return ex.finish(state, session, course);
 };
 
-test("a lesson is done after its last part, with a break allowed between", () => {
+test("today's lesson is done after its last sitting, with a break allowed between", () => {
   const state = fresh();
-  const first = playPart(state, 1, 0);
-  assert.equal(first.lessonDone, false, "one part of two is half a lesson");
-  assert.equal(first.part, 0);
-  assert.equal(first.parts, 2);
-  assert.equal(state.lessons["b-1"].part, 1);
-  assert.equal(srs.nextPart(state, course, 1), 1, "coming back after the break starts at part two");
-  assert.equal(srs.currentLesson(state, course), 1);
+  const first = sitting(state);
+  assert.equal(first.lessonDone, false, "one sitting of two is half the lesson");
+  assert.equal(first.sittingsDone, 1);
+  assert.equal(first.sittings, 2);
+  assert.equal(srs.todayLesson(state, course).next, 1, "coming back after the break starts at the second sitting");
   assert.ok(partIds(1).every((id) => srs.isLearned(state, id)));
   assert.ok(partIds(1).every((id) => state.words[id].s === 0 && state.words[id].due > state.words[id].learned), "every word comes back the next day");
 
-  const second = playPart(state, 1, 1);
+  const second = sitting(state);
   assert.equal(second.lessonDone, true);
   assert.equal(second.firstTime, true);
-  assert.equal(state.lessons["b-1"].done, true);
-  assert.equal(srs.currentLesson(state, course), 2);
+  assert.equal(srs.activity(state).lessonDone, true);
+  assert.ok(srs.planMet(state));
   assert.equal(srs.activity(state).learned, 20);
+  assert.equal(srs.currentPart(state, course), 3);
 });
 
 test("\"Bilaman\" takes a word out of the rest of the lesson", () => {
   const state = fresh();
   const ids = partIds(1);
-  const session = ex.newSession("learn", ex.lessonItems(state, course, ids, { audio: false }), { lesson: 1, part: 0, category: "learn", xpStart: state.xp });
+  const session = ex.newSession("learn", ex.lessonItems(state, course, ids, { audio: false }), { category: "learn", xpStart: state.xp });
   const before = session.items.length;
   const known = ex.current(session).id;
   assert.equal(ex.introKnown(state, session), true);
@@ -133,10 +135,25 @@ test("\"Bilaman\" takes a word out of the rest of the lesson", () => {
   assert.ok(ids.every((id) => srs.isLearned(state, id)));
 });
 
+test("typing a word at its review moves it two steps, but not after peeking at the hint", () => {
+  const state = fresh();
+  for (const id of ["b-1", "b-2"]) srs.introduce(state, id, "2026-09-01");
+  const now = "2026-09-02";
+  const session = ex.newSession("review", [ex.makeItem(course, "type", "b-1"), ex.makeItem(course, "type", "b-2")], { category: "review", xpStart: state.xp });
+  assert.equal(ex.submitTyped(state, session, course, course.byId["b-1"].ko, now), true);
+  ex.next(session);
+  session.hinted = true;
+  assert.equal(ex.submitTyped(state, session, course, course.byId["b-2"].ko, now), true);
+  assert.equal(state.words["b-1"].s, 2, "typed unaided: the strong step");
+  assert.equal(state.words["b-2"].s, 1, "typed after the hint: an ordinary step");
+  ex.next(session);
+  assert.equal(session.hinted, false, "the hint belongs to one question");
+});
+
 test("a wrong answer comes back later in the same lesson", () => {
   const state = fresh();
   const items = [ex.makeItem(course, "mc", "b-1"), ex.makeItem(course, "mc", "b-2")];
-  const session = ex.newSession("learn", items, { lesson: 1, category: "learn", xpStart: state.xp });
+  const session = ex.newSession("learn", items, { category: "learn", xpStart: state.xp });
   const wrong = (items[0].opts.indexOf(items[0].answer) + 1) % 4;
   ex.choose(state, session, course, wrong);
   assert.equal(session.correct, false);
@@ -147,7 +164,7 @@ test("a wrong answer comes back later in the same lesson", () => {
 
 test("a review sitting banks its answers, its minutes and its XP once", () => {
   const state = fresh();
-  const ids = lessonIds(1);
+  const ids = lessonIds();
   for (const id of ids) srs.answer(state, id, true, "mc", "learn", "2026-09-01");
   const xpBefore = state.xp;
 
@@ -183,22 +200,25 @@ test("the summary names the words that went wrong, worst first", () => {
   assert.equal(state.firstTry.ok, 0);
 });
 
-test("a lesson is finished once: a replay neither logs it nor pays its bonus again", () => {
+test("the day's lesson pays its bonus once, and ten more words on top are theirs", () => {
   const state = fresh();
-  playPart(state, 1, 0);
-  const first = playPart(state, 1, 1);
-  const again = playPart(state, 1, 1);
-  assert.equal(first.firstTime, true);
-  assert.equal(again.firstTime, false);
-  assert.ok(again.xp < first.xp, "the finishing bonus is paid on the first run only");
-  assert.equal(state.log.filter((entry) => entry.text.startsWith("1-dars tugatildi")).length, 1);
-  assert.equal(state.lessons["b-1"].part, 2, "a replayed part does not count twice");
+  sitting(state);
+  const done = sitting(state);
+  const more = sitting(state, { extra: true });
+  assert.equal(done.firstTime, true);
+  assert.equal(more.firstTime, false);
+  assert.equal(more.extra, true);
+  assert.ok(more.xp < done.xp, "the finishing bonus is paid on the first run only");
+  assert.equal(state.log.filter((entry) => entry.text.startsWith("Bugungi dars tugatildi")).length, 1);
+  assert.equal(srs.activity(state).learned, 30);
+  assert.ok(partIds(3).every((id) => srs.isLearned(state, id)));
+  assert.equal(srs.activity(state).flawless, 3, "three sittings without a mistake");
 });
 
 test("the matching board clears pair by pair and reports its misses", () => {
   const state = fresh();
   const ids = partIds(1).slice(0, 5);
-  const session = ex.newSession("learn", ex.recallItems(course, ids, { audio: false }), { lesson: 1, category: "learn", xpStart: state.xp });
+  const session = ex.newSession("learn", ex.recallItems(course, ids, { audio: false }), { category: "learn", xpStart: state.xp });
   const item = ex.current(session);
   assert.equal(item.type, "match");
 
@@ -228,7 +248,7 @@ test("typing forgives spacing and accepts a synonym from the same course", () =>
 
 test("stopping at a resting point keeps the work and shortens the sitting", () => {
   const state = fresh();
-  const ids = lessonIds(1);
+  const ids = lessonIds();
   for (const id of ids) srs.answer(state, id, true, "mc", "learn", "2026-09-01");
   const session = ex.newSession("review", ids.map((id) => ex.makeItem(course, "mc", id)), { category: "review", xpStart: state.xp });
   assert.equal(session.items.length, 20);
@@ -246,7 +266,7 @@ test("stopping at a resting point keeps the work and shortens the sitting", () =
 
 test("a sitting left early still banks its time and loses no answers", () => {
   const state = fresh();
-  const ids = lessonIds(1);
+  const ids = lessonIds();
   for (const id of ids) srs.answer(state, id, true, "mc", "learn", "2026-09-01");
   const session = ex.newSession("review", ids.map((id) => ex.makeItem(course, "mc", id)), { category: "review", xpStart: state.xp });
   const item = ex.current(session);
@@ -270,7 +290,7 @@ test("a listening question is answered with the meaning, not with the word that 
 
 test("practice flash cards are all cards, and rating them never moves the schedule", () => {
   const state = fresh();
-  const ids = lessonIds(1);
+  const ids = lessonIds();
   for (const id of ids) srs.grade(state, id, 3);
   const before = JSON.stringify(ids.map((id) => [state.words[id].s, state.words[id].due]));
   const session = ex.newSession("quiz", ex.quizItems(state, course, ids, "card", {}, 5), { quizType: "card", title: "Flashcard", xpStart: state.xp });
@@ -289,7 +309,7 @@ test("skipping the matching game counts the unfound pairs as missed", () => {
   const state = fresh();
   const ids = partIds(1).slice(0, 5);
   for (const id of ids) srs.introduce(state, id);
-  const session = ex.newSession("learn", ex.recallItems(course, ids, { audio: false }), { lesson: 1, xpStart: 0 });
+  const session = ex.newSession("learn", ex.recallItems(course, ids, { audio: false }), { xpStart: 0 });
   const match = ex.current(session);
   assert.equal(match.type, "match");
   ex.matchPick(state, session, "ko", match.ids[0]);
@@ -304,7 +324,7 @@ test("skipping the matching game counts the unfound pairs as missed", () => {
 
 test("a finished sitting reports how each kind of question went", () => {
   const state = fresh();
-  const ids = lessonIds(1);
+  const ids = lessonIds();
   for (const id of ids) srs.grade(state, id, 3);
   const session = ex.newSession("quiz", ex.quizItems(state, course, ids, "type", {}, 4), { quizType: "type", title: "Yozish", xpStart: state.xp });
   while (ex.current(session)) {

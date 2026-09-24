@@ -6,7 +6,7 @@ import * as srs from "@upkorean/shared/srs.js";
 import { useStore } from "../store";
 import { FONTS, useColors } from "../theme";
 import { Button, Chip, ListRow, RingStat, Row, Screen, TabHeader, tapped } from "../ui";
-import { anyClips, openLesson, openReview } from "../model";
+import { anyClips, openReview, openToday } from "../model";
 
 export default function Review({ navigation }) {
   const c = useColors();
@@ -39,7 +39,7 @@ export default function Review({ navigation }) {
             <Text style={{ fontFamily: FONTS.body, fontSize: 14, lineHeight: 20, color: c.ink2 }}>
               Bugun o'rgangan so'zlaringiz ertaga shu yerga qaytadi — keyin 3, 7, 14 va 30-kunlarda yana.
             </Text>
-            <Button title="Darsni boshlash" size="md" style={{ marginTop: 6 }} onPress={() => openLesson(navigation, state, course, srs.currentLesson(state, course))} />
+            <Button title="Darsni boshlash" size="md" style={{ marginTop: 6 }} onPress={() => openToday(navigation, state, course)} />
           </View>
         ) : (
         <View style={{ backgroundColor: c.green, borderRadius: 26, padding: 22, gap: 16 }}>

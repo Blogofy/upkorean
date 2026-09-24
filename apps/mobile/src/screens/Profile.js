@@ -8,7 +8,7 @@ import { useStore } from "../store";
 import { FONTS, useColors } from "../theme";
 import { BackLink, Button, Dialog, Field, ListRow, Row, Screen, Segmented, Sheet, Title, Toggle } from "../ui";
 import { api } from "../api";
-import { initial, levelInfo, standardLine } from "../model";
+import { initial, levelInfo, rangeLine, standardLine } from "../model";
 import { syncReminder } from "../notify";
 import { PRIVACY_URL, SOURCE_URL } from "../config";
 
@@ -47,7 +47,7 @@ export default function Profile({ navigation }) {
     const learned = srs.learnedIds(state, course).map((id) => {
       const word = course.byId[id];
       const memory = state.words[id];
-      return `${word.ko}\t${word.uz}\t${word.lesson}-dars\t${memory.ok}/${memory.ok + memory.bad}`;
+      return `${word.ko}\t${word.uz}\t${word.part}-qism\t${memory.ok}/${memory.ok + memory.bad}`;
     });
     Share.share({
       title: "UpKorean — so'zlarim",
@@ -201,7 +201,9 @@ const eyebrow = (c) => ({ fontFamily: FONTS.bold, fontSize: 12, letterSpacing: 1
 function planLine(state, course) {
   const left = Math.max(0, course.words.length - srs.learnedIds(state, course).length);
   if (!left) return "Ochiq so'zlarning hammasi o'rganilgan.";
-  return `Qolgan ${left} so'z rejaga ko'ra taxminan ${srs.daysFor(left, course.level)} kunda tugaydi. Daraja oshgani sari reja ham oshadi.`;
+  const range = srs.dailyRange(course.level);
+  const grows = range.to > range.from ? ` Natijangizga qarab ${rangeLine(range)} oralig'ida o'zgaradi.` : "";
+  return `Qolgan ${left} so'z hozirgi rejada taxminan ${srs.daysFor(left, srs.dailyWords(state))} kunda tugaydi.${grows}`;
 }
 
 // Name and password, in a sheet from the "Hisob" row. The server signs every other device out on a
