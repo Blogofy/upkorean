@@ -103,7 +103,7 @@ const ENDING = new Set("던질이까져졌셔으요고서세시셨지면며러�
 // A few nouns spelled like a common verb form: 가요 (a song) is almost always 가다 + 요.
 const RARE = new Set(["가요"]);
 // Grammar that is not a word of the list (-고 싶다, -ㄹ 수 있다) and the names the sentences use.
-const FREE = /^(않|때문|싶|수$|수가|수도|수는|제$|제가$|마세요|지민|민수|수진|준호|영수|유나)/;
+const FREE = /^(거예|거야|않|때문|싶|수$|수가|수도|수는|제$|제가$|마세요|지민|민수|수진|준호|영수|유나)/;
 
 const entries = [];
 for (const word of course.words) {
@@ -116,7 +116,10 @@ for (const word of course.words) {
     const forms = verbForms(stem, /형용사/.test(pos) || undefined);
     // The modifier and future forms (간, 갈, 한) are the weakest guesses; a noun or particle spelled the
     // same (한 "one", 안 "not") comes first.
-    for (const form of forms) entries.push({ form, word, verb: true, weak: form !== stem && (/[ㄴㄹ]$/.test(finalJamo(form)) || finalJamo(stem) === "ㄹ") });
+    // 새로운 and 강한 are longer than any noun they could be confused with, so they are not weak.
+    const weak = (form) => form !== stem && (finalJamo(stem) === "ㄹ"
+      || (/[ㄴㄹ]$/.test(finalJamo(form)) && form.length <= stem.length && !(stem.length > 1 && stem.endsWith("하"))));
+    for (const form of forms) entries.push({ form, word, verb: true, weak: weak(form) });
   } else {
     entries.push({ form: ko, word, verb: false, weak: RARE.has(ko) });
   }
@@ -162,7 +165,8 @@ for (const lesson of course.lessons.slice(1)) {
     const later = [];
     const unknown = [];
     for (const { token, word } of parts) {
-      if (!word) { if (!FREE.test(token)) unknown.push(token); continue; }
+      if (FREE.test(token) && word?.id !== id) continue;
+      if (!word) { unknown.push(token); continue; }
       if (word.id === id) continue;
       if (lessonOf(word) < lesson.n) {
         review.push(word);
