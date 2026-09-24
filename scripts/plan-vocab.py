@@ -77,8 +77,9 @@ def read_info():
         entry = info[str(r[1]).strip()]
         for source, col in enumerate((4, 5)):  # 조남호(2002), 강범모 외(2009); every sense row repeats the count
             entry["counts"][source] = entry["counts"][source] or number(r[col])
-        entry["theme"] = entry["theme"] or r[21]
-        entry["sem"] = entry["sem"] or (r[24] and f"{r[23]}/{r[24]}")
+        # A few cells carry a second line ("공공기관 이용하기(우체국)" over "#교통"); the first line is the theme.
+        entry["theme"] = entry["theme"] or (r[21] and str(r[21]).splitlines()[0].strip())
+        entry["sem"] = entry["sem"] or (r[24] and one_line(f"{r[23]}/{r[24]}", " "))
         for col in (8, 9, 10, 11):  # synonyms and antonyms, from the basic dictionary and beyond
             entry["related"].update(cells(r[col]))
     totals = [sum(entry["counts"][source] or 0 for entry in info.values()) for source in (0, 1)]
@@ -243,7 +244,7 @@ def main():
     for level in LEVELS:
         rows = [r for r in out if r["level"] == level]
         done = sum(bool(r["uz"]) for r in rows)
-        print(f"{level}: {len(rows)} so'z, {rows[-1]['block']} dars, o'zbekcha {done}/{len(rows)}")
+        print(f"{level}: {len(rows)} so'z, {rows[-1]['block']} qism, o'zbekcha {done}/{len(rows)}")
     missing = len(words) - len(out)
     if missing:
         sys.exit(f"{missing} so'z rejaga tushmadi")
