@@ -121,7 +121,7 @@ export function clozePieces(example) {
 // When a word comes back, as the word card says it.
 export function nextReviewText(word, now = today()) {
   if (!word || !word.learned) return "Hali o'rganilmagan";
-  if (!word.due) return "Rejalashtirilmagan";
+  if (!word.due) return "O'zlashtirildi — takrorlash tugagan";
   const n = diffDays(now, word.due);
   if (n <= 0) return "Keyingi takrorlash: bugun";
   if (n === 1) return "Keyingi takrorlash: ertaga";

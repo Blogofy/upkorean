@@ -200,7 +200,7 @@ export default function Session({ navigation, route }) {
       ) : null}
       {item.type === "intro" ? (
         // "Bilaman" is for a word already known from elsewhere: it skips the word's practice here, and the
-        // schedule checks it again in about nine days.
+        // schedule checks it again in about a week.
         <Row gap={10} style={{ paddingHorizontal: 18, paddingTop: 14, paddingBottom: 14, borderTopWidth: 1, borderTopColor: c.line }}>
           <Button title="Bilaman" kind="tint" style={{ flex: 1 }} onPress={() => { ex.introKnown(state, session); store.save(); advance(); }} />
           <Button title="Tushundim" style={{ flex: 2 }} onPress={() => { ex.introNext(state, session); store.save(); advance(); }} />
@@ -322,6 +322,7 @@ function Card({ item, session, onReveal, onGrade }) {
   const days = (g) => {
     if (session.kind === "quiz") return "";
     const n = srs.previewInterval(state, item.id, g);
+    if (n === null) return "o'zlashtirildi";
     return n <= 1 ? "ertaga" : `${n} kun`;
   };
   return (

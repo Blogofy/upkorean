@@ -10,14 +10,18 @@
 import { addDays, diffDays, today, weekStart, WEEK_SHORT } from "./dates.js";
 import { parseWordId } from "./course/levels.js";
 
-// The review ladder, in days between repetitions. A new word is seen again after 1, then 3, 7, 16, 35 and
-// 75 days from when it was met, and after that every three, then every six months — the intervals below are
-// the gaps, not the totals. The top is long on purpose: a learner meets the words again in grammar, reading
-// and tests outside the app, which the app cannot see, and a ladder that brought every known word back each
-// month would bury the day under reviews by the second year.
-export const INTERVALS = [1, 2, 4, 9, 19, 40, 90, 180];
-// From this step on a word counts as mastered: four correct recalls at growing distances.
-export const MASTER_STEP = 4;
+// The review ladder, in days between repetitions: a new word comes back 1, 3, 7, 14 and 30 days after it was
+// met — the intervals below are the gaps, not the totals. A miss anywhere sends it back to the start.
+//
+// After the thirtieth-day review the word is learnt and leaves the schedule. The ladder stops there on
+// purpose: a learner meets the words again in grammar, reading and tests outside the app, which the app
+// cannot see, and reviews running on for months would bury the day. The one exception is a word that has
+// already gone wrong in a review: it gets a single further check two months later (SAFETY_GAP).
+export const INTERVALS = [1, 2, 4, 7, 16];
+export const SAFETY_GAP = 60;
+// The step a word reaches when it passes the thirtieth-day review: learnt, and counted as mastered.
+export const LEARNT = INTERVALS.length;
+export const MASTER_STEP = LEARNT;
 // XP needed for each level. Past the end, every further level costs another XP_STEP, so a learner who
 // finishes the course still has somewhere to go.
 export const XP_LEVELS = [0, 300, 800, 1500, 2400, 3500, 4600, 5500, 6800, 8300, 10000, 12000, 14200, 16600, 19200];
@@ -98,11 +102,15 @@ export function normalize(state) {
   // words): progress on words and days that no longer exist only weighs the object down.
   delete state.days;
   for (const map of [state.words, state.notes]) for (const id of Object.keys(map)) if (!parseWordId(id)) delete map[id];
+  // Steps above the top of a longer ladder that no longer exists.
+  for (const word of Object.values(state.words)) if (word.s > LEARNT) word.s = LEARNT;
   return state;
 }
 
 // ---------- One word's memory ----------
-const blank = () => ({ s: 0, due: null, learned: null, seen: 0, ok: 0, bad: 0, lapses: 0, flag: false, forgot: false, last: null });
+// miss — times the word went wrong in a review (not in its first lesson, not in free practice); it is what
+// earns a word the extra check once it is learnt.
+const blank = () => ({ s: 0, due: null, learned: null, seen: 0, ok: 0, bad: 0, miss: 0, lapses: 0, flag: false, forgot: false, last: null });
 export const wordState = (state, id) => state.words[id] || null;
 const touch = (state, id) => (state.words[id] = state.words[id] || blank());
 
@@ -119,17 +127,33 @@ export const mastery = (state, id) => {
   const w = state.words[id];
   return w && w.learned ? Math.min(5, w.s) : 0;
 };
+// Learnt and off the schedule — no review will ever ask for it again.
+export const isDone = (state, id) => {
+  const w = state.words[id];
+  return !!(w && w.learned && w.s >= LEARNT && !w.due);
+};
 
 // ±15% on every interval, so the words met on one day stop coming back as one wave on exactly the same
 // later days. Never sooner than tomorrow.
 const fuzz = (days) => Math.max(1, Math.round(days * (0.85 + Math.random() * 0.3)));
 
+// The gap a step asks for, or null when the word is learnt. `word` decides whether the top step is the extra
+// check (a word that has gone wrong in a review, not checked yet) or the end.
+function gapFor(word, step, before) {
+  if (step < LEARNT) return INTERVALS[step];
+  const needsCheck = ((word && (word.miss || 0) + (word.lapses || 0)) || 0) > 0 && !(word && word.check) && before < LEARNT;
+  return needsCheck ? SAFETY_GAP : null;
+}
+
 function setStep(word, step, now) {
   const before = word.s;
-  word.s = clamp(step, 0, INTERVALS.length - 1);
+  word.s = clamp(step, 0, LEARNT);
   if (before >= 3 && word.s <= 1 && word.learned) { word.forgot = true; word.lapses++; }
   if (word.s >= 3) word.forgot = false;
-  word.due = addDays(now, fuzz(INTERVALS[word.s]));
+  const gap = gapFor(word, word.s, before);
+  if (word.s < LEARNT) word.check = false;
+  else if (gap) word.check = true;
+  word.due = gap ? addDays(now, fuzz(gap)) : null;
 }
 
 // Flash-card self assessment: 1 Bilmadim · 2 Qiyin · 3 Bildim.
@@ -140,8 +164,12 @@ const gradeStep = (word, grade) => {
   if (grade === 2) return first ? 0 : Math.max(0, step);
   return first ? 2 : step + 1;
 };
-// What the three buttons promise, in days — computed, so the labels can never drift from the schedule.
-export const previewInterval = (state, id, grade) => INTERVALS[clamp(gradeStep(wordState(state, id), grade), 0, INTERVALS.length - 1)];
+// What the three buttons promise, in days — computed, so the labels can never drift from the schedule. null
+// means the answer would make the word learnt.
+export const previewInterval = (state, id, grade) => {
+  const word = wordState(state, id);
+  return gapFor(word, clamp(gradeStep(word, grade), 0, LEARNT), word ? word.s : 0);
+};
 
 export function grade(state, id, g, now = today()) {
   const word = touch(state, id);
@@ -150,14 +178,15 @@ export function grade(state, id, g, now = today()) {
   if (first) { word.learned = now; activity(state, now).learned++; }
   word.seen++;
   word.last = now;
-  if (g === 1) word.bad++; else word.ok++;
+  if (g === 1) { word.bad++; if (!first) word.miss = (word.miss || 0) + 1; } else word.ok++;
   setStep(word, step, now);
   addXP(state, first ? 4 : 2, now);
-  return INTERVALS[word.s];
+  // The interval before fuzz, so the button's promise and what the tap did read the same.
+  return word.s < LEARNT ? INTERVALS[word.s] : word.due ? SAFETY_GAP : null;
 }
 
-// First meeting on the guided flow. The word counts as learned and comes back tomorrow unless the practice
-// straight after goes without a mistake, which settleIntroduced decides once the block is over.
+// First meeting in a lesson. The word counts as learned and comes back tomorrow, whatever happens in the
+// practice straight after: the first review after a night's sleep is the one that makes a word stick.
 export function introduce(state, id, now = today()) {
   const word = touch(state, id);
   if (!word.learned) {
@@ -171,7 +200,7 @@ export function introduce(state, id, now = today()) {
 }
 
 // "Bilaman": a word the learner already knows from somewhere else — a grammar class, a drama. It skips the
-// lesson's practice and goes straight to a nine-day interval; the first review after that checks the claim,
+// lesson's practice and goes straight to a week's interval; the first review after that checks the claim,
 // and a miss there drops it to the bottom like any other.
 export const KNOWN_STEP = 3;
 export function markKnown(state, id, now = today()) {
@@ -188,13 +217,6 @@ export function markKnown(state, id, now = today()) {
   setStep(word, Math.max(word.s, KNOWN_STEP), now);
 }
 
-export function settleIntroduced(state, ids, mistakes, now = today()) {
-  for (const id of ids) {
-    const word = state.words[id];
-    if (word && word.learned === now && word.s === 0 && !mistakes[id]) setStep(word, 1, now);
-  }
-}
-
 // An exercise answer. mode: "learn" (a lesson), "review" (the schedule), "quiz" (free practice).
 export function answer(state, id, correct, type, mode, now = today()) {
   const word = touch(state, id);
@@ -202,6 +224,8 @@ export function answer(state, id, correct, type, mode, now = today()) {
   // one session from walking up the ladder once per question.
   const scheduled = !word.due || word.due <= now;
   const fresh = !word.learned || word.learned === now;
+  // A due word cleared inside a lesson is a review too; without this the day's review target is unreachable.
+  const review = mode === "review" || (mode === "learn" && scheduled && !fresh);
   if (!word.learned) { word.learned = now; activity(state, now).learned++; }
   word.seen++;
   word.last = now;
@@ -212,13 +236,13 @@ export function answer(state, id, correct, type, mode, now = today()) {
     addXP(state, 3, now);
   } else {
     word.bad++;
+    if (review) word.miss = (word.miss || 0) + 1;
     // Free practice records the miss but leaves the ladder alone: drilling hard words late at night must not
     // cost a month of consolidation. lapses and forgot stay untouched for the same reason — both mean
     // "recall failed at the moment the schedule chose", and this is no such moment.
     if (mode !== "quiz") { setStep(word, 0, now); word.due = addDays(now, 1); }
   }
-  // A due word cleared inside a lesson is a review; without this the day's review target is unreachable.
-  if (mode === "review" || (mode === "learn" && scheduled && !fresh)) activity(state, now).reviewed++;
+  if (review) activity(state, now).reviewed++;
 }
 
 export function flag(state, id, on) {

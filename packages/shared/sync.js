@@ -99,7 +99,7 @@
     // Scheduling (step, due date) comes from the device that practised the word last.
     const newer = (l.last || "") !== (r.last || "") ? ((l.last || "") > (r.last || "") ? l : r) : num(l.seen) >= num(r.seen) ? l : r;
     const o = Object.assign({}, newer);
-    for (const k of ["seen", "ok", "bad", "lapses"]) o[k] = counter(from(b, k), l[k], r[k]);
+    for (const k of ["seen", "ok", "bad", "miss", "lapses"]) o[k] = counter(from(b, k), l[k], r[k]);
     o.learned = earliest(l.learned, r.learned);
     o.flag = pick(b && b.flag, l.flag, r.flag);
     return o;

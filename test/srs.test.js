@@ -64,14 +64,68 @@ test("free practice records the miss but never touches the schedule", () => {
   assert.equal(after.lapses, before.lapses, "and it is not a lapse");
 });
 
-test("a word introduced without a mistake settles one step higher", () => {
+test("every new word comes back the next day, whatever the lesson went like", () => {
   const state = fresh();
   const now = "2026-09-22";
   srs.introduce(state, "b-1", now);
   srs.introduce(state, "b-2", now);
-  srs.settleIntroduced(state, ["b-1", "b-2"], { "b-2": true }, now);
-  assert.equal(state.words["b-1"].s, 1, "clean practice earns the longer first interval");
-  assert.equal(state.words["b-2"].s, 0, "a word that went wrong comes back tomorrow");
+  srs.answer(state, "b-2", false, "mc", "learn", now);
+  for (const id of ["b-1", "b-2"]) {
+    assert.equal(state.words[id].s, 0);
+    assert.equal(state.words[id].due, addDays(now, 1));
+  }
+  assert.equal(state.words["b-2"].miss, 0, "a slip in the first lesson is not a missed review");
+});
+
+test("a word is reviewed on days 1, 3, 7, 14 and 30, and then it is learnt", () => {
+  const state = fresh();
+  const id = "b-3";
+  const start = "2026-01-01";
+  srs.introduce(state, id, start);
+  const days = [];
+  let now = start;
+  while (state.words[id].due) {
+    now = state.words[id].due;
+    days.push(Math.round((Date.parse(now) - Date.parse(start)) / 86400000));
+    srs.answer(state, id, true, "mc", "review", now);
+  }
+  assert.equal(days.length, 5, "five reviews, no more");
+  const plan = [1, 3, 7, 14, 30];
+  days.forEach((day, i) => assert.ok(Math.abs(day - plan[i]) <= Math.ceil(plan[i] * 0.2), `review ${i + 1} on day ${day}, planned ${plan[i]}`));
+  assert.ok(srs.isDone(state, id));
+  assert.ok(srs.isMastered(state, id));
+  assert.equal(srs.dueIds(state, course, addDays(now, 400)).includes(id), false, "it never comes back on its own");
+  assert.equal(srs.previewInterval(state, "b-4", 3), 4, "a first 'Bildim' still promises four days");
+});
+
+test("a word that went wrong in a review gets one more check two months after", () => {
+  const state = fresh();
+  const id = "b-9";
+  let now = "2026-01-01";
+  srs.introduce(state, id, now);
+  now = state.words[id].due;
+  srs.answer(state, id, false, "mc", "review", now);
+  assert.equal(state.words[id].miss, 1);
+  for (let i = 0; i < srs.LEARNT; i++) { now = state.words[id].due; srs.answer(state, id, true, "mc", "review", now); }
+  const check = state.words[id];
+  assert.equal(check.s, srs.LEARNT);
+  assert.ok(check.due, "the extra check is scheduled");
+  const gap = (Date.parse(check.due) - Date.parse(now)) / 86400000;
+  assert.ok(gap >= 50 && gap <= 70, `about two months, got ${gap}`);
+  assert.ok(!srs.isDone(state, id));
+
+  now = check.due;
+  srs.answer(state, id, true, "mc", "review", now);
+  assert.ok(srs.isDone(state, id), "passing it ends the schedule");
+
+  const again = "b-10";
+  srs.introduce(state, again, "2026-01-01");
+  srs.answer(state, again, false, "mc", "review", "2026-01-02");
+  now = "2026-01-02";
+  for (let i = 0; i < srs.LEARNT; i++) { now = state.words[again].due; srs.answer(state, again, true, "mc", "review", now); }
+  srs.answer(state, again, false, "mc", "review", state.words[again].due);
+  assert.equal(state.words[again].s, 0, "failing the check starts the word over");
+  assert.ok(state.words[again].due);
 });
 
 test("the three flash-card buttons promise what the schedule really does", () => {
@@ -86,12 +140,12 @@ test("the three flash-card buttons promise what the schedule really does", () =>
   assert.equal(given, promised, "the button said what the tap did");
 });
 
-test("mastery needs four steps and weakness two misses", () => {
+test("mastery is the thirty-day review passed, and weakness two misses", () => {
   const state = fresh();
   const id = "b-5";
   let now = "2026-09-22";
   srs.answer(state, id, true, "mc", "learn", now);
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < srs.MASTER_STEP - 1; i++) {
     now = state.words[id].due;
     srs.answer(state, id, true, "mc", "review", now);
   }
@@ -321,28 +375,17 @@ test("the plan says how far behind the learner is, never counting today", () => 
   assert.equal(srs.planStatus(state, course, addDays(now, 5)).expected, 3, "never more lessons than the level has");
 });
 
-test("a word marked known skips ahead nine days and still counts as met", () => {
+test("a word marked known skips ahead a week and still counts as met", () => {
   const state = fresh();
   const now = "2026-09-22";
   srs.markKnown(state, "b-7", now);
   const word = state.words["b-7"];
   assert.equal(word.learned, now);
   assert.equal(word.s, srs.KNOWN_STEP);
-  assert.ok(word.due >= addDays(now, 7), "the first check comes about nine days later");
+  assert.ok(word.due >= addDays(now, 5), "the first check comes about a week later");
   assert.equal(srs.activity(state, now).learned, 1, "it counts toward today's words");
   srs.answer(state, "b-7", false, "mc", "review", word.due);
   assert.equal(state.words["b-7"].s, 0, "a miss at that check drops it like any other word");
-});
-
-test("a well-known word comes back after three and then six months, not every month", () => {
-  assert.equal(srs.INTERVALS[srs.INTERVALS.length - 1], 180);
-  const state = fresh();
-  const id = "b-8";
-  let now = "2026-01-01";
-  srs.answer(state, id, true, "mc", "learn", now);
-  for (let i = 0; i < 10; i++) { now = state.words[id].due; srs.answer(state, id, true, "mc", "review", now); }
-  const gap = Number(new Date(state.words[id].due)) - Number(new Date(now));
-  assert.ok(gap / 86400000 >= 150, "the top of the ladder is half a year");
 });
 
 test("today() and the date helpers agree with each other", () => {

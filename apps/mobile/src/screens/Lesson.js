@@ -61,7 +61,7 @@ export default function Lesson({ navigation, route }) {
 
         <Note title="Dars qanday o'tadi">
           Avval 5 ta so'z bilan tanishasiz va darhol mashq qilasiz, keyin qolgan 5 tasi, oxirida hammasi aralash.
-          So'zlar ertaga, keyin 3, 7 va 16 kundan keyin takrorlashga qaytadi.
+          So'zlar 1, 3, 7, 14 va 30 kundan keyin takrorlashga qaytadi, shundan keyin o'zlashtirilgan hisoblanadi.
         </Note>
 
         <Row justify="space-between" style={{ paddingHorizontal: 4 }}>

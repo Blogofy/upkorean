@@ -94,7 +94,7 @@ test("a clean lesson teaches all ten words and finishes the lesson", () => {
   const outcome = ex.finish(state, session, course);
 
   assert.ok(ids.every((id) => srs.isLearned(state, id)), "meeting a word is learning it");
-  assert.ok(ids.every((id) => state.words[id].s >= 1), "a word practised without a mistake earns the longer first interval");
+  assert.ok(ids.every((id) => state.words[id].s === 0 && state.words[id].due > state.words[id].learned), "every word comes back the next day");
   assert.equal(outcome.lesson, 1);
   assert.equal(outcome.firstTime, true);
   assert.equal(state.lessons["b-1"].done, true);

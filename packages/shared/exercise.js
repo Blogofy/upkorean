@@ -426,7 +426,6 @@ export function finish(state, session, course, now = today()) {
   if (session.kind === "learn") {
     const lesson = srs.lessonAt(course, session.lesson);
     const record2 = (state.lessons[lesson.id] = state.lessons[lesson.id] || { done: false, ok: 0, bad: 0, min: 0, xp: 0 });
-    srs.settleIntroduced(state, session.items.filter((item) => item.type === "intro").map((item) => item.id), session.mistakes, now);
     // The lesson may have been the level's last new words, which lowers what today can still ask for.
     srs.setDayGoal(state, course, now);
     record2.ok = (record2.ok || 0) + session.ok;

@@ -37,7 +37,7 @@ export default function Review({ navigation }) {
             <Text style={{ fontFamily: FONTS.bold, fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: c.ink4 }}>Hali boshlanmagan</Text>
             <Text style={{ fontFamily: FONTS.display, fontSize: 21, lineHeight: 26, color: c.ink }}>Takrorlash ertadan boshlanadi</Text>
             <Text style={{ fontFamily: FONTS.body, fontSize: 14, lineHeight: 20, color: c.ink2 }}>
-              Bugun o'rgangan so'zlaringiz ertaga shu yerga qaytadi — keyin 3, 7 va 16-kunlarda yana.
+              Bugun o'rgangan so'zlaringiz ertaga shu yerga qaytadi — keyin 3, 7, 14 va 30-kunlarda yana.
             </Text>
             <Button title="Darsni boshlash" size="md" style={{ marginTop: 6 }} onPress={() => openLesson(navigation, state, course, srs.currentLesson(state, course))} />
           </View>
