@@ -161,4 +161,4 @@ for (const fileName of recordings) {
   fs.renameSync(sidecar, `${sidecar}.done`);
   ok++;
 }
-console.log(`Tayyor: ${ok} ta dars${bad ? `, muammoli: ${bad}` : ""}. Serverni qayta ishga tushiring.`);
+console.log(`Tayyor: ${ok} ta ro'yxat${bad ? `, muammoli: ${bad}` : ""}. Serverni qayta ishga tushiring.`);
