@@ -99,7 +99,7 @@ function verbForms(stem, adjective) {
 // What may follow a form inside one word of a sentence: particles after a noun, endings after a verb stem.
 // Anything else after 비 or 가 is a different word (비빔밥, 가방) that a longer form should have found.
 const PARTICLE = new Set("해했할합이가은는을를에도만의와과하한으로예부까보처마쯤랑께들야이".split(""));
-const ENDING = new Set("으요고서세시셨지면며러려자기게어아았었겠네나니다더든잖죠습십는은을도야라".split(""));
+const ENDING = new Set("질이까져졌으요고서세시셨지면며러려자기게어아았었겠네나니다더든잖죠습십는은을도야라".split(""));
 // A few nouns spelled like a common verb form: 가요 (a song) is almost always 가다 + 요.
 const RARE = new Set(["가요"]);
 // Grammar that is not a word of the list (-고 싶다, -ㄹ 수 있다) and the names the sentences use.
