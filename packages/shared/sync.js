@@ -105,11 +105,13 @@
     return o;
   }
 
-  // A lesson finished on either device is finished; its counters add up like any other.
+  // A lesson finished on either device is finished, and a part done on either is done; its counters add up
+  // like any other.
   function mergeLesson(b, l, r) {
-    const o = Object.assign({}, l.done || !r.done ? l : r, { done: !!(l.done || r.done) });
+    const o = Object.assign({}, l.done || !r.done ? l : r, { done: !!(l.done || r.done), part: Math.max(num(l.part), num(r.part)) });
     for (const k of ["ok", "bad", "min", "xp"]) o[k] = counter(from(b, k), l[k], r[k]);
     if (l.doneAt || r.doneAt) o.doneAt = earliest(l.doneAt, r.doneAt);
+    if (l.startedAt || r.startedAt) o.startedAt = earliest(l.startedAt, r.startedAt);
     return o;
   }
 

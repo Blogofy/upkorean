@@ -7,9 +7,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { AUDIO_DIR } from "../apps/api/paths.js";
-import { LEVELS } from "../packages/shared/course/levels.js";
+import { LEVELS, PART_SIZE } from "../packages/shared/course/levels.js";
 import { loadCourse } from "../packages/shared/course/data.js";
-import { LESSON_SIZE } from "../packages/shared/srs.js";
 
 const errors = [];
 const warnings = [];
@@ -24,9 +23,14 @@ for (const level of written) {
     warnings.push(`${tag}: ${level.words.length}/${level.planned} so'z ochiq (${level.lessonCount} dars) — qolgani tarjima qilinmoqda`);
   }
 
-  // Every lesson but the level's last is a full one; a short lesson in the middle means the plan was cut.
+  // Every part but the level's last is a full one, and so is every lesson; a short one in the middle means
+  // the plan was cut.
+  const parts = level.lessons.slice(1).flatMap((lesson) => lesson.parts.map((ids, p) => ({ lesson, p, ids })));
+  parts.slice(0, -1).forEach(({ lesson, p, ids }) => {
+    if (ids.length !== PART_SIZE) errors.push(`${tag} ${lesson.n}-dars ${p + 1}-qism: ${ids.length} so'z (${PART_SIZE} bo'lishi kerak)`);
+  });
   level.lessons.slice(1, -1).forEach((lesson) => {
-    if (lesson.ids.length !== LESSON_SIZE) errors.push(`${tag} ${lesson.n}-dars: ${lesson.ids.length} so'z (${LESSON_SIZE} bo'lishi kerak)`);
+    if (lesson.ids.length !== level.perDay) errors.push(`${tag} ${lesson.n}-dars: ${lesson.ids.length} so'z (${level.perDay} bo'lishi kerak)`);
   });
 
   const seenIds = new Set();

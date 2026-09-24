@@ -8,7 +8,7 @@ import * as srs from "@upkorean/shared/srs.js";
 import { useStore } from "../store";
 import { FONTS, shadow, useColors } from "../theme";
 import { Bar, Button, Feather, Kicker, Row, Screen, TabHeader, Title, tapped } from "../ui";
-import { gradeName, lessonLine, lessonProgress, levelInfo, openLesson } from "../model";
+import { gradeName, lessonAction, lessonLine, lessonProgress, levelInfo, openLesson } from "../model";
 
 export default function Course({ navigation }) {
   const c = useColors();
@@ -100,7 +100,7 @@ function CurrentCard({ progress, course, onStart, onOpen }) {
   return (
     <Pressable onPress={onOpen} style={[{ backgroundColor: c.card, borderRadius: 26, padding: 22, gap: 14 }, shadow(c, 2)]}>
       <View style={{ gap: 3 }}>
-        <Kicker>{progress.n}-dars · hozirgi</Kicker>
+        <Kicker>{progress.n}-dars · hozirgi{progress.parts > 1 ? ` · ${progress.partsDone}/${progress.parts} qism` : ""}</Kicker>
         <Title size={23}>{progress.title}</Title>
         <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: c.ink2 }}>{lessonLine(progress)}</Text>
       </View>
@@ -111,7 +111,7 @@ function CurrentCard({ progress, course, onStart, onOpen }) {
           </View>
         ))}
       </View>
-      <Button title={progress.learned ? "Davom etish" : "Boshlash"} size="md" onPress={onStart} />
+      <Button title={lessonAction(progress)} size="md" onPress={onStart} />
     </Pressable>
   );
 }
@@ -145,8 +145,8 @@ function LessonRow({ progress, course, onPress }) {
         <Text numberOfLines={1} style={{ fontFamily: FONTS.bold, fontSize: 14.5, color: c.ink }}>{progress.title}</Text>
         <Text numberOfLines={1} style={{ fontSize: 13, color: c.ink2 }}>{words}</Text>
       </View>
-      {progress.learned && !done ? (
-        <Text style={{ fontFamily: FONTS.semi, fontSize: 12, color: c.ink2 }}>{progress.learned}/{progress.words}</Text>
+      {progress.partsDone && !done ? (
+        <Text style={{ fontFamily: FONTS.semi, fontSize: 12, color: c.ink2 }}>{progress.partsDone}/{progress.parts} qism</Text>
       ) : null}
       <Feather name="chevron-right" size={16} color={c.ink4} />
     </Pressable>

@@ -124,13 +124,14 @@ test("new entries from either side survive; a finished lesson stays finished", (
   laptop.words["4-2"] = { s: 1, seen: 1, learned: "2026-09-16", last: "2026-09-16" };
   phone.lessons["b-1"] = { done: true, doneAt: "2026-09-16", ok: 14, bad: 1, min: 8, xp: 70 };
   laptop.lessons["b-1"] = { done: false, ok: 6, bad: 3, min: 5, xp: 30 };
-  laptop.lessons["b-2"] = { done: false, ok: 2, bad: 0, min: 1, xp: 6 };
+  laptop.lessons["b-2"] = { done: false, part: 1, ok: 2, bad: 0, min: 1, xp: 6 };
   const m = mergeStates(base, phone, laptop);
   assert.ok(m.words["3-1"] && m.words["4-2"] && m.words["1-0"]);
   assert.equal(m.lessons["b-1"].done, true);
   assert.equal(m.lessons["b-1"].doneAt, "2026-09-16");
   assert.equal(m.lessons["b-1"].ok, 4 + 10 + 2, "both devices' answers add up");
-  assert.deepEqual(m.lessons["b-2"], { done: false, ok: 2, bad: 0, min: 1, xp: 6 });
+  assert.deepEqual(m.lessons["b-2"], { done: false, part: 1, ok: 2, bad: 0, min: 1, xp: 6 });
+  assert.equal(m.lessons["b-1"].part, 0, "neither side had finished a part of lesson 1 in its record");
 });
 
 test("a day's goal is kept through a merge, the smaller one when the devices disagree", () => {

@@ -61,7 +61,8 @@ bilan solishtirib, kerak bo'lsa "yangilang" ekranini ko'rsatadi.
 ## Kurs ma'lumoti
 
 Kurs uch darajaga bo'lingan: `b` (초급 = NIKL 1급+2급), `m` (중급 = 3급+4급), `a` (고급 = 5급+6급). Har bir
-daraja — 10 so'zlik darslardan iborat bitta yo'l; kalendar kunlari yo'q. Daraja tarjimasi tayyor bo'lgan
+daraja — darslardan iborat bitta yo'l, har bir dars bir kunlik reja (초급 20, 중급 30, 고급 40 so'z) va
+10 so'zlik qismlarga bo'lingan. Daraja tarjimasi tayyor bo'lgan
 darslar bilan bosqichma-bosqich ochiladi (`scripts/build-course.mjs`). Tizimga kirish shart emas.
 
 So'z id'si — daraja va NIKL ro'yxatidagi raqami: `"b-36"` — 것. Raqam hech qachon o'zgarmaydi, shuning
@@ -74,7 +75,7 @@ uchun darslar qayta tartiblansa ham so'zning progressi va audiosi joyida qoladi
 {
   "version": "91cdce023148",
   "levels": [
-    { "id": "b", "ko": "초급", "uz": "Boshlang'ich", "lessons": 71, "words": 710, "planned": 1835, "locked": false,
+    { "id": "b", "ko": "초급", "uz": "Boshlang'ich", "lessons": 36, "words": 710, "planned": 1835, "locked": false,
       "parts": [
         { "name": "vocab",    "url": "/api/content/b/vocab?v=91cdce023148",    "bytes": 67288 },
         { "name": "examples", "url": "/api/content/b/examples?v=91cdce023148", "bytes": 59 }
@@ -95,8 +96,8 @@ tayyor bo'lmagan daraja `locked: true` bilan keladi va `parts` bo'sh: ilova uni 
 ```jsonc
 // vocab
 { "version": "…", "id": "b", "ko": "초급", "uz": "Boshlang'ich", "count": 710,
-  "lessons": [{ "id": "b-1", "n": 1, "grade": 1, "theme": "", "title": "Biz, men, old" }, …],
-  "words": [{ "id": "b-36", "level": "b", "lesson": 1, "i": 0, "grade": 1, "ko": "것", "uz": "narsa", "aw": 1 }, …] }
+  "lessons": [{ "id": "b-1", "n": 1, "grade": 1, "theme": "", "title": "Bu, men, biz", "parts": 2 }, …],
+  "words": [{ "id": "b-36", "level": "b", "lesson": 1, "part": 0, "i": 0, "grade": 1, "ko": "것", "uz": "narsa", "aw": 1 }, …] }
 
 // examples
 { "version": "…", "id": "b", "count": 710,

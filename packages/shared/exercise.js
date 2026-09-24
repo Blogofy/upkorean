@@ -424,22 +424,30 @@ export function finish(state, session, course, now = today()) {
   const outcome = { kind: session.kind, ok: session.ok, bad: session.bad, total: session.items.length };
 
   if (session.kind === "learn") {
+    // A sitting is one part of a lesson. The lesson is done when its last part is, however many breaks lay
+    // between them; `part` is what the next sitting carries on from.
     const lesson = srs.lessonAt(course, session.lesson);
-    const record2 = (state.lessons[lesson.id] = state.lessons[lesson.id] || { done: false, ok: 0, bad: 0, min: 0, xp: 0 });
+    const part = session.part || 0;
+    const record2 = (state.lessons[lesson.id] = state.lessons[lesson.id] || { done: false, part: 0, ok: 0, bad: 0, min: 0, xp: 0 });
+    if (!record2.startedAt) record2.startedAt = now;
     // The lesson may have been the level's last new words, which lowers what today can still ask for.
     srs.setDayGoal(state, course, now);
     record2.ok = (record2.ok || 0) + session.ok;
     record2.bad = (record2.bad || 0) + session.bad;
     record2.min = (record2.min || 0) + session.activeMs / 60000;
     record2.xp = (record2.xp || 0) + (state.xp - session.xpStart);
-    outcome.firstTime = !record2.done;
-    if (!record2.done) {
+    record2.part = Math.max(record2.part || 0, part + 1);
+    outcome.lesson = lesson.n;
+    outcome.part = part;
+    outcome.parts = lesson.parts.length;
+    outcome.lessonDone = record2.part >= lesson.parts.length;
+    outcome.firstTime = outcome.lessonDone && !record2.done;
+    if (outcome.firstTime) {
       record2.done = true;
       record2.doneAt = now;
-      srs.addXP(state, 30, now);
+      srs.addXP(state, 50, now);
       srs.log(state, `${lesson.n}-dars tugatildi — ${lesson.title}`, "ok");
     }
-    outcome.lesson = lesson.n;
   } else if (session.kind === "review") {
     state.reviewSessions++;
     srs.addXP(state, 20, now);

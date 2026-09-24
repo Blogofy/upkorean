@@ -8,7 +8,7 @@
 // A word is named "<level>-<nid>" and a lesson "<level>-<n>" (course/levels.js), so all three levels share
 // one progress object without ever colliding, and a word carries its level wherever it travels.
 import { addDays, diffDays, today, weekStart, WEEK_SHORT } from "./dates.js";
-import { parseWordId } from "./course/levels.js";
+import { LEVELS, PART_SIZE, parseWordId } from "./course/levels.js";
 
 // The review ladder, in days between repetitions: a new word comes back 1, 3, 7, 14 and 30 days after it was
 // met — the intervals below are the gaps, not the totals. A miss anywhere sends it back to the start.
@@ -27,11 +27,10 @@ export const MASTER_STEP = LEARNT;
 export const XP_LEVELS = [0, 300, 800, 1500, 2400, 3500, 4600, 5500, 6800, 8300, 10000, 12000, 14200, 16600, 19200];
 export const XP_STEP = 2600;
 
-// The daily standard: new words a day, by level. Not a choice — a learner offered one takes the lightest,
-// and a course is only as good as the days it is actually kept. A beginner's words are all new; higher up
-// most of them lean on words already known, so the day can carry more. Past the standard nothing stops
-// anyone: the next lesson is always one tap away.
-export const DAILY_WORDS = { b: 20, m: 30, a: 40 };
+// The daily standard: new words a day, by level (levels.js) — one lesson. Not a choice: a learner offered one
+// takes the lightest, and a course is only as good as the days it is actually kept. Past the standard nothing
+// stops anyone: the next lesson is always one tap away.
+export const DAILY_WORDS = Object.fromEntries(LEVELS.map((level) => [level.id, level.perDay]));
 export const dailyWords = (state) => DAILY_WORDS[state.profile.level] || DAILY_WORDS.b;
 // How many days a number of words takes at a level's standard — what the plan screens promise.
 export const daysFor = (words, level) => Math.max(1, Math.ceil(words / (DAILY_WORDS[level] || DAILY_WORDS.b)));
@@ -43,10 +42,10 @@ export const REVIEW_GOAL_CHOICES = [30, 50, 80];
 export const PUSH_DAYS = 7;
 // Minutes per question, the rate every estimate on every screen is priced at.
 export const ITEM_MINUTES = 0.3;
-// Words per lesson. Ten is one sitting of about seven minutes: short enough to fit a bus ride, long enough to
-// leave a mark. vocab/plan.tsv is cut to the same size.
-export const LESSON_SIZE = 10;
-export const LESSON_MINUTES = 7;
+// Words per part of a lesson. Ten is one sitting of about seven minutes: short enough to fit a bus ride, long
+// enough to leave a mark, and a lesson may be left for a break between two parts.
+export { PART_SIZE };
+export const PART_MINUTES = 7;
 
 export const EX_TYPES = ["mc", "mcr", "type", "listen", "sent", "match"];
 export const TYPE_NAMES = {
@@ -352,12 +351,25 @@ export function weekRhythm(state, now = today()) {
 }
 
 // ---------- Course structure ----------
-// `course` is a loaded level: { lessons, lessonCount, byId, words, … } — the shape content.js assembles.
-// There are no days in it: the lessons are one path, taken at whatever pace the learner keeps.
+// `course` is a loaded level: { lessons, lessonCount, byId, words, … } — the shape content.js assembles. A
+// lesson is one day of the level's standard, in parts of ten words; `record.part` counts the parts done, so a
+// lesson left for a break carries on from the next part.
 
 export const lessonAt = (course, n) => course.lessons[n] || null;
-export const lessonState = (state, id) => state.lessons[id] || { done: false };
-export const lessonDone = (state, course, n) => !!(lessonAt(course, n) && lessonState(state, lessonAt(course, n).id).done);
+export const lessonState = (state, id) => state.lessons[id] || { done: false, part: 0 };
+// Done means finished and every word in it met — a record from an older, smaller lesson under the same
+// number does not count.
+export const lessonDone = (state, course, n) => {
+  const lesson = lessonAt(course, n);
+  return !!(lesson && lessonState(state, lesson.id).done && lesson.ids.every((id) => isLearned(state, id)));
+};
+// The part a lesson carries on from: 0 for a lesson not begun, the last one for a finished lesson.
+export function nextPart(state, course, n) {
+  const lesson = lessonAt(course, n);
+  if (!lesson) return 0;
+  if (lessonDone(state, course, n)) return lesson.parts.length - 1;
+  return Math.max(0, Math.min(lessonState(state, lesson.id).part || 0, lesson.parts.length - 1));
+}
 
 // The first lesson not done yet — the one the home screen offers. Past the end, the last one.
 export function currentLesson(state, course) {
@@ -377,22 +389,21 @@ export const lessonLearned = (state, course, n) => (lessonAt(course, n)?.ids || 
 export function lessonStatus(state, course, n) {
   const lesson = lessonAt(course, n);
   if (!lesson) return "open";
-  if (lessonState(state, lesson.id).done) return lesson.ids.every((id) => isMastered(state, id)) ? "mastered" : "done";
+  if (lessonDone(state, course, n)) return lesson.ids.every((id) => isMastered(state, id)) ? "mastered" : "done";
   return n === currentLesson(state, course) ? "current" : "open";
 }
 
-// Lessons finished today, for the home screen: the daily goal is counted in words, and a lesson is ten.
+// Lessons finished today.
 export const lessonsToday = (state, now = today()) => Object.values(state.lessons).filter((record) => record.doneAt === now).length;
 
-// Where the learner stands against the plan: the lessons the level's standard would have finished by the
-// end of yesterday, counted from the day this level's first lesson was done, against the lessons done. Today
-// is left out — the day is not over — so `behind` is only ever work that is really late.
+// Where the learner stands against the plan: one lesson a day, counted from the day this level's first lesson
+// was done up to the end of yesterday, against the lessons done. Today is left out — the day is not over — so
+// `behind` is only ever work that is really late.
 export function planStatus(state, course, now = today()) {
-  const started = course.lessons.slice(1).map((lesson) => lessonState(state, lesson.id).doneAt).filter(Boolean).sort()[0];
+  const started = course.lessons.slice(1).map((lesson) => lessonState(state, lesson.id)).map((r) => r.startedAt || r.doneAt).filter(Boolean).sort()[0];
   const done = lessonsDone(state, course);
   if (!started) return { started: null, expected: 0, done, behind: 0 };
-  const perDay = dailyWords(state) / LESSON_SIZE;
-  const expected = Math.min(course.lessonCount, Math.max(0, diffDays(started, now)) * perDay);
+  const expected = Math.min(course.lessonCount, Math.max(0, diffDays(started, now)));
   return { started, expected, done, behind: Math.max(0, Math.floor(expected - done)) };
 }
 

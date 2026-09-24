@@ -11,7 +11,7 @@ import { fmtDayMonth, fmtLong, today } from "@upkorean/shared/dates.js";
 import { useStore } from "../store";
 import { FONTS, shadow, useColors } from "../theme";
 import { Button, Col, Feather, Kicker, RingStat, Row, Screen, Segments, Title, Txt, tapped } from "../ui";
-import { firstName, lessonLine, lessonProgress, levelInfo, openLesson, openReview, todayGoal } from "../model";
+import { firstName, lessonAction, lessonLine, lessonProgress, levelInfo, openLesson, openReview, todayGoal } from "../model";
 
 const MISSED_KEY = "uk_missed_hidden_on";
 
@@ -168,18 +168,18 @@ export default function Today({ navigation }) {
 
 const label = (c) => ({ fontFamily: FONTS.bold, fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", color: c.ink4 });
 
-// The lesson card: the next lesson, a taste of its words, and today's goal as a ring beside it. Once the goal
-// is met it says so and still offers the next lesson — the goal is a floor, not a ceiling.
+// The lesson card: today's lesson, a taste of the part it carries on from, and today's goal as a ring beside
+// it. Once the goal is met it says so and still offers the next lesson — the goal is a floor, not a ceiling.
 function LessonCard({ progress, daily, course, onOpen, onStart }) {
   const c = useColors();
-  const words = progress.ids.map((id) => course.byId[id]).filter(Boolean);
+  const words = (progress.lesson?.parts[progress.part] || progress.ids).map((id) => course.byId[id]).filter(Boolean);
   const shown = Math.min(daily.learned, daily.goal);
   const ring = daily.goal > 0;
   return (
     <Pressable onPress={onOpen} style={[{ backgroundColor: c.card, borderRadius: 26, padding: 22, gap: 16 }, shadow(c, 2)]}>
       <Row justify="space-between" align="flex-start" gap={14}>
         <View style={{ flex: 1, gap: 3 }}>
-          <Kicker>{progress.n}-dars · {daily.done ? "bonus" : "keyingi"}</Kicker>
+          <Kicker>{progress.n}-dars · {daily.done ? "bonus" : "bugungi"}{progress.parts > 1 ? ` · ${progress.partsDone}/${progress.parts} qism` : ""}</Kicker>
           <Title size={23}>{progress.title}</Title>
           <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: c.ink2 }}>{lessonLine(progress)}</Text>
         </View>
@@ -192,7 +192,7 @@ function LessonCard({ progress, daily, course, onOpen, onStart }) {
       </Row>
       {daily.done ? (
         <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, lineHeight: 19, color: c.ink2, marginTop: -4 }}>
-          Bugungi reja bajarildi. Vaqtingiz bo'lsa, yana bitta dars — 10 ta so'z.
+          Bugungi reja bajarildi. Vaqtingiz bo'lsa, ertangi darsni hozir boshlashingiz mumkin.
         </Text>
       ) : null}
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7 }}>
@@ -207,7 +207,7 @@ function LessonCard({ progress, daily, course, onOpen, onStart }) {
           </View>
         ) : null}
       </View>
-      <Button title={daily.done ? "Yana bir dars" : "Boshlash"} kind={daily.done ? "tint" : "primary"} size="md" onPress={onStart} />
+      <Button title={daily.done && !progress.partsDone ? "Yana bir dars" : lessonAction(progress)} kind={daily.done ? "tint" : "primary"} size="md" onPress={onStart} />
     </Pressable>
   );
 }

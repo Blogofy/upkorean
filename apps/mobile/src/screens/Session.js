@@ -24,9 +24,11 @@ const TIME_LIMIT_MS = 20000;
 function build(params, state, course, opts) {
   const xpStart = state.xp;
   if (params.kind === "learn") {
+    // One part of the lesson per sitting — the one it carries on from, unless the caller named another.
     const lesson = srs.lessonAt(course, params.lesson);
     if (!lesson) return null;
-    return ex.newSession("learn", ex.lessonItems(state, course, lesson.ids, opts), { lesson: lesson.n, category: "learn", xpStart });
+    const part = Number.isInteger(params.part) ? params.part : srs.nextPart(state, course, lesson.n);
+    return ex.newSession("learn", ex.lessonItems(state, course, lesson.parts[part], opts), { lesson: lesson.n, part, category: "learn", xpStart });
   }
   if (params.kind === "review") {
     const ids = params.ids || srs.reviewQueue(state, course, params.mode || "due", params.extra ? srs.EXTRA_ROUND : undefined);

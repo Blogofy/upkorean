@@ -1,5 +1,5 @@
-// 10 — Dars. One lesson: its ten words, where it stands, and the button that starts it — or, once it is
-// done, practises it again. The lessons either side are one tap away.
+// 10 — Dars. One lesson: its words, where it stands, and the button that starts it or carries it on from the
+// next part — or, once it is done, practises it again. The lessons either side are one tap away.
 import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
@@ -8,7 +8,7 @@ import * as srs from "@upkorean/shared/srs.js";
 import { useStore } from "../store";
 import { FONTS, useColors } from "../theme";
 import { BackLink, Button, Kicker, Note, Pill, Row, Screen, Ticks, Title, tapped } from "../ui";
-import { gradeName, lessonLine, lessonProgress, openLesson } from "../model";
+import { gradeName, lessonAction, lessonLine, lessonProgress, openLesson } from "../model";
 import WordSheet from "./WordSheet";
 
 const PILL = { done: "bajarildi", mastered: "o'zlashtirildi", current: "hozirgi", open: "ochiq" };
@@ -23,7 +23,7 @@ export default function Lesson({ navigation, route }) {
   const n = Math.max(1, Math.min(course.lessonCount, Number(route.params?.lesson) || 1));
   const progress = lessonProgress(state, course, n);
   const words = progress.ids.map((id) => course.byId[id]).filter(Boolean);
-  const cta = progress.done ? "Darsni mashq qilish" : progress.learned ? "Davom etish" : "Boshlash";
+  const cta = lessonAction(progress);
   const go = (to) => { tapped(); navigation.setParams({ lesson: to }); };
 
   return (
@@ -60,8 +60,9 @@ export default function Lesson({ navigation, route }) {
         </View>
 
         <Note title="Dars qanday o'tadi">
-          Avval 5 ta so'z bilan tanishasiz va darhol mashq qilasiz, keyin qolgan 5 tasi, oxirida hammasi aralash.
-          So'zlar 1, 3, 7, 14 va 30 kundan keyin takrorlashga qaytadi, shundan keyin o'zlashtirilgan hisoblanadi.
+          Dars 10 so'zlik qismlardan iborat, orasida tanaffus qilsangiz bo'ladi. Har qismda avval 5 ta so'z bilan
+          tanishib darhol mashq qilasiz, keyin qolgan 5 tasi, oxirida aralash test. So'zlar 1, 3, 7, 14 va 30 kundan
+          keyin takrorlashga qaytadi, shundan keyin o'zlashtirilgan hisoblanadi.
         </Note>
 
         <Row justify="space-between" style={{ paddingHorizontal: 4 }}>

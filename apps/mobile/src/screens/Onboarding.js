@@ -78,7 +78,7 @@ export default function Onboarding({ navigation }) {
   if (step === 3) {
     const rows = [
       ["Jami so'z", String(level.planned)],
-      ["Darslar", `${Math.ceil(level.planned / srs.LESSON_SIZE)} ta, har biri ${srs.LESSON_SIZE} so'z`],
+      ["Darslar", `${Math.ceil(level.planned / perDay)} ta, kuniga bittadan`],
       ["Kunlik reja", standardLine(perDay)],
       ["Kunlik vaqt", `~${dailyMinutes(perDay)} daq`],
       ["Daraja davomiyligi", `${levelDays} kun`],
@@ -134,7 +134,7 @@ export default function Onboarding({ navigation }) {
     },
     1: {
       title: "Kunlik reja",
-      lead: "Tizimli o'qish har kuni bir xil miqdordan boshlanadi. Daraja oshgani sari so'z ko'payadi.",
+      lead: "Har kuni bitta dars. Daraja oshgani sari darsdagi so'z ko'payadi. Dars 10 so'zlik qismlarga bo'lingan — orasida tanaffus qilsa bo'ladi.",
       body: (
         <Col gap={11}>
           <View style={{ backgroundColor: c.card, borderRadius: 20, paddingVertical: 6, paddingHorizontal: 20 }}>
@@ -174,7 +174,7 @@ export default function Onboarding({ navigation }) {
               titleKo={l.ko}
               title={l.uz}
               desc={LEVEL_BLURB[l.id].desc}
-              note={l.locked ? "Tez kunda · tayyorlanmoqda" : `${l.planned} so'z · ${Math.ceil(l.planned / srs.LESSON_SIZE)} dars`}
+              note={l.locked ? "Tez kunda · tayyorlanmoqda" : `${l.planned} so'z · ${Math.ceil(l.planned / srs.DAILY_WORDS[l.id])} dars`}
               selected={levelId === l.id}
               disabled={l.locked}
               align="flex-start"

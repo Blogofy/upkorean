@@ -287,8 +287,10 @@ test("course content is served per level, versioned and revalidatable", async ()
   const data = await vocab.json();
   assert.equal(data.words.length, beginner.words);
   assert.equal(data.lessons.length, beginner.lessons);
-  assert.deepEqual(Object.keys(data.lessons[0]).sort(), ["grade", "id", "n", "theme", "title"]);
-  for (const key of ["grade", "i", "id", "ko", "lesson", "level", "uz"]) assert.ok(key in data.words[0], key);
+  assert.deepEqual(Object.keys(data.lessons[0]).sort(), ["grade", "id", "n", "parts", "theme", "title"]);
+  assert.equal(data.lessons[0].parts, 2, "a 초급 lesson is twenty words in two parts");
+  for (const key of ["grade", "i", "id", "ko", "lesson", "level", "part", "uz"]) assert.ok(key in data.words[0], key);
+  assert.equal(data.words.filter((word) => word.lesson === 1).length, 20);
   // A word carries its level and its NIKL number in its name, so progress from two levels can never
   // collide and never moves when the lessons are rearranged. 것 opens the course.
   assert.equal(data.words[0].id, "b-36");

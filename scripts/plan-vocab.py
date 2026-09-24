@@ -7,7 +7,7 @@
 #   1. Grade first: 1급 before 2급, and so on. Two grades make one app level (see LEVELS below).
 #   2. Frequency: the words people use most come first. Two corpus counts, each normalised per million,
 #      averaged in log space; a word neither corpus counted sits at its grade's median.
-#   3. Theme: a 10-word lesson (one sitting in the app, LESSON_SIZE in packages/shared/srs.js) is built around
+#   3. Theme: a 10-word part (one sitting in the app, PART_SIZE in packages/shared/course/levels.js) is built around
 #      one situation — shopping, the weather — from the words that are near the front anyway. Words met
 #      in one scene support each other.
 #   4. No look-alikes together: synonyms, antonyms and same-spelled homonyms are kept GAP blocks apart, and a

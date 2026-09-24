@@ -1,14 +1,15 @@
 # So'z rejasi (NIKL)
 
 Kursning so'z bazasi: Koreya Milliy til instituti (국립국어원, NIKL) ning rasmiy darajali ro'yxati —
-1급 dan 6급 gacha 10 635 so'z, TOPIK darajalari bilan bir xil. Har bir daraja 10 so'zlik darslardan iborat
-bitta yo'l; `npm run build:course` tarjimasi tayyor darslarni `packages/shared/course/<daraja>/` ga yig'adi.
+1급 dan 6급 gacha 10 635 so'z, TOPIK darajalari bilan bir xil. Reja 10 so'zlik qismlardan iborat; ilova ularni
+kunlik darslarga yig'adi (`packages/shared/course/levels.js` dagi `perDay`). `npm run build:course` tarjimasi
+tayyor qismlarni `packages/shared/course/<daraja>/` ga yig'adi.
 
-| Daraja | NIKL | So'z | Dars (10 so'z) |
-| --- | --- | --- | --- |
-| 초급 (`b`) | 1급 + 2급 | 735 + 1 100 | 184 |
-| 중급 (`m`) | 3급 + 4급 | 1 655 + 2 200 | 386 |
-| 고급 (`a`) | 5급 + 6급 | 2 365 + 2 580 | 495 |
+| Daraja | NIKL | So'z | Qism (10 so'z) | Kunlik dars | Dars soni |
+| --- | --- | --- | --- | --- | --- |
+| 초급 (`b`) | 1급 + 2급 | 735 + 1 100 | 184 | 20 so'z | 92 |
+| 중급 (`m`) | 3급 + 4급 | 1 655 + 2 200 | 386 | 30 so'z | 129 |
+| 고급 (`a`) | 5급 + 6급 | 2 365 + 2 580 | 495 | 40 so'z | 124 |
 
 ## Fayllar
 
@@ -35,13 +36,13 @@ so'zlar tushib qoladi. Skript ularni o'quvchi uchrashishi kerak bo'lgan tartibga
 2. **Chastota** — eng ko'p ishlatiladigan so'z birinchi. Ikki korpus hisobi millionga keltirilib o'rtachalanadi.
    Korpusda yo'q so'z darajasining o'rtasiga qo'yiladi; affiks (`-적`, `-님`) ham o'rtadan yuqoriga chiqmaydi,
    chunki uning hisobi shu affiks bilan yasalgan barcha so'zlarning yig'indisi.
-3. **Mavzu** — 10 so'zlik dars (ilovada bitta o'tirish) bitta vaziyat atrofida yig'iladi: xarid, ob-havo,
+3. **Mavzu** — 10 so'zlik qism (ilovada bitta o'tirish) bitta vaziyat atrofida yig'iladi: xarid, ob-havo,
    oila. Bir sahnadagi so'zlar bir-birini eslatadi.
-4. **O'xshashlar birga emas** — sinonim, antonim va bir xil yoziladigan omonimlar kamida 3 dars oraliqda
-   turadi; bir darsda bitta ma'no guruhidan (ranglar, sonlar, hafta kunlari) ko'pi bilan 2 ta so'z bo'ladi.
+4. **O'xshashlar birga emas** — sinonim, antonim va bir xil yoziladigan omonimlar kamida 3 qism oraliqda
+   turadi; bir qismda bitta ma'no guruhidan (ranglar, sonlar, hafta kunlari) ko'pi bilan 2 ta so'z bo'ladi.
    Bir-biriga yaqin so'zlar birga o'rganilsa, xotirada aralashib ketadi (Tinkham 1993, Waring 1997,
    Nakata & Suzuki 2019).
-5. **Turkumlar aralash** — darsda ko'pi bilan 7 ta ot, qolgani fe'l, sifat, ravish: har bir darsdan gap tuzsa bo'ladi.
+5. **Turkumlar aralash** — qismda ko'pi bilan 7 ta ot, qolgani fe'l, sifat, ravish: har bir qismdan gap tuzsa bo'ladi.
 
 ## Litsenziya
 

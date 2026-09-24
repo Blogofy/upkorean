@@ -1,7 +1,8 @@
 // The course on the device: three levels, each downloaded once and then read from storage.
 //
-// A level is a path of lessons, ten words each (packages/shared/course/model.js builds the same shape on the
-// server); `lessons[n]` is lesson n, so index 0 stays empty.
+// A level is a path of lessons, one day of its standard each, in parts of ten words
+// (packages/shared/course/model.js builds the same shape on the server); `lessons[n]` is lesson n, so index 0
+// stays empty.
 //
 // On every start the app asks for the manifest and compares versions. Same version, nothing is
 // downloaded; new version, only the parts that actually changed. Offline, the stored copy is used and no
@@ -48,8 +49,13 @@ function assemble(levelId, stored, offline) {
   const byId = Object.fromEntries(words.map((word) => [word.id, word]));
   const examples = Object.fromEntries((stored.examples.examples || []).map((example) => [example.id, example]));
   const lessons = [null];
-  for (const lesson of stored.vocab.lessons || []) lessons[lesson.n] = { ...lesson, ids: [] };
-  for (const word of words) lessons[word.lesson]?.ids.push(word.id);
+  for (const lesson of stored.vocab.lessons || []) lessons[lesson.n] = { ...lesson, ids: [], parts: Array.from({ length: lesson.parts || 1 }, () => []) };
+  for (const word of words) {
+    const lesson = lessons[word.lesson];
+    if (!lesson) continue;
+    lesson.ids.push(word.id);
+    (lesson.parts[word.part || 0] ||= []).push(word.id);
+  }
   return {
     level: levelId,
     version: stored.vocab.version,

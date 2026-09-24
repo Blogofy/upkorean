@@ -1,5 +1,7 @@
 // 18 — Dars tugadi. A green screen: what the lesson took, where today's goal stands, when its words come back,
-// and the next lesson one tap away — the moment someone is most willing to do one more is right now.
+// and the next lesson one tap away — the moment someone is most willing to do one more is right now. After a
+// part that is not the lesson's last it says so instead, and offers the next part or a break: the lesson
+// carries on from there whenever the learner comes back.
 import { ScrollView, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 
@@ -19,7 +21,7 @@ export default function LessonDone({ navigation, route }) {
 
   const lesson = srs.lessonAt(course, outcome.lesson);
   if (!lesson) return null;
-  const record = srs.lessonState(state, lesson.id);
+  const partOnly = outcome.lessonDone === false;
   const streak = srs.streak(state);
   const daily = todayGoal(state);
   const buckets = reviewBuckets(state, lesson.ids);
@@ -40,9 +42,13 @@ export default function LessonDone({ navigation, route }) {
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 22, paddingBottom: 26, gap: 16 }} showsVerticalScrollIndicator={false}>
         <View style={{ paddingTop: 36, alignItems: "center", gap: 10 }}>
           <Text style={{ fontSize: 44, fontWeight: "900", letterSpacing: 2, color: "rgba(255,255,255,0.34)" }}>완료</Text>
-          <Title size={32} c="#FFFFFF" style={{ textAlign: "center" }}>{lesson.n}-dars tugadi</Title>
+          <Title size={32} c="#FFFFFF" style={{ textAlign: "center" }}>
+            {partOnly ? `${outcome.part + 1}-qism tugadi` : `${lesson.n}-dars tugadi`}
+          </Title>
           <Text style={{ fontFamily: FONTS.body, fontSize: 15, lineHeight: 21, color: c.greenTint, textAlign: "center" }}>
-            {goalLine}{streak > 1 ? ` Seriya: ${streak} kun.` : ""}
+            {partOnly
+              ? `${lesson.n}-dars · ${outcome.part + 1}/${outcome.parts} qism. Tanaffus qilsangiz ham bo'ladi — dars shu joydan davom etadi.`
+              : `${goalLine}${streak > 1 ? ` Seriya: ${streak} kun.` : ""}`}
           </Text>
         </View>
 
@@ -57,6 +63,7 @@ export default function LessonDone({ navigation, route }) {
           </Row>
         </View>
 
+        {partOnly ? null : (
         <View style={{ backgroundColor: c.card, borderRadius: 22, padding: 18, gap: 12 }}>
           <Text style={eyebrow(c)}>Keyingi takrorlash rejasi</Text>
           <Col gap={9}>
@@ -69,6 +76,7 @@ export default function LessonDone({ navigation, route }) {
             ))}
           </Col>
         </View>
+        )}
 
         {missed.length ? (
           <View style={{ backgroundColor: c.card, borderRadius: 22, padding: 18, gap: 11 }}>
@@ -85,7 +93,13 @@ export default function LessonDone({ navigation, route }) {
 
         <View style={{ flex: 1, minHeight: 12 }} />
         <Col gap={10}>
-          {levelDone ? (
+          {partOnly ? (
+            <Button
+              title={`${outcome.part + 2}-qismni boshlash`}
+              kind="inverse"
+              onPress={() => navigation.replace("Session", { kind: "learn", lesson: lesson.n })}
+            />
+          ) : levelDone ? (
             <Button title="Darajani yakunlash" kind="inverse" onPress={() => navigation.replace("LevelDone")} />
           ) : hasNext ? (
             <Button
@@ -104,7 +118,7 @@ export default function LessonDone({ navigation, route }) {
               })}
             />
           ) : null}
-          <Button title="Bosh sahifa" kind="clear" textStyle={{ color: c.greenTint }} onPress={home} />
+          <Button title={partOnly ? "Tanaffus — keyinroq" : "Bosh sahifa"} kind="clear" textStyle={{ color: c.greenTint }} onPress={home} />
         </Col>
       </ScrollView>
     </Screen>

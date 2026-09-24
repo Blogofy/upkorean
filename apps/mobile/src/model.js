@@ -42,24 +42,35 @@ export function nextLevel(levels, id) {
 export const firstName = (name) => String(name || "").trim().split(/\s+/)[0] || "do'stim";
 export const initial = (name) => (String(name || "?").trim()[0] || "?").toUpperCase();
 
-// Where a lesson stands: its words, whether it is done, how many of its words are learned and mastered.
+// Where a lesson stands: its words, its parts and how many are behind, whether it is done, how many of its
+// words are learned and mastered.
 export function lessonProgress(state, course, n) {
   const lesson = srs.lessonAt(course, n);
   const ids = lesson ? lesson.ids : [];
+  const done = srs.lessonDone(state, course, n);
+  const parts = lesson ? lesson.parts.length : 1;
   return {
     n,
     lesson,
     title: lesson ? lesson.title : `${n}-dars`,
     ids,
     words: ids.length,
-    done: !!(lesson && srs.lessonState(state, lesson.id).done),
+    parts,
+    part: srs.nextPart(state, course, n),
+    partsDone: done ? parts : Math.min(parts, (lesson && srs.lessonState(state, lesson.id).part) || 0),
+    done,
     status: srs.lessonStatus(state, course, n),
     learned: ids.filter((id) => srs.isLearned(state, id)).length,
     mastered: ids.filter((id) => srs.isMastered(state, id)).length,
   };
 }
 
-export const lessonLine = (progress) => `${progress.words} so'z · ~${srs.LESSON_MINUTES} daqiqa`;
+export const lessonLine = (progress) => (progress.parts > 1
+  ? `${progress.words} so'z · ${progress.parts} qism · ~${progress.parts * srs.PART_MINUTES} daqiqa`
+  : `${progress.words} so'z · ~${srs.PART_MINUTES} daqiqa`);
+// What the button that opens a lesson says: where it starts, not just that it starts.
+export const lessonAction = (progress) => (progress.done ? "Darsni mashq qilish"
+  : progress.partsDone ? `${progress.partsDone + 1}-qismni boshlash` : "Boshlash");
 
 // The level's NIKL grade a lesson belongs to, as the course list heads its sections: "1급".
 export const gradeName = (grade) => `${grade}급`;
@@ -72,10 +83,10 @@ export function todayGoal(state, now = today()) {
   return { goal, learned, left: Math.max(0, goal - learned), done: srs.planMet(state, now) || (goal > 0 && learned >= goal) };
 }
 
-// "20 so'z · 2 dars" — a daily standard as the plan screens say it.
-export const standardLine = (words) => `${words} so'z · ${Math.round(words / srs.LESSON_SIZE)} dars`;
-// A rough price for a day at that standard: its lessons, and about ten minutes of review on top.
-export const dailyMinutes = (words) => Math.round(words / srs.LESSON_SIZE) * srs.LESSON_MINUTES + 10;
+// "1 dars · 20 so'z" — a daily standard as the plan screens say it.
+export const standardLine = (words) => `1 dars · ${words} so'z`;
+// A rough price for a day at that standard: its parts, and about ten minutes of review on top.
+export const dailyMinutes = (words) => Math.round(words / srs.PART_SIZE) * srs.PART_MINUTES + 10;
 
 // Whether a word's recording exists yet. The narrator reads the course as it grows, and a play button that
 // makes no sound reads as a broken app, so a word without one simply has no button.
