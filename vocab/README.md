@@ -8,7 +8,7 @@ ilovadagi kunlik dars shu yo'lning keyingi so'zlaridan tuziladi, hajmi esa natij
 
 | Daraja | NIKL | So'z | Qism (10 so'z) | Kunlik dars |
 | --- | --- | --- | --- | --- |
-| 초급 (`b`) | 1급 + 2급 | 735 + 1 100 | 184 | 20 → 35 so'z |
+| 초급 (`b`) | 1급 + 2급 | 735 + 1 100 | 184 | 20 → 30 so'z |
 | 중급 (`m`) | 3급 + 4급 | 1 655 + 2 200 | 386 | 35 → 50 so'z |
 | 고급 (`a`) | 5급 + 6급 | 2 365 + 2 580 | 495 | 50 so'z |
 

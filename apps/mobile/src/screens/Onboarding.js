@@ -36,9 +36,8 @@ export default function Onboarding({ navigation }) {
   const level = levels.find((l) => l.id === levelId) || levels[0];
   const range = srs.dailyRange(level.id);
   const perDay = range.from;
-  // The standard grows with results, so a level takes somewhere between the two ends of its range.
-  const levelDays = srs.daysFor(level.planned, perDay);
-  const fastDays = srs.daysFor(level.planned, range.to);
+  // The standard grows a step a week while the words stay, so the level takes about this long.
+  const levelDays = srs.levelDays(level.id, level.planned);
 
   const finish = async () => {
     if (busy) return;
@@ -84,7 +83,7 @@ export default function Onboarding({ navigation }) {
       ["Darslar", `${Math.ceil(level.planned / perDay)} ta, kuniga bittadan`],
       ["Kunlik reja", rangeLine(range)],
       ["Kunlik vaqt", `~${dailyMinutes(perDay)} daq`],
-      ["Daraja davomiyligi", fastDays < levelDays ? `${fastDays}–${levelDays} kun` : `${levelDays} kun`],
+      ["Daraja davomiyligi", `~${levelDays} kun`],
     ];
     return (
       <Screen edges={["top", "bottom"]}>

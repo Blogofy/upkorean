@@ -342,7 +342,7 @@ test("the daily standard starts at the level's floor and stays inside its range"
   state.profile.daily = 30;
   assert.equal(srs.dailyWords(state), 30);
   state.profile.daily = 50;
-  assert.equal(srs.dailyWords(state), 35, "초급 tops out at 35");
+  assert.equal(srs.dailyWords(state), 30, "초급 tops out at 30");
   state.profile.level = "m";
   assert.equal(srs.dailyWords(state), 50);
   state.profile.daily = 20;
@@ -350,6 +350,8 @@ test("the daily standard starts at the level's floor and stays inside its range"
   state.profile.level = "a";
   assert.equal(srs.dailyWords(state), 50);
   assert.equal(srs.daysFor(1835, 20), 92);
+  assert.equal(srs.levelDays("b"), 65, "a week at 20, a week at 25, then 30: well inside two and a half months");
+  assert.equal(srs.levelDays("b", 60, 30), 2);
 });
 
 // Three days behind `now`, each kept with the given review answers.
@@ -360,16 +362,31 @@ function lived(state, now, { rok, rbad, kept = true }) {
   }
 }
 
-test("the standard grows by five when the words are staying", () => {
+test("the standard grows by five a week when the words are staying", () => {
   const state = fresh();
   const now = "2026-10-10";
-  lived(state, now, { rok: 18, rbad: 2 });
+  lived(state, now, { rok: 17, rbad: 3 });
+  state.profile.dailyAt = addDays(now, -5);
+  assert.equal(srs.adjustDaily(state, course, now), null, "not before a week at the current number");
+  state.profile.dailyAt = addDays(now, -7);
   assert.deepEqual(srs.adjustDaily(state, course, now), { from: 20, to: 25 });
   assert.equal(srs.dailyWords(state), 25);
   assert.equal(state.profile.dailyNote.to, 25, "the home screen is told");
-  assert.equal(srs.adjustDaily(state, course, addDays(now, 1)), null, "not again before three days have been lived with it");
   lived(state, addDays(now, 3), { rok: 30, rbad: 1 });
-  assert.equal(srs.adjustDaily(state, course, addDays(now, 3)).to, 30);
+  assert.equal(srs.adjustDaily(state, course, addDays(now, 3)), null, "not again within the week");
+  lived(state, addDays(now, 7), { rok: 30, rbad: 1 });
+  assert.equal(srs.adjustDaily(state, course, addDays(now, 7)).to, 30);
+  lived(state, addDays(now, 14), { rok: 30, rbad: 1 });
+  assert.equal(srs.adjustDaily(state, course, addDays(now, 14)), null, "30 is the top of 초급");
+});
+
+test("the first raise counts the week from the level's first word", () => {
+  const state = fresh();
+  const now = "2026-10-10";
+  lived(state, now, { rok: 18, rbad: 2 });
+  assert.equal(srs.adjustDaily(state, course, now), null, "nothing learned yet: no week to count");
+  state.words["b-11"] = { s: 1, due: addDays(now, 2), learned: addDays(now, -7), seen: 2, ok: 2, bad: 0, lapses: 0 };
+  assert.equal(srs.adjustDaily(state, course, now).to, 25);
 });
 
 test("the standard holds without enough evidence, and falls when words are not staying", () => {

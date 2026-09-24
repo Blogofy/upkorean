@@ -197,13 +197,13 @@ function RemoveAccount({ visible, onClose }) {
 
 const eyebrow = (c) => ({ fontFamily: FONTS.bold, fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", color: c.ink2 });
 
-// How long the rest of the level takes at its standard. The standard grows with the level (20, 30, 40).
+// How long the rest of the level takes on its plan, from where the standard stands now.
 function planLine(state, course) {
   const left = Math.max(0, course.words.length - srs.learnedIds(state, course).length);
   if (!left) return "Ochiq so'zlarning hammasi o'rganilgan.";
   const range = srs.dailyRange(course.level);
-  const grows = range.to > range.from ? ` Natijangizga qarab ${rangeLine(range)} oralig'ida o'zgaradi.` : "";
-  return `Qolgan ${left} so'z hozirgi rejada taxminan ${srs.daysFor(left, srs.dailyWords(state))} kunda tugaydi.${grows}`;
+  const grows = range.to > range.from ? ` Reja har hafta ${srs.DAILY_STEP} so'zga oshib boradi: ${rangeLine(range)}.` : "";
+  return `Qolgan ${left} so'z taxminan ${srs.levelDays(course.level, left, srs.dailyWords(state))} kunda tugaydi.${grows}`;
 }
 
 // Name and password, in a sheet from the "Hisob" row. The server signs every other device out on a

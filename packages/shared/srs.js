@@ -39,6 +39,20 @@ export function dailyWords(state) {
 }
 // How many days a number of words takes at so many a day — what the plan screens promise.
 export const daysFor = (words, perDay) => Math.max(1, Math.ceil(words / Math.max(1, perDay)));
+// How many days a whole level takes on its plan: RAISE_EVERY days at each step of its range, then the top of
+// it to the end. 초급 is 65. What the plan screens promise, for a learner who keeps it; `start` prices what is
+// left of a level from where the standard stands now.
+export function levelDays(level, words = (levelMeta(level) || LEVELS[0]).planned, start = dailyRange(level).from) {
+  const range = dailyRange(level);
+  let days = 0;
+  for (let perDay = start; words > 0; perDay = Math.min(range.to, perDay + DAILY_STEP)) {
+    const span = perDay < range.to ? RAISE_EVERY : Infinity;
+    const take = Math.min(span, Math.ceil(words / perDay));
+    days += take;
+    words -= take * perDay;
+  }
+  return days;
+}
 // A day's review target. Everything over it is spread across the coming days rather than left to pile up: a
 // queue that grows every day is read as one's own failure, and is why people stop opening the app.
 export const DEFAULT_REVIEW_GOAL = 50;
@@ -438,15 +452,17 @@ export function planStatus(state, course, now = today()) {
 }
 
 // ---------- The daily standard, moved by results ----------
-// Once a day, as the day turns, the standard may move by DAILY_STEP on what the last JUDGE_DAYS days say.
-// Up, when every one of them kept its plan, their reviews recalled at least RAISE_AT and nothing is left
-// overdue: the words are staying, so the day can carry more. Down, when recall fell under LOWER_AT or the
-// overdue pile outgrew a day's reviews: the words are not staying, and more of them would only bury the
-// learner. Never twice within JUDGE_DAYS, so every change is judged on days lived with it, and never with
-// fewer than MIN_ANSWERS reviews to judge by.
-export const RAISE_AT = 0.85;
+// Once a day, as the day turns, the standard may move by DAILY_STEP. Up, a week after it last moved (or after
+// the level's first word), when the last JUDGE_DAYS days all kept their plan, their reviews recalled at least
+// RAISE_AT and nothing is left overdue: the words are staying, so the day can carry more. That makes the
+// raise the rule and not the prize — a learner doing the work reaches the top of the range in a few weeks,
+// and the level ends on time (levelDays). Down, when recall fell under LOWER_AT or the overdue pile outgrew a
+// day's reviews: the words are not staying, and more of them would only bury the learner. Never twice within
+// JUDGE_DAYS, so every change is judged on days lived with it, and never with fewer than MIN_ANSWERS reviews.
+export const RAISE_AT = 0.8;
 export const LOWER_AT = 0.7;
 export const JUDGE_DAYS = 3;
+export const RAISE_EVERY = 7;
 export const MIN_ANSWERS = 15;
 export function adjustDaily(state, course, now = today()) {
   const range = dailyRange(state.profile.level);
@@ -457,9 +473,11 @@ export function adjustDaily(state, course, now = today()) {
   const bad = acts.reduce((sum, act) => sum + ((act && act.rbad) || 0), 0);
   const rate = ok + bad >= MIN_ANSWERS ? ok / (ok + bad) : null;
   const late = dueIds(state, course, now).filter((id) => state.words[id].due < now).length;
+  const since = state.profile.dailyAt || planStatus(state, course, now).started;
+  const settled = since && diffDays(since, now) >= RAISE_EVERY;
   let next = current;
   if ((rate !== null && rate < LOWER_AT) || late > paceGoal(state)) next = current - DAILY_STEP;
-  else if (rate !== null && rate >= RAISE_AT && late === 0 && acts.every((act) => dayMet(act) && act.goal > 0)) next = current + DAILY_STEP;
+  else if (settled && rate !== null && rate >= RAISE_AT && late === 0 && acts.every((act) => dayMet(act) && act.goal > 0)) next = current + DAILY_STEP;
   next = clamp(next, range.from, range.to);
   if (next === current) return null;
   state.profile.daily = next;

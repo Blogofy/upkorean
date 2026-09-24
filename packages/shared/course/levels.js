@@ -5,7 +5,9 @@
 // That way the shape of the course never has to wait on the content.
 //
 // `daily` is the level's daily standard as a range. A learner starts a level at `from` new words a day, and
-// the app raises it by DAILY_STEP while their reviews show the words are staying, up to `to` (srs.adjustDaily).
+// the app raises it by DAILY_STEP a week while their reviews show the words are staying, up to `to`
+// (srs.adjustDaily). 초급 so runs 20, 25, then 30 a day: about 65 days, which leaves room inside the
+// two and a half months it is meant to take for the days that go wrong.
 // A beginner's words are all new; higher up most of them lean on words already known, so the day can carry
 // more.
 //
@@ -14,7 +16,7 @@
 export const PART_SIZE = 10;
 export const DAILY_STEP = 5;
 export const LEVELS = [
-  { id: "b", ko: "초급", uz: "Boshlang'ich", grades: [1, 2], planned: 1835, daily: { from: 20, to: 35 } },
+  { id: "b", ko: "초급", uz: "Boshlang'ich", grades: [1, 2], planned: 1835, daily: { from: 20, to: 30 } },
   { id: "m", ko: "중급", uz: "O'rta", grades: [3, 4], planned: 3855, daily: { from: 35, to: 50 } },
   { id: "a", ko: "고급", uz: "Yuqori", grades: [5, 6], planned: 4945, daily: { from: 50, to: 50 } },
 ];
