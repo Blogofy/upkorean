@@ -1,13 +1,15 @@
-// Narrator clips recorded by hand in the ElevenLabs studio, a lesson at a time, then cut into one file a word.
+// Narrator clips recorded by hand in the ElevenLabs studio, a list at a time, then cut into one file a word.
 //
-//   npm run voice:lists              writes audio/import/01-dars.txt … one lesson's words a line, to paste
-//   npm run voice:cut                cuts every audio/import/NN-dars.mp3 into audio/words/<id>.mp3
+//   npm run voice:lists              writes audio/import/1급-01.txt …: the words of each grade in path order,
+//                                    one a line, in lists of at most MAX_CHARS to paste one at a time
+//   npm run voice:cut                cuts every audio/import/<list>.mp3 into audio/words/<id>.mp3
 //
-// The studio reads a pasted list as one recording with a pause at every line. `cut` finds those pauses
-// (ffmpeg silencedetect) and only writes a lesson's clips when it finds exactly as many words as the list
-// has lines; otherwise it says so and writes nothing, and that lesson is recorded again. A word already
-// recorded is left out of later lists, and words written the same (눈 the eye, 눈 the snow) are read once
-// and the clip copied. Restart the server afterwards: it reads the clip list at startup.
+// Each list has a .json beside it naming the ids of every line, so the cut never depends on the course
+// having stayed the same. The studio reads a pasted list as one recording with a pause at every line. `cut`
+// finds those pauses (ffmpeg silencedetect) and only writes a list's clips when it finds exactly as many
+// words as the list has lines; otherwise it says so and writes nothing, and that list is recorded again.
+// A word already recorded is left out of new lists, and words written the same (눈 the eye, 눈 the snow)
+// are read once and the clip copied. Restart the server afterwards: it reads the clip list at startup.
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
@@ -30,10 +32,13 @@ if (!course?.words.length) {
 // pause. An ending listed as "-하다" is read without its dash; of "A/B" only A is read.
 const wordText = (ko) => String(ko).split("/")[0].replace(/\(.*?\)/g, "").replace(/^[-…~]+/, "").trim() + ".";
 const clip = (id) => path.join(WORDS, `${id}.mp3`);
-const name = (n) => `${String(n).padStart(2, "0")}-dars`;
+// Short enough that a missed word costs one list, not the grade, and well under the studio's 5 000. A grade
+// is cut into as few lists as that allows, all about the same size.
+const MAX_CHARS = 1100;
+const lineChars = (text) => [...text].length + 1;
 
-// Every lesson's lines: each a text not recorded yet and not read in an earlier lesson, with the ids that
-// share it. The same function serves both commands, so the lists and the cutting always agree.
+// Every grade's lines in path order: each a text not read before, with every id that shares it — words
+// written the same (눈 the eye, 눈 the snow) are read once. Texts whose clips all exist are left out.
 function plan() {
   const idsByText = new Map();
   for (const word of course.words) {
@@ -42,32 +47,44 @@ function plan() {
     idsByText.get(text).push(word.id);
   }
   const seen = new Set();
-  return course.lessons.slice(1).map((lesson) => {
-    const lines = [];
-    for (const id of lesson.ids) {
-      const text = wordText(course.byId[id].ko);
-      if (seen.has(text)) continue;
-      seen.add(text);
-      lines.push({ text, ids: idsByText.get(text) });
-    }
-    return { n: lesson.n, lines };
-  });
+  const grades = new Map();
+  for (const word of course.words) {
+    const text = wordText(word.ko);
+    if (seen.has(text)) continue;
+    seen.add(text);
+    const ids = idsByText.get(text);
+    if (ids.every((id) => fs.existsSync(clip(id)))) continue;
+    const grade = course.lessons[word.lesson].grade;
+    if (!grades.has(grade)) grades.set(grade, []);
+    grades.get(grade).push({ text, ids });
+  }
+  return grades;
 }
 
 if (command === "lists") {
   fs.mkdirSync(IMPORT, { recursive: true });
-  let written = 0;
-  let chars = 0;
-  for (const lesson of plan()) {
-    const file = path.join(IMPORT, `${name(lesson.n)}.txt`);
-    const missing = lesson.lines.filter((line) => line.ids.some((id) => !fs.existsSync(clip(id))));
-    if (!missing.length) { if (fs.existsSync(file)) fs.rmSync(file); continue; }
-    // The whole lesson is listed even if a few of its words have clips: a list is cut as a whole.
-    fs.writeFileSync(file, lesson.lines.map((line) => line.text).join("\n") + "\n");
-    written++;
-    chars += lesson.lines.reduce((sum, line) => sum + [...line.text].length + 1, 0);
+  for (const name of fs.readdirSync(IMPORT)) if (/\.(txt|json)$/.test(name)) fs.rmSync(path.join(IMPORT, name));
+  let total = 0;
+  for (const [grade, lines] of plan()) {
+    const all = lines.reduce((sum, line) => sum + lineChars(line.text), 0);
+    const size = all / Math.ceil(all / MAX_CHARS);
+    const lists = [[]];
+    let used = 0;
+    for (const line of lines) {
+      if (lists[lists.length - 1].length && used + lineChars(line.text) / 2 > size * lists.length) lists.push([]);
+      lists[lists.length - 1].push(line);
+      used += lineChars(line.text);
+    }
+    lists.forEach((list, i) => {
+      const name = `${grade}급-${String(i + 1).padStart(2, "0")}`;
+      fs.writeFileSync(path.join(IMPORT, `${name}.txt`), list.map((line) => line.text).join("\n"));
+      fs.writeFileSync(path.join(IMPORT, `${name}.json`), JSON.stringify(list));
+      const chars = list.reduce((sum, line) => sum + lineChars(line.text), 0) - 1;
+      total += chars;
+      console.log(`${name}.txt  ${list.length} so'z  ${chars} belgi`);
+    });
   }
-  console.log(`${written} ta ro'yxat audio/import/ da, jami ~${chars} belgi.`);
+  console.log(`Jami ~${total} belgi.`);
   process.exit(0);
 }
 
@@ -100,19 +117,19 @@ function spawnLog(file, noise, gap) {
 }
 
 fs.mkdirSync(WORDS, { recursive: true });
-const lessons = new Map(plan().map((lesson) => [name(lesson.n), lesson]));
-const recordings = fs.existsSync(IMPORT) ? fs.readdirSync(IMPORT).filter((f) => /^\d+-dars\.mp3$/.test(f)).sort() : [];
+const recordings = fs.existsSync(IMPORT) ? fs.readdirSync(IMPORT).filter((f) => f.endsWith(".mp3")).sort() : [];
 if (!recordings.length) {
-  console.log("audio/import/ da NN-dars.mp3 topilmadi.");
+  console.log("audio/import/ da mp3 topilmadi.");
   process.exit(0);
 }
 
 let ok = 0;
 let bad = 0;
 for (const fileName of recordings) {
-  const lesson = lessons.get(fileName.replace(".mp3", ""));
   const file = path.join(IMPORT, fileName);
-  if (!lesson) { console.warn(`${fileName}: bunday dars yo'q`); bad++; continue; }
+  const sidecar = path.join(IMPORT, fileName.replace(/\.mp3$/, ".json"));
+  if (!fs.existsSync(sidecar)) { console.warn(`${fileName}: yonida ${path.basename(sidecar)} yo'q — nomi ro'yxat bilan bir xil bo'lsin`); bad++; continue; }
+  const lesson = { lines: JSON.parse(fs.readFileSync(sidecar, "utf8")) };
   const want = lesson.lines.length;
   // The loudest pauses first; the first setting that finds exactly the list's words wins.
   let found = null;
@@ -141,6 +158,7 @@ for (const fileName of recordings) {
   });
   console.log(`${fileName}: ${want} ta so'z kesildi`);
   fs.renameSync(file, path.join(IMPORT, `${fileName}.done`));
+  fs.renameSync(sidecar, `${sidecar}.done`);
   ok++;
 }
 console.log(`Tayyor: ${ok} ta dars${bad ? `, muammoli: ${bad}` : ""}. Serverni qayta ishga tushiring.`);
