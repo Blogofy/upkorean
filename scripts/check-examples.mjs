@@ -91,7 +91,7 @@ function verbForms(stem, adjective) {
   if (t === T.l) {
     // ㄹ drops before ㄴ, ㅂ, ㅅ: 살 → 사는/산/삽니다/사세요, 만들 → 만든.
     const bare = pre + join(l, v, 0);
-    add(pre + join(l, v, T.n), pre + join(l, v, T.b), `${bare}세`, `${bare}시`, `${bare}는`, `${bare}니`, `${bare}네`);
+    add(pre + join(l, v, T.n), pre + join(l, v, T.b), `${bare}세`, `${bare}시`, `${bare}셨`, `${bare}신`, `${bare}는`, `${bare}니`, `${bare}네`);
   }
   return forms;
 }
