@@ -66,7 +66,8 @@ function verbForms(stem, adjective) {
         const vowel = brightVowel(pv) ? "라" : "러";
         add(withL + vowel, withL + (brightVowel(pv) ? "랐" : "렀"));
       } else {
-        const bright = prev && isSyl(prev) && brightVowel(split(prev)[1]);
+        // 받아쓰다 is 받아 + 쓰다: the 아 before it is a separate word, so it takes 어 like 쓰다.
+        const bright = prev && isSyl(prev) && brightVowel(split(prev)[1]) && !/[아어]$/.test(pre);
         merged = join(l, bright ? V.a : V.eo, 0);
       }
     }
@@ -81,6 +82,8 @@ function verbForms(stem, adjective) {
     const bare = pre + join(l, v, 0);
     add(`${bare}워`, `${bare}와`, `${bare}운`, `${bare}울`, `${bare}웠`, `${bare}왔`, `${bare}우`);
   }
+  if (stem === "여쭙") add("여쭤", "여쭸"); // 여쭤봐요
+  if (stem === "뵙") add("뵈", "봬", "뵀"); // 뵈러, 봬요
   if (t === T.d) add(pre + join(l, v, T.l)); // ㄷ: 듣 → 들어.
   if (t === T.s) add(pre + join(l, v, 0)); // ㅅ: 낫 → 나아, 짓 → 지어.
   if (t === T.h && stem !== "좋" && stem !== "놓" && stem !== "넣" && stem !== "쌓" && stem !== "낳") {
@@ -98,8 +101,8 @@ function verbForms(stem, adjective) {
 
 // What may follow a form inside one word of a sentence: particles after a noun, endings after a verb stem.
 // Anything else after 비 or 가 is a different word (비빔밥, 가방) that a longer form should have found.
-const PARTICLE = new Set("해했할합이가은는을를에도만의와과하한으로예부까보처마쯤랑께들야이".split(""));
-const ENDING = new Set("던질이까져졌셔으요고서세시셨지면며러려자기게어아았었겠네나니다더든잖죠습십는은을도야라".split(""));
+const PARTICLE = new Set("씩해했할합이가은는을를에도만의와과하한으로예부까보처마쯤랑께들야이".split(""));
+const ENDING = new Set("던질이까져졌셔보봐봤으요고서세시셨지면며러려자기게어아았었겠네나니다더든잖죠습십는은을도야라".split(""));
 // A few nouns spelled like a common verb form: 가요 (a song) is almost always 가다 + 요.
 const RARE = new Set(["가요"]);
 // Grammar that is not a word of the list (-고 싶다, -ㄹ 수 있다) and the names the sentences use.
