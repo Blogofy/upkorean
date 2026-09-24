@@ -1,4 +1,4 @@
-// 11–17 — Dars sessiyasi. One screen for every sitting: a stage of a day, a review, free practice.
+// 11–17 — Dars sessiyasi. One screen for every sitting: a lesson, a review, free practice.
 //
 // packages/shared/exercise.js owns the sitting — which questions, in what order, what an answer does to
 // the schedule. This screen only draws the current item and hands taps back to it. The session object is
@@ -16,23 +16,17 @@ import {
   Bar, Button, Chip, Dialog, Empty, FadeIn, Feather, Option, PlayIcon, Radio, Row, Screen, SessionTop, Title, tapped,
 } from "../ui";
 import { useNarrator, useStopAudioOnLeave } from "../audio";
-import { clozePieces, plainUz, uzPieces } from "../model";
+import { clozePieces, hasClip, plainUz, uzPieces } from "../model";
 import { Sentence } from "./WordSheet";
-import { MemoCard } from "./Memo";
 
 const TIME_LIMIT_MS = 20000;
 
 function build(params, state, course, opts) {
   const xpStart = state.xp;
   if (params.kind === "learn") {
-    const plan = srs.dayPlan(course, params.day);
-    const stage = plan.stages[params.stageIdx];
-    if (!stage) return null;
-    let items;
-    if (stage.kind === "learn") items = ex.introItems(course, plan.blocks[stage.block]);
-    else if (stage.kind === "recall") items = ex.recallItems(course, plan.blocks[stage.block], opts);
-    else items = ex.mixedItems(state, course, plan.words, opts);
-    return ex.newSession("learn", items, { day: params.day, stageIdx: params.stageIdx, stage, category: "learn", xpStart });
+    const lesson = srs.lessonAt(course, params.lesson);
+    if (!lesson) return null;
+    return ex.newSession("learn", ex.lessonItems(state, course, lesson.ids, opts), { lesson: lesson.n, category: "learn", xpStart });
   }
   if (params.kind === "review") {
     const ids = params.ids || srs.reviewQueue(state, course, params.mode || "due", params.extra ? srs.EXTRA_ROUND : undefined);
@@ -81,6 +75,7 @@ export default function Session({ navigation, route }) {
   useEffect(() => {
     if (!item || !store.audio) return;
     const auto = state.settings.autoAudio;
+    if (!hasClip(store, "words", item.id)) return;
     if (item.type === "listen" && session.phase === "q") narrator.play("words", item.id);
     else if (auto && item.type === "intro") narrator.play("words", item.id);
     else if (auto && item.type === "card" && session.phase === "back") narrator.play("words", item.id);
@@ -136,11 +131,7 @@ export default function Session({ navigation, route }) {
     if (earned.length) store.say(`Yutuq ochildi — ${earned[0].title}`, "ok");
     leaving.current = true;
     if (session.kind === "learn") {
-      if (outcome.dayDone) navigation.replace("DayDone", { outcome });
-      else {
-        store.say(`✓ ${session.stage.label} bajarildi`, "ok");
-        navigation.replace("Day", { day: session.day });
-      }
+      navigation.replace("LessonDone", { outcome });
       return;
     }
     navigation.replace("SessionDone", { outcome, title: session.title });
@@ -254,7 +245,7 @@ export default function Session({ navigation, route }) {
 }
 
 // ---------- 11 · Tanishish ----------
-// Three white cards: the word, a sentence it lives in, and how it is built.
+// Two white cards: the word, and a sentence it lives in.
 function Intro({ item }) {
   const c = useColors();
   const store = useStore();
@@ -268,7 +259,7 @@ function Intro({ item }) {
         </View>
         <Text style={{ fontSize: 60, lineHeight: 76, fontWeight: "700", color: c.ink, textAlign: "center" }} adjustsFontSizeToFit numberOfLines={1}>{item.ko}</Text>
         <Text style={{ fontFamily: FONTS.displayBold, fontSize: 25, lineHeight: 31, color: c.ink, textAlign: "center" }}>{item.uz}</Text>
-        {store.audio ? (
+        {hasClip(store, "words", item.id) ? (
           <Row gap={10} style={{ marginTop: 14 }}>
             <SoundPill label="Eshitish" solid onPress={() => play("words", item.id)} />
             <SoundPill label="Sekin" onPress={() => play("words", item.id, { rate: 0.7 })} />
@@ -283,7 +274,7 @@ function Intro({ item }) {
             <Sentence text={example.ko} part={example.hl} size={17} />
             <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, lineHeight: 19, color: c.ink2 }}>{plainUz(example.uz)}</Text>
           </View>
-          {store.audio ? (
+          {hasClip(store, "sentences", item.id) ? (
             <Pressable
               accessibilityLabel="Gapni eshitish"
               hitSlop={8}
@@ -296,7 +287,6 @@ function Intro({ item }) {
         </View>
       ) : null}
 
-      <MemoCard root={item.roots} />
     </View>
   );
 }
@@ -373,7 +363,7 @@ function Card({ item, session, onReveal, onGrade }) {
           kind="white" size="md" style={{ flex: 1 }}
           onPress={() => { srs.flag(state, item.id); store.save(); }}
         />
-        {store.audio ? <Button title="▶ Eshitish" kind="white" size="md" style={{ flex: 1 }} onPress={() => play("words", item.id)} /> : null}
+        {hasClip(store, "words", item.id) ? <Button title="▶ Eshitish" kind="white" size="md" style={{ flex: 1 }} onPress={() => play("words", item.id)} /> : null}
       </Row>
     </View>
   );
@@ -452,15 +442,15 @@ function Choose({ item, session, onChoose, onConfirm }) {
         {fromKorean ? (
           <>
             <Text style={{ fontSize: 52, lineHeight: 66, fontWeight: "700", color: c.ink }} adjustsFontSizeToFit numberOfLines={1}>{item.ko}</Text>
-            <Text style={{ fontFamily: FONTS.body, fontSize: 15, color: c.ink2 }}>{item.day}-kun</Text>
+            <Text style={{ fontFamily: FONTS.body, fontSize: 15, color: c.ink2 }}>{item.lesson}-dars</Text>
           </>
         ) : (
           <>
             <Title size={30} style={{ textAlign: "center" }}>{item.uz}</Title>
-            <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2 }}>{item.day}-kun</Text>
+            <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2 }}>{item.lesson}-dars</Text>
           </>
         )}
-        {fromKorean && store.audio ? (
+        {fromKorean && hasClip(store, "words", item.id) ? (
           <Pressable
             accessibilityLabel="Eshitish"
             hitSlop={8}
@@ -518,7 +508,7 @@ function Typing({ item, session, typed, hint, onHint, onSkip }) {
       <View style={{ backgroundColor: c.card, borderRadius: 26, paddingVertical: 30, paddingHorizontal: 22, alignItems: "center", gap: 8 }}>
         <Text style={eyebrow(c)}>Koreyscha yozing</Text>
         <Title size={30} style={{ textAlign: "center" }}>{item.uz}</Title>
-        <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2 }}>{item.syllables} bo'g'in · {item.day}-kun</Text>
+        <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2 }}>{item.syllables} bo'g'in · {item.lesson}-dars</Text>
       </View>
       <View style={{
         paddingVertical: 18, paddingHorizontal: 20, borderRadius: 20, backgroundColor: c.card, borderWidth: 2,

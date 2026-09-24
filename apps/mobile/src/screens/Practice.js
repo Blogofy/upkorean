@@ -7,6 +7,7 @@ import * as srs from "@upkorean/shared/srs.js";
 import { useStore } from "../store";
 import { FONTS, useColors } from "../theme";
 import { BackLink, Button, Empty, Row, Screen, Segmented, Title, Toggle, tapped } from "../ui";
+import { anyClips } from "../model";
 
 const TYPES = [
   { id: "mixed", title: "Aralash", desc: "Barcha turlar aralash keladi", perItem: 0.35, badge: "tavsiya" },
@@ -22,7 +23,7 @@ export default function Practice({ navigation, route }) {
   const { state, course } = store;
   const [type, setType] = useState(route.params?.type || "mixed");
   const [source, setSource] = useState("all");
-  const [pickedDays, setPickedDays] = useState([]);
+  const [picked, setPicked] = useState([]);
   const [count, setCount] = useState(20);
   const [timed, setTimed] = useState(false);
 
@@ -30,8 +31,8 @@ export default function Practice({ navigation, route }) {
   if (!state || !course) return null;
 
   const weak = srs.weakIds(state, course);
-  const doneDays = Array.from({ length: course.dayCount }, (_, i) => i + 1).filter((day) => srs.dayLearned(state, course, day) > 0);
-  let ids = source === "weak" ? weak : source === "days" ? learned.filter((id) => pickedDays.includes(course.byId[id].day)) : learned;
+  const started = Array.from({ length: course.lessonCount }, (_, i) => i + 1).filter((n) => srs.lessonLearned(state, course, n) > 0);
+  let ids = source === "weak" ? weak : source === "lessons" ? learned.filter((id) => picked.includes(course.byId[id].lesson)) : learned;
   if (type === "sent") ids = ids.filter((id) => course.examples[id]?.cloze);
   const questions = Math.min(count, ids.length);
   const typeInfo = TYPES.find((t) => t.id === type);
@@ -49,12 +50,12 @@ export default function Practice({ navigation, route }) {
       </View>
 
       {!learned.length ? (
-        <Empty ko="시작" title="Hali so'z o'rganilmagan" body="Birinchi kunni tugatganingizdan keyin shu yerda mashq qilasiz." action="Kursga o'tish" onAction={() => navigation.navigate("Tabs", { screen: "Course" })} />
+        <Empty ko="시작" title="Hali so'z o'rganilmagan" body="Birinchi darsdan keyin shu yerda mashq qilasiz." action="Kursga o'tish" onAction={() => navigation.navigate("Tabs", { screen: "Course" })} />
       ) : (
         <>
           <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 14, gap: 12 }} showsVerticalScrollIndicator={false}>
             <View style={{ flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4.5 }}>
-              {TYPES.filter((t) => !t.audio || store.audio).map((t, index) => {
+              {TYPES.filter((t) => !t.audio || anyClips(store)).map((t, index) => {
                 const on = t.id === type;
                 const n = Math.min(count, t.id === "sent" ? ids.filter((id) => course.examples[id]?.cloze).length : ids.length);
                 return (
@@ -86,19 +87,19 @@ export default function Practice({ navigation, route }) {
               <View style={{ gap: 7 }}>
                 <Source label={`Hamma o'rganilgan · ${learned.length}`} on={source === "all"} onPress={() => setSource("all")} />
                 <Source label={`Faqat qiyin so'zlar · ${weak.length}`} on={source === "weak"} disabled={!weak.length} onPress={() => setSource("weak")} />
-                <Source label="Tanlangan kunlar" on={source === "days"} onPress={() => setSource("days")} />
+                <Source label="Tanlangan darslar" on={source === "lessons"} onPress={() => setSource("lessons")} />
               </View>
-              {source === "days" ? (
+              {source === "lessons" ? (
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7 }}>
-                  {doneDays.map((day) => {
-                    const on = pickedDays.includes(day);
+                  {started.map((n) => {
+                    const on = picked.includes(n);
                     return (
                       <Pressable
-                        key={day}
-                        onPress={() => { tapped(); setPickedDays(on ? pickedDays.filter((d) => d !== day) : [...pickedDays, day]); }}
+                        key={n}
+                        onPress={() => { tapped(); setPicked(on ? picked.filter((d) => d !== n) : [...picked, n]); }}
                         style={{ width: 44, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: on ? c.green : c.tint }}
                       >
-                        <Text style={{ fontFamily: FONTS.bold, fontSize: 14, color: on ? c.onGreen : c.ink2 }}>{day}</Text>
+                        <Text style={{ fontFamily: FONTS.bold, fontSize: 14, color: on ? c.onGreen : c.ink2 }}>{n}</Text>
                       </Pressable>
                     );
                   })}

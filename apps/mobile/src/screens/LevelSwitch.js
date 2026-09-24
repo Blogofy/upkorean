@@ -47,14 +47,13 @@ export default function LevelSwitch({ navigation }) {
           const learned = current ? srs.learnedIds(state, course).length : learnedIn(level.id);
           const started = learned > 0;
           if (current) {
-            const day = srs.currentDay(state, course);
             return (
               <View key={level.id} style={{ padding: 18, borderRadius: 20, backgroundColor: c.green, flexDirection: "row", alignItems: "center", gap: 14 }}>
                 <Badge ko={level.ko} on />
                 <View style={{ flex: 1, gap: 5 }}>
                   <Text style={{ fontFamily: FONTS.bold, fontSize: 15.5, color: c.onGreen }}>{level.uz} · joriy</Text>
                   <Segments total={10} filled={Math.round((learned / Math.max(1, course.words.length)) * 10)} height={5} on="#FFFFFF" off="rgba(255,255,255,0.3)" />
-                  <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, color: c.greenTint }}>{learned} / {course.words.length} so'z · {day}-kun</Text>
+                  <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, color: c.greenTint }}>{learned} / {course.words.length} so'z · {srs.lessonsDone(state, course)} / {course.lessonCount} dars</Text>
                 </View>
               </View>
             );
@@ -65,7 +64,7 @@ export default function LevelSwitch({ navigation }) {
               <View style={{ flex: 1, gap: 3 }}>
                 <Text style={{ fontFamily: FONTS.bold, fontSize: 15.5, color: c.ink }}>{level.uz}</Text>
                 <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, color: c.ink2 }}>
-                  {level.locked ? "Tayyorlanmoqda" : started ? `${learned} so'z o'rganilgan` : "Boshlanmagan"} · {level.plannedWords} so'z, {level.plannedDays} kun
+                  {level.locked ? "Tayyorlanmoqda" : started ? `${learned} so'z o'rganilgan` : "Boshlanmagan"} · {level.planned} so'z
                 </Text>
               </View>
               {level.locked ? (

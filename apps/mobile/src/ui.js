@@ -409,7 +409,7 @@ export function Header({ title, subtitle, right, style }) {
   );
 }
 
-// The back link on a pushed screen — "← 50 kunlik kurs" — which names where it goes rather than just
+// The back link on a pushed screen — "← Kurs" — which names where it goes rather than just
 // pointing at it.
 export function BackLink({ label, onPress, style }) {
   const colors = useColors();
@@ -589,7 +589,7 @@ export const PlayIcon = ({ size = 14, color }) => (
 
 // ---------- Pieces the design repeats ----------
 
-// The small line that says which day this is: "12-KUN · BUGUN", in green, spaced wide.
+// The small line that says which lesson this is: "12-DARS · KEYINGI", in green, spaced wide.
 export const Kicker = ({ children, c: role = "green", style }) => (
   <Txt style={[{ fontFamily: FONTS.bold, fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase" }, style]} c={role}>{children}</Txt>
 );

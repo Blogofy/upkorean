@@ -42,6 +42,8 @@ export const API_URL = resolveApiUrl();
 
 // The privacy policy the stores ask for. Always the live server's copy, even in development.
 export const PRIVACY_URL = `${PROD_URL}/privacy`;
+// Where the course's words come from: the NIKL graded list, which its licence asks us to name.
+export const SOURCE_URL = "https://www.korean.go.kr/front/reportData/reportDataView.do?mn_id=207&report_seq=932";
 
 // The server reads this header to decide that the session belongs in the response body as a bearer token
 // rather than in a cookie (apps/api/auth.js, isAppClient).

@@ -1,72 +1,78 @@
-// Turning a level's three raw files into the shape every screen reads.
+// Turning a level's raw files into the shape every screen reads.
 //
-// The data files know nothing about levels: a day list, a sentence per word, a breakdown per word, all
-// keyed "<day>-<index>". The level is added here, so the same file could be any level and a word carries
-// its level in its name wherever it travels — including into saved progress.
-import { levelMeta, wordId } from "./levels.js";
+// vocab.js is a list of lessons, each { g, t, w: [[nid, ko, uz], …] }; examples.js is one sentence per word,
+// keyed by nid. The level is added here, so a word carries it in its name wherever it travels — including
+// into saved progress.
+import { levelMeta, lessonId, wordId } from "./levels.js";
 
-const reKey = (level, localId) => `${level}-${localId}`;
-
-// { vocab: [[ [ko, uz], … ] per day ], examples: [{ id, ko, uz, cloze?, note? }], roots: { "<day>-<i>": {…} } }
-export function buildLevel(id, { vocab = [], examples = [], roots = {} } = {}) {
+export function buildLevel(id, { vocab = [], examples = [] } = {}) {
   const meta = levelMeta(id);
   if (!meta) throw new Error(`Noma'lum daraja: ${id}`);
 
   const words = [];
-  vocab.forEach((day, di) => day.forEach(([ko, uz], i) => {
-    words.push({ id: wordId(id, di + 1, i), level: id, day: di + 1, i, ko, uz });
-  }));
+  // Lesson numbers start at 1, so index 0 stays empty and lessons[3] really is lesson 3.
+  const lessons = [null];
+  vocab.forEach(({ g, t, w }, li) => {
+    const n = li + 1;
+    const ids = w.map(([nid, ko, uz], i) => {
+      const word = { id: wordId(id, nid), level: id, lesson: n, i, grade: g, ko, uz };
+      words.push(word);
+      return word.id;
+    });
+    lessons.push({ id: lessonId(id, n), n, grade: g, theme: t || "", ids });
+  });
 
   const byId = {};
   for (const word of words) byId[word.id] = word;
-
-  // Day numbers start at 1, so index 0 stays empty and days[3] really is day 3.
-  const days = [];
-  for (const word of words) (days[word.day] ||= []).push(word);
+  for (const lesson of lessons.slice(1)) lesson.title = lessonTitle(lesson, byId);
 
   const exampleById = {};
-  for (const example of examples) exampleById[reKey(id, example.id)] = { ...example, id: reKey(id, example.id) };
-
-  const rootsById = {};
-  for (const [localId, entry] of Object.entries(roots)) rootsById[reKey(id, localId)] = entry;
-
-  // Every word that contains a given hanja, so a card can show where else the piece turns up.
-  const hanjaWords = new Map();
-  for (const [wid, entry] of Object.entries(rootsById)) {
-    for (const part of entry.parts || []) {
-      if (part.h) hanjaWords.set(part.h, [...(hanjaWords.get(part.h) || []), wid]);
-    }
+  for (const example of examples) {
+    const key = wordId(id, example.id);
+    if (byId[key]) exampleById[key] = { ...example, id: key };
   }
 
   return {
     ...meta,
     words,
     byId,
-    days,
-    dayCount: Math.max(0, days.length - 1),
+    lessons,
+    lessonCount: lessons.length - 1,
     examples: exampleById,
-    roots: rootsById,
-    hanjaWords,
   };
 }
 
-// What the API sends and the app stores: plain JSON, no Maps, in the order a screen wants it.
-export const levelPayload = (level) => ({
+// A lesson's name: its theme when it has one, otherwise the three shortest one-word meanings it teaches —
+// "Narsa, biz, odam" says more about lesson 1 than a number does.
+export function lessonTitle(lesson, byId) {
+  if (lesson.theme) return lesson.theme;
+  const picks = lesson.ids
+    .map((id) => String(byId[id]?.uz || "").split(/[,;/(]/)[0].trim())
+    .filter((uz) => uz && !/\s/.test(uz))
+    .sort((a, b) => a.length - b.length)
+    .slice(0, 3);
+  const title = picks.join(", ");
+  return title ? title.charAt(0).toUpperCase() + title.slice(1) : `${lesson.n}-dars`;
+}
+
+// What the API sends and the app stores: plain JSON, in the order a screen wants it. `clips` says which
+// words have narrator audio yet — { words: Set, sentences: Set } of word ids — so the app only offers the
+// buttons and the listening questions that will actually make a sound.
+export const levelPayload = (level, clips = { words: new Set(), sentences: new Set() }) => ({
   id: level.id,
   ko: level.ko,
   uz: level.uz,
-  days: level.dayCount,
+  lessons: level.lessons.slice(1).map(({ id, n, grade, theme, title }) => ({ id, n, grade, theme, title })),
   count: level.words.length,
-  words: level.words,
+  words: level.words.map((word) => ({
+    ...word,
+    ...(clips.words.has(word.id) ? { aw: 1 } : {}),
+    ...(clips.sentences.has(word.id) ? { as: 1 } : {}),
+  })),
 });
 
 export const examplesPayload = (level) => ({
   id: level.id,
   count: Object.keys(level.examples).length,
   examples: Object.values(level.examples),
-});
-
-export const rootsPayload = (level) => ({
-  id: level.id,
-  roots: level.roots,
 });

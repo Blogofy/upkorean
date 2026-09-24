@@ -9,16 +9,17 @@ import * as ex from "../packages/shared/exercise.js";
 import * as srs from "../packages/shared/srs.js";
 import { buildLevel } from "../packages/shared/course/model.js";
 
+// Two lessons of ten: lesson 1 is "b-1" … "b-10" and has a sentence for every word, lesson 2 has none.
 const vocab = [
-  Array.from({ length: 10 }, (_, i) => [`가나${i}`, `birinchi ${i}`]),
-  Array.from({ length: 10 }, (_, i) => [`다라${i}`, `ikkinchi ${i}`]),
+  { g: 1, t: "", w: Array.from({ length: 10 }, (_, i) => [i + 1, `가나${i}`, `birinchi ${i}`]) },
+  { g: 1, t: "", w: Array.from({ length: 10 }, (_, i) => [i + 11, `다라${i}`, `ikkinchi ${i}`]) },
 ];
-const examples = vocab[0].map(([ko], i) => ({
-  id: `1-${i}`, w: ko, ko: `저는 ${ko}를 좋아합니다.`, hl: ko, cloze: ko, uz: `Men {${ko}}ni yaxshi ko'raman.`,
+const examples = vocab[0].w.map(([nid, ko]) => ({
+  id: nid, w: ko, ko: `저는 ${ko}를 좋아합니다.`, hl: ko, cloze: ko, uz: `Men {${ko}}ni yaxshi ko'raman.`,
 }));
 const course = buildLevel("b", { vocab, examples });
 const fresh = () => srs.normalize(srs.freshState({}));
-const dayIds = (day) => course.days[day].map((word) => word.id);
+const lessonIds = (n) => course.lessons[n].ids;
 
 const answerAll = (state, session, correct) => {
   let guard = 0;
@@ -43,7 +44,7 @@ const answerAll = (state, session, correct) => {
 
 test("every item a builder makes carries a real answer among its options", () => {
   const state = fresh();
-  for (const item of ex.recallItems(course, dayIds(1))) {
+  for (const item of ex.recallItems(course, lessonIds(1))) {
     if (item.type === "match") {
       assert.equal(item.ids.length, item.koOrder.length);
       assert.ok(item.koOrder.some((id, i) => id !== item.ids[i]) || item.ids.length < 3, "the columns are not the teaching order");
@@ -55,45 +56,67 @@ test("every item a builder makes carries a real answer among its options", () =>
     assert.equal(new Set(item.opts).size, 4, `${item.type} offers four different options`);
     assert.ok(item.opts.includes(item.answer), `${item.type} includes the right one`);
   }
-  assert.equal(ex.mixedItems(state, course, dayIds(1), {}, 6).length, 6);
+  assert.equal(ex.mixedItems(state, course, lessonIds(1), {}, 6).length, 6);
 });
 
-test("a listening question is not offered when there is no audio", () => {
-  const items = ex.reviewItems(course, dayIds(1), { audio: false });
+test("a listening question needs audio on, and the word's own recording", () => {
+  const items = ex.reviewItems(course, lessonIds(1), { audio: false });
   assert.ok(items.every((item) => item.type !== "listen"));
-  assert.ok(ex.canUse(course, "listen", "b-1-0", { audio: true }));
-  assert.ok(!ex.canUse(course, "sent", "b-2-0"), "day two has no example sentences");
+  const recorded = buildLevel("b", { vocab, examples });
+  assert.ok(!ex.canUse(recorded, "listen", "b-1", { audio: true }), "not recorded yet");
+  recorded.byId["b-1"].aw = 1;
+  assert.ok(ex.canUse(recorded, "listen", "b-1", { audio: true }));
+  assert.ok(!ex.canUse(recorded, "listen", "b-1", { audio: false }));
+  assert.ok(!ex.canUse(course, "sent", "b-11"), "lesson two has no example sentences");
+
+  const round = ex.quizItems(fresh(), recorded, recorded.lessons[1].ids, "listen", { audio: true }, 10);
+  assert.equal(round.filter((item) => item.type === "listen").length, 1, "only the recorded word is asked by ear");
+  assert.equal(round.length, 10, "the others are still asked, some other way");
 });
 
-test("a clean learning stage teaches every word in the block", () => {
+test("a lesson is two halves of meeting and practice, then a mixed round", () => {
   const state = fresh();
-  const ids = dayIds(1);
-  const session = ex.newSession("learn", ex.introItems(course, ids), { day: 1, stageIdx: 0, stage: { kind: "learn" }, category: "learn", xpStart: state.xp });
+  const ids = lessonIds(1);
+  const items = ex.lessonItems(state, course, ids, { audio: false });
+  assert.equal(items.filter((item) => item.type === "intro").length, 10, "every word is met once");
+  assert.deepEqual(items.slice(0, 5).map((item) => item.id), ids.slice(0, 5), "the first five are met first");
+  assert.equal(items[5].type, "match", "and put to work at once");
+  const secondHalf = items.findIndex((item) => item.type === "intro" && item.id === ids[5]);
+  assert.ok(items.slice(5, secondHalf).every((item) => ids.slice(0, 5).includes(item.id)), "the first practice only asks what was met");
+  assert.ok(items.slice(-6).every((item) => item.type !== "intro" && item.type !== "match"), "it ends on a mixed round");
+});
+
+test("a clean lesson teaches all ten words and finishes the lesson", () => {
+  const state = fresh();
+  const ids = lessonIds(1);
+  const session = ex.newSession("learn", ex.lessonItems(state, course, ids, { audio: false }), { lesson: 1, category: "learn", xpStart: state.xp });
   answerAll(state, session, true);
   const outcome = ex.finish(state, session, course);
 
   assert.ok(ids.every((id) => srs.isLearned(state, id)), "meeting a word is learning it");
-  assert.equal(state.days[1].stage, 1, "the day moved on by exactly one stage");
-  assert.equal(outcome.dayDone, undefined);
-  assert.equal(outcome.nextStage.kind, "mixed", "ten words are one block, so the day's test comes next");
+  assert.ok(ids.every((id) => state.words[id].s >= 1), "a word practised without a mistake earns the longer first interval");
+  assert.equal(outcome.lesson, 1);
+  assert.equal(outcome.firstTime, true);
+  assert.equal(state.lessons["b-1"].done, true);
+  assert.equal(srs.currentLesson(state, course), 2);
   assert.equal(srs.activity(state).learned, ids.length);
 });
 
-test("a wrong answer comes back later in the same learning stage", () => {
+test("a wrong answer comes back later in the same lesson", () => {
   const state = fresh();
-  const items = [ex.makeItem(course, "mc", "b-1-0"), ex.makeItem(course, "mc", "b-1-1")];
-  const session = ex.newSession("learn", items, { day: 1, stageIdx: 1, stage: { kind: "recall" }, category: "learn", xpStart: state.xp });
+  const items = [ex.makeItem(course, "mc", "b-1"), ex.makeItem(course, "mc", "b-2")];
+  const session = ex.newSession("learn", items, { lesson: 1, category: "learn", xpStart: state.xp });
   const wrong = (items[0].opts.indexOf(items[0].answer) + 1) % 4;
   ex.choose(state, session, course, wrong);
   assert.equal(session.correct, false);
   assert.equal(session.requeued, true);
   assert.ok(session.items.length > 2, "the word was put back into the queue");
-  assert.equal(session.items[session.items.length - 1].id, "b-1-0");
+  assert.equal(session.items[session.items.length - 1].id, "b-1");
 });
 
 test("a review sitting banks its answers, its minutes and its XP once", () => {
   const state = fresh();
-  const ids = dayIds(1);
+  const ids = lessonIds(1);
   for (const id of ids) srs.answer(state, id, true, "mc", "learn", "2026-09-01");
   const xpBefore = state.xp;
 
@@ -115,7 +138,7 @@ test("a review sitting banks its answers, its minutes and its XP once", () => {
 
 test("the summary names the words that went wrong, worst first", () => {
   const state = fresh();
-  const ids = dayIds(1).slice(0, 4);
+  const ids = lessonIds(1).slice(0, 4);
   for (const id of ids) srs.answer(state, id, true, "mc", "learn", "2026-09-01");
   const items = ids.map((id) => ex.makeItem(course, "mc", id));
   const session = ex.newSession("review", items, { category: "review", xpStart: state.xp });
@@ -129,32 +152,27 @@ test("the summary names the words that went wrong, worst first", () => {
   assert.equal(state.firstTry.ok, 0);
 });
 
-test("finishing the last stage finishes the day, and only once", () => {
+test("a lesson is finished once: a replay neither logs it nor pays its bonus again", () => {
   const state = fresh();
-  const ids = dayIds(1);
-  const plan = srs.dayPlan(course, 1);
-  for (let stage = 0; stage < plan.stages.length; stage++) {
-    const session = ex.newSession("learn", ex.mixedItems(state, course, ids, { audio: false }, 4), {
-      day: 1, stageIdx: stage, stage: plan.stages[stage], category: "learn", xpStart: state.xp,
-    });
+  const ids = lessonIds(1);
+  const play = () => {
+    const session = ex.newSession("learn", ex.lessonItems(state, course, ids, { audio: false }), { lesson: 1, category: "learn", xpStart: state.xp });
     answerAll(state, session, true);
-    var outcome = ex.finish(state, session, course); // eslint-disable-line no-var
-  }
-  assert.equal(outcome.dayDone, true);
-  assert.equal(state.days[1].done, true);
-  assert.equal(state.log.filter((entry) => entry.text.includes("1-kun tugatildi")).length, 1);
-
-  const xp = state.xp;
-  const again = ex.newSession("learn", [ex.makeItem(course, "mc", ids[0])], { day: 1, stageIdx: 0, stage: plan.stages[0], category: "learn", xpStart: xp });
-  answerAll(state, again, true);
-  ex.finish(state, again, course);
-  assert.equal(state.log.filter((entry) => entry.text.includes("1-kun tugatildi")).length, 1, "a replay does not log the day again");
+    return ex.finish(state, session, course);
+  };
+  const first = play();
+  const second = play();
+  assert.equal(first.firstTime, true);
+  assert.equal(second.firstTime, false);
+  assert.ok(second.xp < first.xp, "the finishing bonus is paid on the first run only");
+  assert.equal(state.log.filter((entry) => entry.text.startsWith("1-dars tugatildi")).length, 1);
+  assert.equal(state.lessons["b-1"].ok, first.ok + second.ok, "both runs' answers are counted");
 });
 
 test("the matching board clears pair by pair and reports its misses", () => {
   const state = fresh();
-  const ids = dayIds(1).slice(0, 5);
-  const session = ex.newSession("learn", ex.recallItems(course, ids, { audio: false }), { day: 1, stageIdx: 1, stage: { kind: "recall" }, category: "learn", xpStart: state.xp });
+  const ids = lessonIds(1).slice(0, 5);
+  const session = ex.newSession("learn", ex.recallItems(course, ids, { audio: false }), { lesson: 1, category: "learn", xpStart: state.xp });
   const item = ex.current(session);
   assert.equal(item.type, "match");
 
@@ -172,19 +190,19 @@ test("the matching board clears pair by pair and reports its misses", () => {
 });
 
 test("typing forgives spacing and accepts a synonym from the same course", () => {
-  const twins = buildLevel("b", { vocab: [[["시험", "imtihon"], ["고사", "imtihon"], ["학교", "maktab"]]] });
+  const twins = buildLevel("b", { vocab: [{ g: 1, t: "", w: [[1, "시험", "imtihon"], [2, "고사", "imtihon"], [3, "학교", "maktab"]] }] });
   const state = fresh();
-  const session = ex.newSession("quiz", [ex.makeItem(twins, "type", "b-1-0")], { quizType: "type", title: "Yozish", category: "quiz", xpStart: state.xp });
+  const session = ex.newSession("quiz", [ex.makeItem(twins, "type", "b-1")], { quizType: "type", title: "Yozish", category: "quiz", xpStart: state.xp });
   assert.equal(ex.submitTyped(state, session, twins, " 고사 "), true, "another course word with the same meaning is not a mistake");
 
   const state2 = fresh();
-  const session2 = ex.newSession("quiz", [ex.makeItem(twins, "type", "b-1-2")], { quizType: "type", title: "Yozish", category: "quiz", xpStart: state2.xp });
+  const session2 = ex.newSession("quiz", [ex.makeItem(twins, "type", "b-3")], { quizType: "type", title: "Yozish", category: "quiz", xpStart: state2.xp });
   assert.equal(ex.submitTyped(state2, session2, twins, "학원"), false);
 });
 
 test("stopping at a resting point keeps the work and shortens the sitting", () => {
   const state = fresh();
-  const ids = [...dayIds(1), ...dayIds(2)];
+  const ids = [...lessonIds(1), ...lessonIds(2)];
   for (const id of ids) srs.answer(state, id, true, "mc", "learn", "2026-09-01");
   const session = ex.newSession("review", ids.map((id) => ex.makeItem(course, "mc", id)), { category: "review", xpStart: state.xp });
   assert.equal(session.items.length, 20);
@@ -202,7 +220,7 @@ test("stopping at a resting point keeps the work and shortens the sitting", () =
 
 test("a sitting left early still banks its time and loses no answers", () => {
   const state = fresh();
-  const ids = dayIds(1);
+  const ids = lessonIds(1);
   for (const id of ids) srs.answer(state, id, true, "mc", "learn", "2026-09-01");
   const session = ex.newSession("review", ids.map((id) => ex.makeItem(course, "mc", id)), { category: "review", xpStart: state.xp });
   const item = ex.current(session);
@@ -217,7 +235,7 @@ test("a sitting left early still banks its time and loses no answers", () => {
 });
 
 test("a listening question is answered with the meaning, not with the word that was heard", () => {
-  const item = ex.makeItem(course, "listen", "b-1-3");
+  const item = ex.makeItem(course, "listen", "b-4");
   assert.equal(item.answer, "birinchi 3");
   assert.equal(item.opts.length, 4);
   assert.ok(item.opts.includes("birinchi 3"));
@@ -226,7 +244,7 @@ test("a listening question is answered with the meaning, not with the word that 
 
 test("practice flash cards are all cards, and rating them never moves the schedule", () => {
   const state = fresh();
-  const ids = dayIds(1);
+  const ids = lessonIds(1);
   for (const id of ids) srs.grade(state, id, 3);
   const before = JSON.stringify(ids.map((id) => [state.words[id].s, state.words[id].due]));
   const session = ex.newSession("quiz", ex.quizItems(state, course, ids, "card", {}, 5), { quizType: "card", title: "Flashcard", xpStart: state.xp });
@@ -243,9 +261,9 @@ test("practice flash cards are all cards, and rating them never moves the schedu
 
 test("skipping the matching game counts the unfound pairs as missed", () => {
   const state = fresh();
-  const ids = dayIds(1).slice(0, 5);
+  const ids = lessonIds(1).slice(0, 5);
   for (const id of ids) srs.introduce(state, id);
-  const session = ex.newSession("learn", ex.recallItems(course, ids, { audio: false }), { day: 1, stageIdx: 1, xpStart: 0 });
+  const session = ex.newSession("learn", ex.recallItems(course, ids, { audio: false }), { lesson: 1, xpStart: 0 });
   const match = ex.current(session);
   assert.equal(match.type, "match");
   ex.matchPick(state, session, "ko", match.ids[0]);
@@ -260,7 +278,7 @@ test("skipping the matching game counts the unfound pairs as missed", () => {
 
 test("a finished sitting reports how each kind of question went", () => {
   const state = fresh();
-  const ids = dayIds(1);
+  const ids = lessonIds(1);
   for (const id of ids) srs.grade(state, id, 3);
   const session = ex.newSession("quiz", ex.quizItems(state, course, ids, "type", {}, 4), { quizType: "type", title: "Yozish", xpStart: state.xp });
   while (ex.current(session)) {

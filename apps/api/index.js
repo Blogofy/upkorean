@@ -1,12 +1,11 @@
 // UpKorean server: the JSON API the mobile app talks to (auth, progress sync, course content, leaderboard).
 import "./env.js";
-import fs from "node:fs";
 import path from "node:path";
 import express from "express";
 import compression from "compression";
 import { q, backupDb, lastBackupAt, BACKUP_DIR } from "./db.js";
 import { AUDIO_DIR } from "./paths.js";
-import { manifest as contentManifest, partBody, VERSION as CONTENT_VERSION, defaultLevel } from "./content.js";
+import { manifest as contentManifest, partBody, VERSION as CONTENT_VERSION, defaultLevel, CLIP_FILE, hasClips, clipCounts } from "./content.js";
 import {
   hashPassword, verifyPassword, startSession, endSession, currentUser, requireAuth,
   publicUser, rateLimit, counter, randomToken, sha256, DEMO_EMAIL, isDemo,
@@ -30,16 +29,8 @@ const GOOGLE_ANDROID_ID = process.env.GOOGLE_CLIENT_ID_ANDROID || "";
 const GOOGLE_IOS_ID = process.env.GOOGLE_CLIENT_ID_IOS || "";
 const GOOGLE_AUDIENCES = new Set([GOOGLE_CLIENT_ID, GOOGLE_ANDROID_ID, GOOGLE_IOS_ID].filter(Boolean));
 const DEMO = process.env.DEMO ? process.env.DEMO === "1" : DEV;
-// Narrator clips: audio/words/<id>.mp3 = word, audio/sentences/<id>.mp3 = example sentence,
-// where <id> is the word id, level and all: "b-1-0.mp3".
-const CLIP_FILE = /^[bma]-\d{1,2}-\d{1,2}\.mp3$/;
+// Narrator clips (content.js): audio/words/<id>.mp3 = word, audio/sentences/<id>.mp3 = example sentence.
 const CLIP_DIR = AUDIO_DIR;
-const clipCount = (kind) => {
-  const dir = path.join(CLIP_DIR, kind);
-  return fs.existsSync(dir) ? fs.readdirSync(dir).filter((name) => CLIP_FILE.test(name)).length : 0;
-};
-const WORD_CLIPS = clipCount("words"), SENTENCE_CLIPS = clipCount("sentences");
-const HAS_CLIPS = WORD_CLIPS >= 1000 && SENTENCE_CLIPS >= 1000;
 // The oldest app build this server still serves; /api/config hands it to every app at startup.
 const MIN_APP_VERSION = process.env.MIN_APP_VERSION || "1.0.0";
 const YEAR = 31536000;
@@ -128,7 +119,7 @@ api.get("/config", (req, res) => {
     google: GOOGLE_CLIENT_ID || null,
     googleAndroid: GOOGLE_ANDROID_ID || null,
     googleIos: GOOGLE_IOS_ID || null,
-    demo: DEMO, clips: HAS_CLIPS, mail: mailEnabled(),
+    demo: DEMO, clips: hasClips, mail: mailEnabled(),
     contentVersion: CONTENT_VERSION,
     defaultLevel,
     // The oldest app build this server still answers. Raise it only for a change the app cannot be made to
@@ -508,7 +499,7 @@ app.listen(PORT, () => {
   console.log(`  AI ustoz: o'chirilgan — ilovada kirish nuqtasi yo'q${tutorEnabled() ? " (server tarafi tayyor: ANTHROPIC_API_KEY topildi)" : ""}`);
   console.log(`  Google:   ${GOOGLE_CLIENT_ID ? "yoqilgan" : "o'chirilgan (GOOGLE_CLIENT_ID yo'q)"}`);
   console.log(`  Email:    ${mailEnabled() ? "yoqilgan (SMTP)" : `o'chirilgan — parolni tiklash havolasi yuborilmaydi${DEV ? ", faqat shu kompyuterdagi brauzerga ko'rsatiladi" : ""} (SMTP_HOST yo'q)`}`);
-  console.log(`  Audio:    diktor bo'laklari ${WORD_CLIPS}/1000 so'z, ${SENTENCE_CLIPS}/1000 gap`);
+  console.log(`  Audio:    diktor bo'laklari ${clipCounts.words} so'z, ${clipCounts.sentences} gap`);
   console.log(`  Backup:   ${BACKUP_HOURS ? `har ${BACKUP_HOURS} soatda, oxirgi ${BACKUP_KEEP} tasi → ${BACKUP_DIR}` : "o'chirilgan (BACKUP_HOURS=0)"}`);
   if (DEMO) console.log("  Demo hisob: yoqilgan");
   if (PROD && !process.env.TRUST_PROXY) console.log("  Eslatma: server proksi (nginx, Cloudflare) ortida bo'lsa, TRUST_PROXY=1 qo'ying.");

@@ -10,7 +10,7 @@ import { BackLink, Button, Dialog, Field, ListRow, Row, Screen, Segmented, Sheet
 import { api } from "../api";
 import { initial, levelInfo } from "../model";
 import { syncReminder } from "../notify";
-import { PRIVACY_URL } from "../config";
+import { PRIVACY_URL, SOURCE_URL } from "../config";
 
 const TIMES = ["08:00", "13:00", "20:00", "21:30"];
 const THEMES = [
@@ -47,7 +47,7 @@ export default function Profile({ navigation }) {
     const learned = srs.learnedIds(state, course).map((id) => {
       const word = course.byId[id];
       const memory = state.words[id];
-      return `${word.ko}\t${word.uz}\t${word.day}-kun\t${memory.ok}/${memory.ok + memory.bad}`;
+      return `${word.ko}\t${word.uz}\t${word.lesson}-dars\t${memory.ok}/${memory.ok + memory.bad}`;
     });
     Share.share({
       title: "UpKorean — so'zlarim",
@@ -125,6 +125,8 @@ export default function Profile({ navigation }) {
           <ListRow title="Daraja" sub={`${level.ko} · ${level.uz}`} onPress={() => navigation.navigate("LevelSwitch")} />
           <ListRow title="Ma'lumotlarni yuklab olish" sub="o'rganilgan so'zlar ro'yxati" onPress={exportData} />
           <ListRow title="Maxfiylik siyosati" sub="qanday ma'lumot saqlanadi" onPress={() => Linking.openURL(PRIVACY_URL)} />
+          {/* The word list is 공공누리 type 1: free to use, as long as its source is named where it is used. */}
+          <ListRow title="So'zlar manbasi" sub="국립국어원 (Koreya Milliy til instituti) · 공공누리 1유형" onPress={() => Linking.openURL(SOURCE_URL)} />
           <ListRow last title="Hisob" sub={user?.email || profile.email} onPress={user?.demo ? undefined : () => setAccountOpen(true)} chevron={!user?.demo} />
         </View>
 
@@ -201,7 +203,7 @@ const eyebrow = (c) => ({ fontFamily: FONTS.bold, fontSize: 12, letterSpacing: 1
 function paceLine(state, course, pace) {
   const left = Math.max(0, course.words.length - srs.learnedIds(state, course).length);
   if (!left) return "Darajadagi barcha so'zlar o'rganilgan.";
-  const days = Math.ceil(left / pace);
+  const days = srs.daysAtPace(left, pace);
   return `Qolgan ${left} so'z shu sur'atda taxminan ${days} kunda tugaydi.`;
 }
 

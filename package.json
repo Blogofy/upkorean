@@ -13,6 +13,7 @@
     "dev": "node --no-warnings=ExperimentalWarning --watch apps/api/index.js --dev",
     "check:content": "node scripts/validate-content.js",
     "plan:vocab": "python scripts/plan-vocab.py",
+    "build:course": "node scripts/build-course.mjs",
     "backup": "node --no-warnings=ExperimentalWarning scripts/backup-db.js",
     "test": "node --no-warnings=ExperimentalWarning --test --test-reporter=spec \"test/**/*.test.js\"",
     "mobile": "npm --prefix apps/mobile run start"

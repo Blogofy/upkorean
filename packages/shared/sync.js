@@ -3,12 +3,13 @@
 // - mergeStates: combine two devices' progress when both changed the same starting point (3-way merge).
 (function (root) {
   // Maps whose entries change independently; they are diffed and merged one entry at a time.
-  const MAPS = ["words", "days", "act", "notes", "achievements", "challengeDone"];
+  const MAPS = ["words", "lessons", "act", "notes", "achievements", "challengeDone"];
   const FORBIDDEN = new Set(["__proto__", "prototype", "constructor"]);
-  // Every top-level key freshState() (js/store.js) creates. A delta touching anything else is not something
+  // Every top-level key freshState() (srs.js) creates. A delta touching anything else is not something
   // this app produces, so the server refuses the whole batch rather than storing keys it will never read.
+  // "days" is the course before lessons: no state has it any more, but the delta that removes it must pass.
   const TOP = new Set([
-    "v", "profile", "settings", "words", "days", "act", "notes", "log", "xp", "bestStreak",
+    "v", "profile", "settings", "words", "lessons", "days", "act", "notes", "log", "xp", "bestStreak",
     "typeStats", "firstTry", "quizResults", "reviewSessions", "tutor", "achievements", "challengeDone", "dueStart",
   ]);
 
@@ -104,9 +105,10 @@
     return o;
   }
 
-  function mergeDay(b, l, r) {
-    const ahead = !!l.done !== !!r.done ? (l.done ? l : r) : num(l.stage) >= num(r.stage) ? l : r;
-    const o = Object.assign({}, ahead, { done: !!(l.done || r.done), stage: Math.max(num(l.stage), num(r.stage)) });
+  // A lesson finished on either device is finished; its counters add up like any other.
+  function mergeLesson(b, l, r) {
+    const o = Object.assign({}, l.done || !r.done ? l : r, { done: !!(l.done || r.done) });
+    for (const k of ["ok", "bad", "min", "xp"]) o[k] = counter(from(b, k), l[k], r[k]);
     if (l.doneAt || r.doneAt) o.doneAt = earliest(l.doneAt, r.doneAt);
     return o;
   }
@@ -140,7 +142,7 @@
       if (!has(remote, k)) { o[k] = l; continue; }
       switch (k) {
         case "words": o[k] = mergeMap(bl, l, r, mergeWord, known); break;
-        case "days": o[k] = mergeMap(bl, l, r, mergeDay, known); break;
+        case "lessons": o[k] = mergeMap(bl, l, r, mergeLesson, known); break;
         case "act": o[k] = mergeMap(bl, l, r, mergeAct, known); break;
         case "achievements": o[k] = mergeMap(bl, l, r, (_, x, y) => earliest(x, y), known); break;
         case "notes": o[k] = mergeMap(bl, l, r, pick, known); break;

@@ -228,9 +228,13 @@ test("an app signs in with a bearer token, never a cookie", async () => {
   assert.equal((await app("GET", "/api/auth/me")).data.user.email, email);
   assert.equal((await app("PUT", "/api/progress", { state: { xp: 7 }, baseAt: null, rev: "m1" })).status, 200);
   assert.deepEqual((await app("GET", "/api/progress")).data.state, { xp: 7 });
-  // Audio is behind the same session.
-  assert.equal((await fetch(`${BASE}/media/clip/words/b-1-0.mp3`)).status, 401);
-  assert.equal((await fetch(`${BASE}/media/clip/words/b-1-0.mp3`, { headers: { Authorization: `Bearer ${app.token()}` } })).status, 200);
+  // Audio is behind the same session. Clips are recorded as the course grows, so a signed-in request finds
+  // the file when it exists and a plain 404 when it does not yet — never the sign-in wall.
+  const clip = "b-36.mp3";
+  const recorded = fs.existsSync(path.join(root, "audio", "words", clip));
+  assert.equal((await fetch(`${BASE}/media/clip/words/${clip}`)).status, 401);
+  assert.equal((await fetch(`${BASE}/media/clip/words/${clip}`, { headers: { Authorization: `Bearer ${app.token()}` } })).status, recorded ? 200 : 404);
+  assert.equal((await fetch(`${BASE}/media/clip/words/b-1-0.mp3`, { headers: { Authorization: `Bearer ${app.token()}` } })).status, 404, "the old course's names are gone");
 
   // A second device has its own session, and logging out ends only the one that asked.
   const tablet = client();
@@ -262,7 +266,9 @@ test("course content is served per level, versioned and revalidatable", async ()
   const [beginner, ...rest] = manifest.levels;
   assert.equal(beginner.locked, false);
   assert.ok(beginner.words > 0);
-  assert.deepEqual(beginner.parts.map((p) => p.name), ["vocab", "examples", "roots"]);
+  assert.ok(beginner.lessons > 0);
+  assert.equal(beginner.planned, 1835, "every word of 1급 and 2급, published or not");
+  assert.deepEqual(beginner.parts.map((p) => p.name), ["vocab", "examples"]);
   // A level whose words are not written yet is announced and shut, not hidden.
   for (const level of rest) {
     assert.equal(level.locked, true);
@@ -280,9 +286,14 @@ test("course content is served per level, versioned and revalidatable", async ()
   assert.match(vocab.headers.get("cache-control"), /immutable/);
   const data = await vocab.json();
   assert.equal(data.words.length, beginner.words);
-  assert.deepEqual(Object.keys(data.words[0]).sort(), ["day", "i", "id", "ko", "level", "uz"]);
-  // A word carries its level in its name, so progress from two levels can never collide.
-  assert.equal(data.words[0].id, "b-1-0");
+  assert.equal(data.lessons.length, beginner.lessons);
+  assert.deepEqual(Object.keys(data.lessons[0]).sort(), ["grade", "id", "n", "theme", "title"]);
+  for (const key of ["grade", "i", "id", "ko", "lesson", "level", "uz"]) assert.ok(key in data.words[0], key);
+  // A word carries its level and its NIKL number in its name, so progress from two levels can never
+  // collide and never moves when the lessons are rearranged. 것 opens the course.
+  assert.equal(data.words[0].id, "b-36");
+  assert.equal(data.words[0].ko, "것");
+  assert.equal(data.words[0].lesson, 1);
 
   // Asked for without the version, an unchanged part comes back as a 304 with no body.
   const etag = vocab.headers.get("etag");

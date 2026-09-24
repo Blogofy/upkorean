@@ -26,10 +26,11 @@ const weighted = (weights) => {
 
 const sameMeaning = (a, b) => String(a.uz).trim().toLowerCase() === String(b.uz).trim().toLowerCase();
 
-// Wrong options come from the word's own day first — same topic, so the choice is about the word and not
-// about which option looks out of place — then from anywhere in the level.
+// Wrong options come from the word's own lesson first — met together, so the choice is about the word and
+// not about which option looks out of place — then from anywhere in the level.
 function distractors(course, word, n, field) {
-  const pool = shuffle(course.days[word.day] || []).concat(shuffle(course.words).slice(0, 80));
+  const own = (course.lessons[word.lesson]?.ids || []).map((id) => course.byId[id]).filter(Boolean);
+  const pool = shuffle(own).concat(shuffle(course.words).slice(0, 80));
   const out = [];
   const seen = new Set([word[field]]);
   for (const other of pool) {
@@ -46,8 +47,10 @@ const clozeOf = (course, id) => {
   return example && example.cloze ? example : null;
 };
 
+// A listening question needs the word's own recording: the narrator reads each word once, and a word not
+// recorded yet is asked some other way.
 export function canUse(course, type, id, { audio = true } = {}) {
-  if (type === "listen") return audio;
+  if (type === "listen") return audio && !!course.byId[id]?.aw;
   if (type === "sent") return !!clozeOf(course, id);
   return true;
 }
@@ -61,7 +64,7 @@ function chooseType(course, id, weights, opts) {
 // One question, with its options already drawn.
 export function makeItem(course, type, id) {
   const word = course.byId[id];
-  const item = { type, id, ko: word.ko, uz: word.uz, day: word.day };
+  const item = { type, id, ko: word.ko, uz: word.uz, lesson: word.lesson };
   // Hearing a word is answered with its meaning. Offering the Korean instead would let anyone pick the
   // shape that sounds like what was just said, without knowing what it means.
   if (type === "mc" || type === "listen") {
@@ -110,11 +113,9 @@ const ORDER = { intro: 0, card: 1, match: 2, mc: 3, mcr: 4, type: 5, listen: 6, 
 
 // ---------- Builders, one per kind of sitting ----------
 
-// Meeting new words: one card each, in the order the book teaches them.
-export const introItems = (course, ids) => ids.map((id, i) => ({
-  type: "intro", id, ko: course.byId[id].ko, uz: course.byId[id].uz,
-  example: course.examples[id] || null, roots: course.roots[id] || null,
-  pos: i, size: ids.length,
+// Meeting new words: one card each, in the lesson's own order.
+export const introItems = (course, ids) => ids.map((id) => ({
+  type: "intro", id, ko: course.byId[id].ko, uz: course.byId[id].uz, example: course.examples[id] || null,
 }));
 
 // Putting the block to work: two rounds of matching, then a question on every word, hardest form last.
@@ -128,7 +129,21 @@ export function recallItems(course, ids, opts) {
   return items.concat(questions.sort((a, b) => ORDER[a.type] - ORDER[b.type]));
 }
 
-// The day's own test: the words it went worst with, in every form the app knows.
+// A lesson in one sitting: meet five words and put them to work at once, then the other five, then a short
+// mixed round over all ten. Each word is recalled minutes after it was first seen and again a little later,
+// before the schedule takes over — the first retrievals are the ones that make a word stick.
+export const LESSON_HALF = 5;
+export function lessonItems(state, course, ids, opts) {
+  const items = [];
+  for (let at = 0; at < ids.length; at += LESSON_HALF) {
+    const half = ids.slice(at, at + LESSON_HALF);
+    items.push(...introItems(course, half), ...recallItems(course, half, opts));
+  }
+  if (ids.length > LESSON_HALF) items.push(...mixedItems(state, course, ids, opts, 6));
+  return items;
+}
+
+// A closing round: the words it went worst with, in every form the app knows.
 export function mixedItems(state, course, ids, opts, count = 12) {
   const weights = { mc: 3, mcr: 3, type: 2, listen: 2, sent: 2 };
   const ordered = ids.slice().sort((a, b) => ((state.words[b] || {}).bad || 0) - ((state.words[a] || {}).bad || 0) || Math.random() - 0.5);
@@ -160,7 +175,9 @@ export function quizItems(state, course, ids, quizType, opts, count = 20) {
   return chosen.map((id) => {
     if (quizType === "card") return cardItem(course, id);
     if (quizType === "mc") return makeItem(course, pick(["mc", "mcr"]), id);
-    return makeItem(course, fixed || chooseType(course, id, weights, opts), id);
+    // A word the round's own form cannot ask (not recorded yet, no sentence) is asked some other way.
+    const type = fixed && canUse(course, fixed, id, opts) ? fixed : chooseType(course, id, weights, opts);
+    return makeItem(course, type, id);
   });
 }
 
@@ -188,7 +205,7 @@ function trackTime(session) {
   session.itemStart = Date.now();
 }
 
-// Records an answer and moves to the verdict phase. Wrong answers on a learning stage come back a few
+// Records an answer and moves to the verdict phase. Wrong answers in a lesson come back a few
 // questions later, at most twice, with fresh options.
 export function record(state, session, course, correct, now = today()) {
   const item = current(session);
@@ -388,35 +405,21 @@ export function finish(state, session, course, now = today()) {
   const outcome = { kind: session.kind, ok: session.ok, bad: session.bad, total: session.items.length };
 
   if (session.kind === "learn") {
-    const record2 = (state.days[session.day] = state.days[session.day] || { stage: 0, done: false, ok: 0, bad: 0, min: 0, xp: 0 });
-    const plan = srs.dayPlan(course, session.day);
-    // A merge from another device can land mid-session and keeps the higher stage, so this same stage's
-    // numbers may already be counted there and ours would count the work twice.
-    const already = record2.stage > session.stageIdx;
-    if (session.stage && session.stage.kind === "learn") {
-      srs.settleIntroduced(state, session.items.filter((item) => item.type === "intro").map((item) => item.id), session.mistakes, now);
+    const lesson = srs.lessonAt(course, session.lesson);
+    const record2 = (state.lessons[lesson.id] = state.lessons[lesson.id] || { done: false, ok: 0, bad: 0, min: 0, xp: 0 });
+    srs.settleIntroduced(state, session.items.filter((item) => item.type === "intro").map((item) => item.id), session.mistakes, now);
+    record2.ok = (record2.ok || 0) + session.ok;
+    record2.bad = (record2.bad || 0) + session.bad;
+    record2.min = (record2.min || 0) + session.activeMs / 60000;
+    record2.xp = (record2.xp || 0) + (state.xp - session.xpStart);
+    outcome.firstTime = !record2.done;
+    if (!record2.done) {
+      record2.done = true;
+      record2.doneAt = now;
+      srs.addXP(state, 30, now);
+      srs.log(state, `${lesson.n}-dars tugatildi — ${lesson.title}`, "ok");
     }
-    record2.stage = Math.max(record2.stage, session.stageIdx + 1);
-    if (!already) {
-      record2.ok = (record2.ok || 0) + session.ok;
-      record2.bad = (record2.bad || 0) + session.bad;
-      record2.min = (record2.min || 0) + session.activeMs / 60000;
-      record2.xp = (record2.xp || 0) + (state.xp - session.xpStart);
-    }
-    if (record2.stage >= plan.stages.length) {
-      if (!record2.done) {
-        record2.done = true;
-        record2.doneAt = now;
-        srs.addXP(state, 50, now);
-        srs.log(state, `${session.day}-kun tugatildi — ${plan.words.length} so'z`, "ok");
-      }
-      outcome.dayDone = true;
-      outcome.day = session.day;
-    } else {
-      outcome.nextStage = plan.stages[record2.stage];
-      outcome.stageIdx = record2.stage;
-      outcome.day = session.day;
-    }
+    outcome.lesson = lesson.n;
   } else if (session.kind === "review") {
     state.reviewSessions++;
     srs.addXP(state, 20, now);

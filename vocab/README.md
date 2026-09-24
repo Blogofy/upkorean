@@ -1,14 +1,14 @@
 # So'z rejasi (NIKL)
 
-Kursning yangi so'z bazasi: Koreya Milliy til instituti (국립국어원, NIKL) ning rasmiy darajali ro'yxati —
-1급 dan 6급 gacha 10 635 so'z, TOPIK darajalari bilan bir xil. Hali ilovaga ulanmagan: avval tarjima va
-misol gaplar tayyor bo'ladi, keyin `packages/shared/course/<daraja>/` ga ko'chiriladi.
+Kursning so'z bazasi: Koreya Milliy til instituti (국립국어원, NIKL) ning rasmiy darajali ro'yxati —
+1급 dan 6급 gacha 10 635 so'z, TOPIK darajalari bilan bir xil. Har bir daraja 10 so'zlik darslardan iborat
+bitta yo'l; `npm run build:course` tarjimasi tayyor darslarni `packages/shared/course/<daraja>/` ga yig'adi.
 
-| Daraja | NIKL | So'z | Kun (30 so'z) |
+| Daraja | NIKL | So'z | Dars (10 so'z) |
 | --- | --- | --- | --- |
-| 초급 (`b`) | 1급 + 2급 | 735 + 1 100 | 62 |
-| 중급 (`m`) | 3급 + 4급 | 1 655 + 2 200 | 129 |
-| 고급 (`a`) | 5급 + 6급 | 2 365 + 2 580 | 165 |
+| 초급 (`b`) | 1급 + 2급 | 735 + 1 100 | 184 |
+| 중급 (`m`) | 3급 + 4급 | 1 655 + 2 200 | 386 |
+| 고급 (`a`) | 5급 + 6급 | 2 365 + 2 580 | 495 |
 
 ## Fayllar
 
@@ -17,29 +17,31 @@ misol gaplar tayyor bo'ladi, keyin `packages/shared/course/<daraja>/` ga ko'chir
 | `nikl/grades.xlsx` | Darajali ro'yxat — qaysi so'z qaysi darajada. Asl nomi: «2017년 국제 통용 한국어 표준 교육과정 적용 연구(4단계) 어휘, 문법 등급 목록_20180227_20201117 수정.xlsx» |
 | `nikl/info.xlsx` | Har bir so'z haqida ma'lumot: ikki korpus chastotasi (조남호 2002, 강범모 외 2009), mavzu, ma'no guruhi, sinonim va antonimlar. Asl nomi: «한국어 교육 어휘 내용 개발 4단계 어휘 정보.xlsx» |
 | `uz.tsv` | O'zbekcha ma'no, NIKL kaliti bo'yicha (`가격02`). Tartibga bog'liq emas, qo'lda yoziladi |
-| `plan.tsv` | Natija: har bir so'zning kuni, bloki va o'rni. `scripts/plan-vocab.py` yozadi, qo'lda tahrirlanmaydi |
+| `examples.tsv` | Misol gaplar, xuddi shu kalit bo'yicha: gap, ajratiladigan qism, yashiriladigan qism, tarjima |
+| `plan.tsv` | Natija: har bir so'zning darsi va o'rni, NIKL raqami (`nid`, ilovadagi id). `scripts/plan-vocab.py` yozadi, qo'lda tahrirlanmaydi |
 | `plan.xlsx` | Xuddi shu jadval Excel'da o'qish uchun, har bir daraja alohida varaqda (git'ga tushmaydi) |
 
 ```powershell
-npm run plan:vocab    # Python 3 va openpyxl kerak: pip install openpyxl
+npm run plan:vocab     # tartibni qayta tuzish; Python 3 va openpyxl kerak: pip install openpyxl
+npm run build:course   # uz.tsv / examples.tsv dan ilova kontentini yig'ish
 ```
 
 ## Tartib qanday tuziladi
 
-Asl ro'yxatda har bir daraja ichida so'zlar alifbo bo'yicha turadi — bir kunda faqat 가- bilan boshlanadigan
+Asl ro'yxatda har bir daraja ichida so'zlar alifbo bo'yicha turadi — bir darsga faqat 가- bilan boshlanadigan
 so'zlar tushib qoladi. Skript ularni o'quvchi uchrashishi kerak bo'lgan tartibga keltiradi:
 
 1. **Daraja** — 1급 tugaydi, keyin 2급 boshlanadi.
 2. **Chastota** — eng ko'p ishlatiladigan so'z birinchi. Ikki korpus hisobi millionga keltirilib o'rtachalanadi.
    Korpusda yo'q so'z darajasining o'rtasiga qo'yiladi; affiks (`-적`, `-님`) ham o'rtadan yuqoriga chiqmaydi,
    chunki uning hisobi shu affiks bilan yasalgan barcha so'zlarning yig'indisi.
-3. **Mavzu** — 10 so'zlik blok (ilovada bitta o'tirish) bitta vaziyat atrofida yig'iladi: xarid, ob-havo,
+3. **Mavzu** — 10 so'zlik dars (ilovada bitta o'tirish) bitta vaziyat atrofida yig'iladi: xarid, ob-havo,
    oila. Bir sahnadagi so'zlar bir-birini eslatadi.
-4. **O'xshashlar birga emas** — sinonim, antonim va bir xil yoziladigan omonimlar kamida 3 blok oraliqda
-   turadi; bir blokda bitta ma'no guruhidan (ranglar, sonlar, hafta kunlari) ko'pi bilan 2 ta so'z bo'ladi.
+4. **O'xshashlar birga emas** — sinonim, antonim va bir xil yoziladigan omonimlar kamida 3 dars oraliqda
+   turadi; bir darsda bitta ma'no guruhidan (ranglar, sonlar, hafta kunlari) ko'pi bilan 2 ta so'z bo'ladi.
    Bir-biriga yaqin so'zlar birga o'rganilsa, xotirada aralashib ketadi (Tinkham 1993, Waring 1997,
    Nakata & Suzuki 2019).
-5. **Turkumlar aralash** — blokda ko'pi bilan 7 ta ot, qolgani fe'l, sifat, ravish: har bir blokdan gap tuzsa bo'ladi.
+5. **Turkumlar aralash** — darsda ko'pi bilan 7 ta ot, qolgani fe'l, sifat, ravish: har bir darsdan gap tuzsa bo'ladi.
 
 ## Litsenziya
 

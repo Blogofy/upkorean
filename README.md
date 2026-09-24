@@ -1,6 +1,8 @@
 # UpKorean
 
-Koreys tili so'z boyligi ilovasi. Uch daraja — 초급, 중급, 고급 — har biri 50 kun, kuniga 30 so'z.
+Koreys tili so'z boyligi ilovasi. Uch daraja — 초급, 중급, 고급 — Koreya Milliy til institutining (NIKL)
+TOPIK darajalariga mos rasmiy ro'yxatidan 10 635 so'z. Har bir daraja 10 so'zlik darslardan iborat bitta
+yo'l: kalendar kunlari yo'q, o'quvchi kuniga 1, 2 yoki 3 darsni o'zi tanlaydi, takrorlash o'z vaqtida qaytadi.
 
 ```
 apps/
@@ -9,9 +11,9 @@ apps/
 packages/
   shared/     Progress sync mantiqi va kurs ma'lumoti (uch darajaning fayllari)
 data/         SQLite bazasi va backup'lar (git'ga tushmaydi)
-audio/        Diktor audiosi, so'z id'si bo'yicha: audio/words/b-1-0.mp3 (git'ga tushmaydi)
-scripts/      Kontentni tekshirish, backup, audio nomlash, OCR yordamchilari, so'z rejasi
-vocab/        NIKL darajali so'z ro'yxati va undan tuzilgan kunlik reja (vocab/README.md)
+audio/        Diktor audiosi, so'z id'si bo'yicha: audio/words/b-36.mp3 (git'ga tushmaydi)
+scripts/      Kontentni tekshirish, backup, so'z rejasi va kursni yig'ish
+vocab/        NIKL darajali so'z ro'yxati, tarjimalar, misollar va darslar rejasi (vocab/README.md)
 test/         node:test — API, sync, progress, SRS, mashqlar va kontent testlari
 deploy/       Apache konfigi, systemd unit'i, deploy skripti va server qo'llanmasi
 docs/         API ma'lumotnomasi
@@ -24,9 +26,10 @@ uchun mahsulot endi faqat mobil ilova. Web qismi (brauzer ilovasi, landing sahif
 sessiyasi) koddan ham, serverdan ham butunlay olib tashlandi; kerak bo'lsa keyinchalik noldan quriladi.
 Ortda bitta backend qoldi va u faqat API beradi.
 
-Kurs `packages/shared/course/<daraja>/` da yashaydi va API orqali JSON bo'lib tarqaladi. So'z nomi
-o'zining joyini aytadi: `"b-1-0"` — 초급, 1-kun, birinchi so'z. Daraja nomga kirgani uchun uchala
-darajaning progressi bitta obyektda hech qachon to'qnashmaydi.
+Kurs `vocab/` da tayyorlanadi, `packages/shared/course/<daraja>/` ga yig'iladi va API orqali JSON bo'lib
+tarqaladi. So'z nomi — daraja va NIKL raqami: `"b-36"` — 것. Raqam o'zgarmaydi, shuning uchun darslar qayta
+tartiblansa ham progress va audio joyida qoladi; daraja nomga kirgani uchun uchala darajaning progressi
+bitta obyektda to'qnashmaydi.
 
 ## Ishga tushirish
 
@@ -57,21 +60,21 @@ Dev rejimida ilova API manzilini o'zi topadi: bundle'ni qaysi kompyuterdan yukla
 | `npm test` | Butun test to'plami |
 | `npm run check:content` | Har bir darajaning tuzilishini tekshiradi |
 | `npm run plan:vocab` | NIKL ro'yxatidan `vocab/plan.tsv` ni qayta tuzadi (Python 3 + openpyxl) |
+| `npm run build:course` | `vocab/` dan ilova kontentini (`packages/shared/course/`) yig'adi |
 | `npm run backup` | SQLite bazasining nusxasini `data/backups/` ga oladi |
 | `npm run mobile` | `apps/mobile` dagi Expo dev serverini ochadi |
 
 ## Kontent qo'shish
 
-Har bir daraja o'z papkasida, uchta fayl bilan: `packages/shared/course/<b|m|a>/`
+Kontent qo'lda `packages/shared/course/` da yozilmaydi — u `vocab/` dan yig'iladi:
 
-| Fayl | Shakli |
-| --- | --- |
-| `vocab.js` | `export default [[["필요하다","kerak"], …], …]` — tashqi massiv kunlar, ichkarisi `[koreyscha, o'zbekcha]` |
-| `examples.js` | `export default [{ id:"1-0", w, ko, hl, cloze?, uz, note? }, …]` — id kun ichidagi o'rin (`"<kun>-<indeks>"`), darajasiz |
-| `roots.js` | `export default { "1-0": { parts:[…], idea, origin }, … }` — so'z qanday tuzilgani (ixtiyoriy) |
+1. `vocab/uz.tsv` ga so'zlarning o'zbekcha ma'nosini, `vocab/examples.tsv` ga misol gaplarni qo'shing
+   (ikkalasi ham NIKL kaliti bo'yicha, masalan `가격02`).
+2. `npm run build:course` — to'liq tarjima qilingan darslar ilovaga chiqadi, qolgani navbatda turadi.
+3. `npm run check:content`.
 
-Papkasi yo'q daraja xato emas — u ilovada qulflangan ko'rinadi. Qo'shgandan keyin:
-`npm run check:content`.
+Tartibni o'zgartirish kerak bo'lsa — `scripts/plan-vocab.py` va `npm run plan:vocab`. Batafsil:
+[vocab/README.md](vocab/README.md).
 
 ## Hujjatlar
 

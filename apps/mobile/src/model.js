@@ -1,8 +1,8 @@
 // What the screens say about the course, worked out once.
 //
 // srs.js knows the schedule and exercise.js the questions; this is the thin layer between them and the
-// screens — a level's name and size, a day's current stage, an example sentence split for highlighting —
-// so that the home screen and the course screen can never describe the same day in two different ways.
+// screens — a level's name and size, where a lesson stands, an example sentence split for highlighting —
+// so that the home screen and the course screen can never describe the same lesson in two different ways.
 import * as srs from "@upkorean/shared/srs.js";
 import { LEVELS, levelMeta } from "@upkorean/shared/course/levels.js";
 import { syllableReading } from "@upkorean/shared/hangul.js";
@@ -16,18 +16,19 @@ export const LEVEL_BLURB = {
 };
 
 // A level as the screens need it: its names from the course, its size and lock from the server's manifest.
+// `words` and `lessons` are what is published; `planned` is every word the level will hold, and `ready` says
+// whether the two are the same yet.
 export function levelInfo(levels, id) {
   const meta = levelMeta(id) || LEVELS[0];
   const live = (levels || []).find((level) => level.id === meta.id) || {};
-  const plannedWords = meta.target.days * meta.target.perDay;
+  const words = live.words || 0;
   return {
     ...meta,
     locked: live.locked ?? meta.id !== "b",
-    // A level still being written reports what it has; the plan is what the learner is promised.
-    words: live.words || plannedWords,
-    days: live.days || meta.target.days,
-    plannedWords,
-    plannedDays: meta.target.days,
+    words,
+    lessons: live.lessons || 0,
+    planned: live.planned || meta.planned,
+    ready: words >= (live.planned || meta.planned),
   };
 }
 
@@ -41,26 +42,39 @@ export function nextLevel(levels, id) {
 export const firstName = (name) => String(name || "").trim().split(/\s+/)[0] || "do'stim";
 export const initial = (name) => (String(name || "?").trim()[0] || "?").toUpperCase();
 
-// The three phases a day is made of, as the course card names them.
-export const PHASE_OF = { learn: "tanishish", recall: "faol eslash", mixed: "kun testi" };
-
-// Where a day stands: its plan, how many stages are behind it, and the one to do next.
-export function dayProgress(state, course, day) {
-  const plan = srs.dayPlan(course, day);
-  const ds = srs.dayState(state, day);
-  const stageIdx = Math.min(ds.stage || 0, Math.max(0, plan.stages.length - 1));
+// Where a lesson stands: its words, whether it is done, how many of its words are learned and mastered.
+export function lessonProgress(state, course, n) {
+  const lesson = srs.lessonAt(course, n);
+  const ids = lesson ? lesson.ids : [];
   return {
-    plan,
-    done: !!ds.done,
-    stageIdx: ds.done ? plan.stages.length : stageIdx,
-    stage: ds.done ? null : plan.stages[stageIdx],
-    title: srs.dayTitle(course, day),
-    words: plan.words.length,
-    blocks: plan.blocks.length,
+    n,
+    lesson,
+    title: lesson ? lesson.title : `${n}-dars`,
+    ids,
+    words: ids.length,
+    done: !!(lesson && srs.lessonState(state, lesson.id).done),
+    status: srs.lessonStatus(state, course, n),
+    learned: ids.filter((id) => srs.isLearned(state, id)).length,
+    mastered: ids.filter((id) => srs.isMastered(state, id)).length,
   };
 }
 
-export const dayLine = (progress) => `${progress.words} so'z · ${progress.blocks} blok · ~${progress.plan.minutes} daqiqa`;
+export const lessonLine = (progress) => `${progress.words} so'z · ~${srs.LESSON_MINUTES} daqiqa`;
+
+// The level's NIKL grade a lesson belongs to, as the course list heads its sections: "1급".
+export const gradeName = (grade) => `${grade}급`;
+
+// Today's goal in words — the lessons finished today against the pace — for the home screen's ring.
+export function todayGoal(state, now = today()) {
+  const goal = (srs.PACES[state.profile.pace] || srs.PACES[srs.DEFAULT_PACE]).words;
+  const learned = (state.act[now] || {}).learned || 0;
+  return { goal, learned, left: Math.max(0, goal - learned), done: learned >= goal };
+}
+
+// Whether a word's recording exists yet. The narrator reads the course as it grows, and a play button that
+// makes no sound reads as a broken app, so a word without one simply has no button.
+export const hasClip = (store, kind, id) => !!store.audio && !!store.course?.byId[id]?.[kind === "sentences" ? "as" : "aw"];
+export const anyClips = (store) => !!store.audio && !!store.course?.words.some((word) => word.aw);
 
 // "hak-gyo" under a word. Only the first form of a word written with alternatives is read out.
 export const reading = (ko) => {
@@ -98,16 +112,6 @@ export function clozePieces(example) {
   return { before: ko.slice(0, at), after: ko.slice(at + cloze.length) };
 }
 
-// "필 (albatta) + 요 (talab) — 필수, 중요하다 so'zlarida ham uchraydi." Hangul, not the hanja: the learner reads
-// the syllable, and the character behind it would only be one more thing to learn.
-export function rootLine(root) {
-  if (!root) return "";
-  const parts = (root.parts || []).filter((part) => part.k && !part.ending).map((part) => `${part.k} (${part.uz})`);
-  const family = (root.family || []).map(([ko]) => ko);
-  if (!parts.length) return root.idea ? `${root.idea}.` : "";
-  return `${parts.join(" + ")}${family.length ? ` — ${family.join(", ")} so'zlarida ham uchraydi.` : "."}`;
-}
-
 // When a word comes back, as the word card says it.
 export function nextReviewText(word, now = today()) {
   if (!word || !word.learned) return "Hali o'rganilmagan";
@@ -118,7 +122,7 @@ export function nextReviewText(word, now = today()) {
   return `Keyingi takrorlash: ${n} kundan keyin`;
 }
 
-// How a day's words are spread over the coming reviews, for the "day finished" screen.
+// How a lesson's words are spread over the coming reviews, for the "lesson finished" screen.
 export function reviewBuckets(state, ids, now = today()) {
   const buckets = [
     { label: "ertaga", n: 0 },
@@ -144,17 +148,19 @@ export function lastDays(state, days = 14, now = today()) {
   });
 }
 
-// Every screen that starts a sitting goes through here, so a stage is always opened the same way.
-export function openStage(navigation, state, course, day) {
-  const progress = dayProgress(state, course, day);
+// Every screen that starts a lesson goes through here, so a lesson is always opened the same way: a new one
+// as a lesson, a finished one as practice over its words.
+export function openLesson(navigation, state, course, n) {
+  const progress = lessonProgress(state, course, n);
+  if (!progress.lesson) return;
   if (progress.done) {
     navigation.navigate("Session", {
-      kind: "quiz", quizType: "mixed", title: `${day}-kun mashqi`,
-      ids: progress.plan.words.filter((id) => srs.isLearned(state, id)), count: 20,
+      kind: "quiz", quizType: "mixed", title: `${n}-dars mashqi`,
+      ids: progress.ids.filter((id) => srs.isLearned(state, id)), count: 15,
     });
     return;
   }
-  navigation.navigate("Session", { kind: "learn", day, stageIdx: progress.stageIdx });
+  navigation.navigate("Session", { kind: "learn", lesson: n });
 }
 
 export function openReview(navigation, mode = "due", extra = {}) {

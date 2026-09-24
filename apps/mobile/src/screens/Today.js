@@ -1,4 +1,4 @@
-// 08 — Bugun. The screen the app opens on: today's day and where it stands, the review waiting, the week,
+// 08 — Bugun. The screen the app opens on: the next lesson and today's goal, the review waiting, the week,
 // and the course as a strip. When yesterday went by without a lesson (31), a card says so first.
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
@@ -10,8 +10,8 @@ import { fmtDayMonth, fmtLong, today } from "@upkorean/shared/dates.js";
 
 import { useStore } from "../store";
 import { FONTS, shadow, useColors } from "../theme";
-import { Button, Col, Feather, Kicker, Pill, RingStat, Row, Screen, Segments, Title, Txt, tapped } from "../ui";
-import { dayLine, dayProgress, firstName, levelInfo, openReview, openStage } from "../model";
+import { Button, Col, Feather, Kicker, RingStat, Row, Screen, Segments, Title, Txt, tapped } from "../ui";
+import { firstName, lessonLine, lessonProgress, levelInfo, openLesson, openReview, todayGoal } from "../model";
 
 const MISSED_KEY = "uk_missed_hidden_on";
 
@@ -35,14 +35,13 @@ export default function Today({ navigation }) {
   const streak = srs.streak(state, now);
   const goal = srs.reviewGoal(state, course, now);
   const week = srs.weekRhythm(state, now);
-  const doneDays = srs.daysDone(state, course);
+  const doneLessons = srs.lessonsDone(state, course);
   const finished = srs.courseDone(state, course);
-  const day = srs.currentDay(state, course);
-  const progress = dayProgress(state, course, day);
+  const current = srs.currentLesson(state, course);
+  const progress = lessonProgress(state, course, current);
+  const daily = todayGoal(state, now);
   const missed = hiddenOn !== now && !(state.act[now] && (state.act[now].learned || state.act[now].reviewed))
     ? srs.missedYesterday(state, course, now) : null;
-  const lastDone = day > 1 ? srs.dayState(state, day - 1) : null;
-  const doneToday = !!(lastDone && lastDone.done && lastDone.doneAt === now);
   // Nothing learned yet: there is nothing to review, and "bugun bajarildi" would praise work not done.
   const fresh = srs.learnedIds(state, course).length === 0;
 
@@ -71,16 +70,16 @@ export default function Today({ navigation }) {
             missed={missed}
             best={state.bestStreak}
             due={goal.due}
-            onDo={() => openStage(navigation, state, course, day)}
+            onDo={() => openLesson(navigation, state, course, current)}
             onSkip={() => { setHiddenOn(now); AsyncStorage.setItem(MISSED_KEY, now).catch(() => {}); }}
           />
         ) : null}
 
         {fresh && !finished ? (
           <View style={{ gap: 4, paddingHorizontal: 4 }}>
-            <Title size={19}>Birinchi kun shu yerdan boshlanadi</Title>
+            <Title size={19}>Birinchi dars shu yerdan boshlanadi</Title>
             <Text style={{ fontFamily: FONTS.body, fontSize: 14, lineHeight: 20, color: c.ink2 }}>
-              Yangi so'zlar bilan tanishing — keyin ular takrorlashga o'tadi va ertadan qaytib keladi.
+              Har bir dars — 10 ta yangi so'z, 7 daqiqa. O'rgangan so'zlaringiz ertadan takrorlashga qaytib keladi.
             </Text>
           </View>
         ) : null}
@@ -90,20 +89,19 @@ export default function Today({ navigation }) {
             <Kicker>{level.ko} · tugadi</Kicker>
             <Title size={23}>Daraja tugatildi</Title>
             <Txt t="bodySm" c="ink2">{course.words.length} so'z o'rganildi. Takrorlash davom etadi.</Txt>
-            <Button title="Keyingi daraja" size="md" onPress={() => navigation.navigate("LevelDone")} />
+            <Button title="Natijani ko'rish" size="md" onPress={() => navigation.navigate("LevelDone")} />
           </View>
         ) : (
-          <DayCard
-            day={day}
-            dayCount={course.dayCount}
+          <LessonCard
             progress={progress}
-            doneToday={doneToday}
-            onOpen={() => navigation.navigate("Day", { day })}
-            onStart={() => openStage(navigation, state, course, day)}
+            daily={daily}
+            course={course}
+            onOpen={() => navigation.navigate("Lesson", { lesson: current })}
+            onStart={() => openLesson(navigation, state, course, current)}
           />
         )}
 
-        {/* On the first day everything below the day card is still empty, so it steps back. */}
+        {/* Before the first lesson everything below its card is still empty, so it steps back. */}
         <View style={{ gap: 14, opacity: fresh ? 0.55 : 1 }}>
         <Row gap={12} align="stretch">
           <View style={{ flex: 1, backgroundColor: c.card, borderRadius: 22, padding: 18, gap: 12 }}>
@@ -149,12 +147,12 @@ export default function Today({ navigation }) {
           <View style={{ flex: 1, gap: 7 }}>
             <Row gap={7} align="baseline">
               <Text style={{ fontFamily: FONTS.bold, fontSize: 14, color: c.ink }}>Kurs</Text>
-              <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: c.ink2 }}>{level.ko} · {doneDays} / {course.dayCount} kun</Text>
+              <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: c.ink2 }}>{level.ko} · {doneLessons} / {course.lessonCount} dars</Text>
             </Row>
             <Segments
               total={20}
-              filled={Math.round((doneDays / Math.max(1, course.dayCount)) * 20)}
-              current={finished ? -1 : Math.min(19, Math.floor(((day - 1) / Math.max(1, course.dayCount)) * 20))}
+              filled={Math.round((doneLessons / Math.max(1, course.lessonCount)) * 20)}
+              current={finished ? -1 : Math.min(19, Math.floor(((current - 1) / Math.max(1, course.lessonCount)) * 20))}
             />
           </View>
           <Feather name="chevron-right" size={16} color={c.ink4} />
@@ -167,62 +165,43 @@ export default function Today({ navigation }) {
 
 const label = (c) => ({ fontFamily: FONTS.bold, fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", color: c.ink4 });
 
-// The day card: the stage just finished, the one to do now (open, green), and the one after it.
-function DayCard({ day, dayCount, progress, doneToday, onOpen, onStart }) {
+// The lesson card: the next lesson, a taste of its words, and today's goal as a ring beside it. Once the goal
+// is met it says so and still offers the next lesson — the goal is a floor, not a ceiling.
+function LessonCard({ progress, daily, course, onOpen, onStart }) {
   const c = useColors();
-  const { plan, stageIdx } = progress;
-  const shown = [stageIdx - 1, stageIdx, stageIdx + 1].filter((i) => i >= 0 && i < plan.stages.length);
+  const words = progress.ids.map((id) => course.byId[id]).filter(Boolean);
+  const shown = Math.min(daily.learned, daily.goal);
   return (
-    <Pressable onPress={onOpen} style={[{ backgroundColor: c.card, borderRadius: 26, padding: 22, gap: 18 }, shadow(c, 2)]}>
+    <Pressable onPress={onOpen} style={[{ backgroundColor: c.card, borderRadius: 26, padding: 22, gap: 16 }, shadow(c, 2)]}>
       <Row justify="space-between" align="flex-start" gap={14}>
         <View style={{ flex: 1, gap: 3 }}>
-          <Kicker>{day}-kun · {doneToday ? "keyingi" : "bugun"}</Kicker>
+          <Kicker>{progress.n}-dars · {daily.done ? "bonus" : "keyingi"}</Kicker>
           <Title size={23}>{progress.title}</Title>
-          <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: c.ink2 }}>{dayLine(progress)}</Text>
+          <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: c.ink2 }}>{lessonLine(progress)}</Text>
         </View>
-        <Pill label={`${Math.min(stageIdx + 1, plan.stages.length)} / ${plan.stages.length}`} tone="green" />
+        <View style={{ alignItems: "center", gap: 4 }}>
+          <RingStat value={shown} total={daily.goal} size={52} />
+          <Text style={{ fontFamily: FONTS.semi, fontSize: 11.5, color: c.ink2 }}>{shown}/{daily.goal} so'z</Text>
+        </View>
       </Row>
-      {doneToday ? (
-        <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2, marginTop: -6 }}>
-          Bugungi kun bajarildi. Vaqtingiz bo'lsa, keyingisini boshlashingiz mumkin.
+      {daily.done ? (
+        <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, lineHeight: 19, color: c.ink2, marginTop: -4 }}>
+          Bugungi maqsad bajarildi. Vaqtingiz bo'lsa, yana bitta dars — 10 ta so'z.
         </Text>
       ) : null}
-      <Col gap={9}>
-        {shown.map((i) => {
-          const stage = plan.stages[i];
-          if (i === stageIdx) {
-            return (
-              <View key={i} style={{ padding: 16, borderRadius: 20, backgroundColor: c.green, gap: 14 }}>
-                <Row gap={12}>
-                  <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" }}>
-                    <Text style={{ fontFamily: FONTS.displayBold, fontSize: 13, color: c.dark ? c.green : c.greenDeep }}>{i + 1}</Text>
-                  </View>
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={{ fontFamily: FONTS.bold, fontSize: 15, color: c.onGreen }}>{stage.label}</Text>
-                    <Text style={{ fontFamily: FONTS.body, fontSize: 12.5, color: c.greenTint }}>{stage.note} · ~{stage.minutes} daq</Text>
-                  </View>
-                </Row>
-                <Button title={i === 0 && !stageIdx ? "Boshlash" : "Davom etish"} kind="inverse" size="md" onPress={onStart} />
-              </View>
-            );
-          }
-          const done = i < stageIdx;
-          return (
-            <Row key={i} gap={12} style={{ paddingVertical: 12, paddingHorizontal: 14, borderRadius: 16, backgroundColor: c.tint }}>
-              <View style={{
-                width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center",
-                backgroundColor: done ? c.green : c.line,
-              }}>
-                {done
-                  ? <Feather name="check" size={14} color={c.onGreen} />
-                  : <Text style={{ fontFamily: FONTS.bold, fontSize: 13, color: c.ink2 }}>{i + 1}</Text>}
-              </View>
-              <Text style={{ flex: 1, fontFamily: FONTS.medium, fontSize: 14, color: c.ink2 }}>{stage.label}</Text>
-              <Text style={{ fontFamily: FONTS.body, fontSize: 12, color: c.ink4 }}>{done ? "bajarildi" : `~${stage.minutes} daq`}</Text>
-            </Row>
-          );
-        })}
-      </Col>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7 }}>
+        {words.slice(0, 5).map((word) => (
+          <View key={word.id} style={{ paddingVertical: 8, paddingHorizontal: 13, borderRadius: 12, backgroundColor: c.tint }}>
+            <Text style={{ fontSize: 15, fontWeight: "700", color: c.ink }}>{word.ko}</Text>
+          </View>
+        ))}
+        {words.length > 5 ? (
+          <View style={{ paddingVertical: 8, paddingHorizontal: 13, borderRadius: 12, backgroundColor: c.tint, justifyContent: "center" }}>
+            <Text style={{ fontFamily: FONTS.semi, fontSize: 13, color: c.ink2 }}>+{words.length - 5}</Text>
+          </View>
+        ) : null}
+      </View>
+      <Button title={daily.done ? "Yana bir dars" : "Boshlash"} kind={daily.done ? "tint" : "primary"} size="md" onPress={onStart} />
     </Pressable>
   );
 }
@@ -238,7 +217,7 @@ function MissedCard({ missed, best, due, onDo, onSkip }) {
         </View>
         <View style={{ flex: 1, gap: 2 }}>
           <Title size={20}>Kecha dars qoldi</Title>
-          <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2 }}>{fmtDayMonth(missed.date)} · {missed.day}-kun bajarilmadi</Text>
+          <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2 }}>{fmtDayMonth(missed.date)} · seriya uzildi</Text>
         </View>
       </Row>
       <Row gap={14} style={{ padding: 16, borderRadius: 18, backgroundColor: c.tint }}>
@@ -258,7 +237,7 @@ function MissedCard({ missed, best, due, onDo, onSkip }) {
         </View>
       </Row>
       <Col gap={10}>
-        <Button title="Kechagi kunni bajarish" size="md" onPress={onDo} />
+        <Button title="Darsni boshlash" size="md" onPress={onDo} />
         <Button title="Keyinroq" size="md" kind="tint" onPress={onSkip} />
       </Col>
     </View>

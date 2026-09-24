@@ -1,4 +1,5 @@
-// 28 — Daraja tugadi. The last day of a level is done: what it took, and the level after it.
+// 28 — Daraja tugadi. The last lesson of a level is done: what it took, and the level after it. A level
+// still being translated has only finished what is published so far, and says so instead.
 import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
@@ -21,8 +22,8 @@ export default function LevelDone({ navigation }) {
   const level = levelInfo(store.levels, course.level);
   const next = nextLevel(store.levels, course.level);
   const learned = srs.learnedIds(state, course).length;
-  const firstDay = Object.values(state.days).map((d) => d.doneAt).filter(Boolean).sort()[0];
-  const spent = firstDay ? diffDays(firstDay, today()) + 1 : course.dayCount;
+  const firstDay = course.lessons.slice(1).map((lesson) => srs.lessonState(state, lesson.id).doneAt).filter(Boolean).sort()[0];
+  const spent = firstDay ? diffDays(firstDay, today()) + 1 : 1;
   const home = () => navigation.navigate("Tabs", { screen: "Today" });
 
   const start = async () => {
@@ -45,9 +46,11 @@ export default function LevelDone({ navigation }) {
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 22, paddingBottom: 26, gap: 16 }} showsVerticalScrollIndicator={false}>
         <View style={{ paddingTop: 40, alignItems: "center", gap: 10 }}>
           <Text style={{ fontSize: 48, fontWeight: "900", letterSpacing: 2, color: "rgba(255,255,255,0.34)" }}>수료</Text>
-          <Title size={31} c="#FFFFFF" style={{ textAlign: "center" }}>{level.ko} darajasi tugadi</Title>
-          <Text style={{ fontFamily: FONTS.body, fontSize: 15, color: c.greenTint, textAlign: "center" }}>
-            {learned} so'z, {course.dayCount} kun.{next ? (next.locked ? ` ${next.ko} tez orada ochiladi.` : ` Endi ${next.ko} ochildi.`) : ""}
+          <Title size={31} c="#FFFFFF" style={{ textAlign: "center" }}>{level.ready ? `${level.ko} darajasi tugadi` : "Barcha ochiq darslar tugadi"}</Title>
+          <Text style={{ fontFamily: FONTS.body, fontSize: 15, lineHeight: 21, color: c.greenTint, textAlign: "center" }}>
+            {learned} so'z, {course.lessonCount} dars.{!level.ready
+              ? ` ${level.ko}ning qolgan ${Math.max(0, level.planned - course.words.length)} so'zi tayyorlanmoqda.`
+              : next ? (next.locked ? ` ${next.ko} tez orada ochiladi.` : ` Endi ${next.ko} ochildi.`) : ""}
           </Text>
         </View>
         <View style={{ gap: 10, marginTop: 6 }}>
@@ -68,7 +71,7 @@ export default function LevelDone({ navigation }) {
             <View style={{ flex: 1, gap: 3 }}>
               <Text style={{ fontFamily: FONTS.bold, fontSize: 15.5, color: c.ink }}>Keyingi daraja — {next.uz}</Text>
               <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: c.ink2 }}>
-                {next.locked ? "Tayyorlanmoqda · " : ""}{next.plannedWords} yangi so'z · {next.plannedDays} kun · {LEVEL_BLURB[next.id].topic}
+                {next.locked ? "Tayyorlanmoqda · " : ""}{next.planned} yangi so'z · {LEVEL_BLURB[next.id].topic}
               </Text>
             </View>
           </Row>

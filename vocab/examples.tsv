@@ -1,0 +1,5 @@
+# Misol gaplar, NIKL kaliti bo'yicha (vocab/uz.tsv dagi kalit). Ustunlar tab bilan ajratiladi:
+# key — NIKL kaliti; ko — koreyscha gap; hl — gapda ajratib ko'rsatiladigan qism (so'zning gapdagi shakli);
+# cloze — "gapni to'ldirish" mashqida yashiriladigan qism (ixtiyoriy); uz — o'zbekcha tarjima, so'z {qavs} ichida;
+# note — ixtiyoriy izoh.
+key	ko	hl	cloze	uz	note

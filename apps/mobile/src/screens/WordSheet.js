@@ -1,5 +1,5 @@
 // 23 — So'z kartasi. Everything known about one word, in a sheet over whatever list it was tapped in.
-// The body scrolls and the two actions stay pinned under it, so a long example or breakdown can never push
+// The body scrolls and the two actions stay pinned under it, so a long example can never push
 // "Mashq qilish" off the screen.
 import { Pressable, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
@@ -10,8 +10,7 @@ import { useStore } from "../store";
 import { FONTS, useColors } from "../theme";
 import { Button, PlayIcon, Row, Sheet, Ticks, tapped } from "../ui";
 import { useNarrator } from "../audio";
-import { highlight, nextReviewText, plainUz } from "../model";
-import { MemoChips } from "./Memo";
+import { gradeName, hasClip, highlight, nextReviewText, plainUz } from "../model";
 
 export const Star = ({ size = 19, color, filled }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? color : "none"}>
@@ -42,10 +41,7 @@ export default function WordSheet({ id, onClose, navigation }) {
   let footer = null;
   if (word && state) {
     const example = course.examples[word.id];
-    const root = course.roots[word.id];
     const memory = srs.wordState(state, word.id);
-    // In the learner's language: "Ieroglifli so'z", not the Korean term for it.
-    const origin = root?.origin ? srs.ORIGINS[root.origin]?.uz : null;
     const flagged = !!memory?.flag;
     const weak = srs.isWeak(state, word.id);
     const learned = srs.isLearned(state, word.id);
@@ -56,11 +52,11 @@ export default function WordSheet({ id, onClose, navigation }) {
           <View style={{ flex: 1, gap: 5 }}>
             <Text style={{ fontSize: 40, lineHeight: 48, fontWeight: "700", color: c.ink }} adjustsFontSizeToFit numberOfLines={1}>{word.ko}</Text>
             <Text style={{ fontFamily: FONTS.body, fontSize: 14, color: c.ink2 }}>
-              {[`${word.day}-kun`, origin].filter(Boolean).join(" · ")}
+              {word.lesson}-dars · {gradeName(word.grade)}
             </Text>
           </View>
           <Row gap={8}>
-            {store.audio ? (
+            {hasClip(store, "words", word.id) ? (
               <Pressable
                 accessibilityLabel="Eshitish"
                 onPress={() => { tapped(); play("words", word.id); }}
@@ -88,7 +84,7 @@ export default function WordSheet({ id, onClose, navigation }) {
             <View style={{ gap: 5, paddingTop: 14, borderTopWidth: 1, borderTopColor: c.tint2 }}>
               <Row justify="space-between">
                 <Text style={label(c)}>Misol</Text>
-                {store.audio ? (
+                {hasClip(store, "sentences", word.id) ? (
                   <Pressable accessibilityLabel="Gapni eshitish" hitSlop={10} onPress={() => { tapped(); play("sentences", word.id); }}>
                     <PlayIcon size={13} color={c.green} />
                   </Pressable>
@@ -98,19 +94,13 @@ export default function WordSheet({ id, onClose, navigation }) {
               <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, lineHeight: 19, color: c.ink2 }}>{plainUz(example.uz)}</Text>
             </View>
           ) : null}
-          {root ? (
-            <View style={{ gap: 8, paddingTop: 14, borderTopWidth: 1, borderTopColor: c.tint2 }}>
-              <Text style={label(c)}>O'zak</Text>
-              <MemoChips root={root} />
-            </View>
-          ) : null}
         </View>
 
         <Row gap={14} style={{ backgroundColor: c.card, borderRadius: 20, paddingVertical: 16, paddingHorizontal: 18 }}>
           <View style={{ flex: 1, gap: 3 }}>
             <Text style={label(c)}>O'zlashtirish</Text>
             <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2 }}>
-              {learned ? nextReviewText(memory) : `${word.day}-kun darsida o'rganiladi`}
+              {learned ? nextReviewText(memory) : `${word.lesson}-darsda o'rganiladi`}
             </Text>
           </View>
           <Ticks level={srs.mastery(state, word.id)} weak={weak} width={7} height={22} gap={4} />
@@ -129,13 +119,13 @@ export default function WordSheet({ id, onClose, navigation }) {
           onPress={() => { srs.flag(state, word.id); store.save(); }}
         />
         <Button
-          title={learned ? "Mashq qilish" : `${word.day}-kunni ochish`}
+          title={learned ? "Mashq qilish" : `${word.lesson}-darsni ochish`}
           size="md"
           style={{ flex: 1 }}
           onPress={() => {
             onClose();
-            if (!learned) { navigation.navigate("Day", { day: word.day }); return; }
-            const ids = (course.days[word.day] || []).map((w) => w.id).filter((wid) => wid !== word.id && srs.isLearned(state, wid));
+            if (!learned) { navigation.navigate("Lesson", { lesson: word.lesson }); return; }
+            const ids = (course.lessons[word.lesson]?.ids || []).filter((wid) => wid !== word.id && srs.isLearned(state, wid));
             navigation.navigate("Session", {
               kind: "quiz", quizType: "mixed", title: `${word.ko} mashqi`, ids: [word.id, ...ids], count: Math.min(10, ids.length + 1),
             });

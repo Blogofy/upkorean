@@ -54,18 +54,15 @@ systemctl restart upkorean
 systemctl is-active upkorean
 ```
 
-**2. Diktor audiosi nomlari.** So'z id'lari darajani oladi (`1-0` → `b-1-0`), audio esa so'z id'si
-bo'yicha beriladi. `audio/` git'da yo'q, shuning uchun serverdagi 2000 ta fayl o'z nomi bilan
-qolgan va ularni bir marta qayta nomlash kerak:
+**2. Eski kitob kursining audiosi.** Kurs NIKL ro'yxatidan noldan qurildi va so'z id'lari endi NIKL
+raqamini oladi (`b-36`). Eski kitobning 2000 ta klipi (`b-1-0.mp3` ko'rinishidagi nomlar) hech bir so'zga
+tegishli emas, server ularni ko'rmaydi ham — faqat joy egallaydi. Bir marta o'chiring:
 
 ```sh
-cd /opt/upkorean
-sudo -u upkorean node scripts/rename-audio.js          # nima o'zgarishini aytadi
-sudo -u upkorean node scripts/rename-audio.js --write  # o'zgartiradi
-systemctl restart upkorean                             # klip sanog'i qaytadan o'qiladi
+ssh root@109.205.177.244
+find /opt/upkorean/audio -name 'b-*-*.mp3' -delete
+systemctl restart upkorean
 ```
-
-Qayta ishga tushirsa ham xavfsiz: darajali nomga ega fayllarga tegilmaydi.
 
 ### Bir martalik: web qismini serverdan tozalash
 
@@ -89,10 +86,12 @@ Hisoblar va progress bazada o'z joyida.
 
 ## Diktor bo'laklari (`audio/`)
 
-45 MB, 2000 ta `.mp3` — kod bilan birga o'zgarmaydi, shuning uchun git'da kuzatilmaydi va har
-yangilashda qayta uzatilmaydi. Ular faqat klip qo'shilganda yoki almashtirilganda alohida ko'chiriladi:
+`audio/words/<so'z id>.mp3` va `audio/sentences/<so'z id>.mp3` — kod bilan birga o'zgarmaydi, shuning
+uchun git'da kuzatilmaydi va har yangilashda qayta uzatilmaydi. Ular kurs bilan birga bosqichma-bosqich
+yoziladi va klip qo'shilganda alohida ko'chiriladi. Server ishga tushganda qaysi so'zning klipi borligini
+o'qiydi, shuning uchun yangi klipdan keyin `systemctl restart upkorean` kerak.
 
-Bu kompyuterda `rsync` yo'q (faqat `ssh` va `scp`), shuning uchun tar quvuri ishlatiladi — 2000 ta
+Bu kompyuterda `rsync` yo'q (faqat `ssh` va `scp`), shuning uchun tar quvuri ishlatiladi — minglab
 kichik fayl uchun `scp -r` dan ancha tez, chunki ulanish bitta:
 
 ```powershell

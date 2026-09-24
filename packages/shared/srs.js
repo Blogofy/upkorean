@@ -5,9 +5,10 @@
 // it is ever wanted again, a second client. The object it works on is the one the server stores and
 // sync.js merges, so its top-level shape is fixed: see TOP in sync.js before adding a key.
 //
-// A word is named "<level>-<day>-<index>", so all three levels share one progress object without ever
-// colliding, and a word carries its level wherever it travels.
+// A word is named "<level>-<nid>" and a lesson "<level>-<n>" (course/levels.js), so all three levels share
+// one progress object without ever colliding, and a word carries its level wherever it travels.
 import { addDays, diffDays, today, weekStart, WEEK_SHORT } from "./dates.js";
+import { parseWordId } from "./course/levels.js";
 
 // The review ladder, in days between repetitions. A new word is seen again after 1, then 3, 7, 16, 35 and
 // 75 days from when it was met — the intervals below are the gaps, not the totals.
@@ -19,25 +20,30 @@ export const MASTER_STEP = 4;
 export const XP_LEVELS = [0, 300, 800, 1500, 2400, 3500, 4600, 5500, 6800, 8300, 10000, 12000, 14200, 16600, 19200];
 export const XP_STEP = 2600;
 
-// How many new words a day asks for. The course itself is fixed — 50 days of 30 — so the pace decides how
-// many calendar days a course day is spread over, which is why a lighter pace means a longer course.
+// How many new words a day asks for: one, two or three lessons. The course is one long path with no
+// calendar in it, so the pace alone decides how long a level takes. Past the goal nothing stops anyone —
+// the next lesson is always one tap away — but the goal is what a learner can keep up for months.
 export const PACES = {
-  15: { id: 15, name: "Yengil", words: 15, minutes: 10, days: 100, desc: "15 so'z · ~10 daqiqa" },
-  30: { id: 30, name: "Muvozanatli", words: 30, minutes: 18, days: 50, desc: "30 so'z · ~18 daqiqa", recommended: true },
-  50: { id: 50, name: "Jadal", words: 50, minutes: 32, days: 30, desc: "50 so'z · ~32 daqiqa" },
+  10: { id: 10, name: "Yengil", words: 10, minutes: 10, desc: "1 dars · ~10 daqiqa" },
+  20: { id: 20, name: "Muvozanatli", words: 20, minutes: 18, desc: "2 dars · ~18 daqiqa", recommended: true },
+  30: { id: 30, name: "Jadal", words: 30, minutes: 27, desc: "3 dars · ~27 daqiqa" },
 };
-export const PACE_IDS = [15, 30, 50];
-export const DEFAULT_PACE = 30;
+export const PACE_IDS = [10, 20, 30];
+export const DEFAULT_PACE = 20;
+// How many days the words left take at a pace — what the pace pickers promise.
+export const daysAtPace = (words, pace) => Math.max(1, Math.ceil(words / (PACES[pace] || PACES[DEFAULT_PACE]).words));
 // A day's review target, by pace. Everything over it is spread across the coming days rather than left to
 // pile up: a queue that grows every day is read as one's own failure, and is why people stop opening the app.
-export const REVIEW_GOALS = { 15: 30, 30: 50, 50: 80 };
+export const REVIEW_GOALS = { 10: 30, 20: 50, 30: 80 };
 export const REVIEW_GOAL_CHOICES = [30, 50, 80];
 // How far ahead the overflow may land. A word pushed further than a week is a word lost anyway.
 export const PUSH_DAYS = 7;
 // Minutes per question, the rate every estimate on every screen is priced at.
 export const ITEM_MINUTES = 0.3;
-// New words per sitting inside one course day, so 30 words become three blocks of ten.
-export const BLOCK_SIZE = 10;
+// Words per lesson. Ten is one sitting of about seven minutes: short enough to fit a bus ride, long enough to
+// leave a mark. vocab/plan.tsv is cut to the same size.
+export const LESSON_SIZE = 10;
+export const LESSON_MINUTES = 7;
 
 export const EX_TYPES = ["mc", "mcr", "type", "listen", "sent", "match"];
 export const TYPE_NAMES = {
@@ -56,12 +62,6 @@ export const GOALS = {
   self: { id: "self", name: "O'zim uchun", desc: "drama, musiqa, sayohat" },
 };
 
-export const ORIGINS = {
-  sino: { ko: "한자어", uz: "Ieroglifli so'z", desc: "xitoycha ieroglif (hanja)lardan yasalgan" },
-  native: { ko: "고유어", uz: "Sof koreyscha", desc: "asl koreyscha so'z" },
-  loan: { ko: "외래어", uz: "O'zlashma", desc: "chet tildan olingan" },
-};
-
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 export const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
 
@@ -75,7 +75,7 @@ export function freshState(profile = {}) {
       ...profile,
     },
     settings: { theme: "system", roman: true, autoAudio: true, speechRate: 1 },
-    words: {}, days: {}, act: {}, notes: {}, log: [], xp: 0, bestStreak: 0,
+    words: {}, lessons: {}, act: {}, notes: {}, log: [], xp: 0, bestStreak: 0,
     typeStats: Object.fromEntries(EX_TYPES.map((t) => [t, { ok: 0, bad: 0 }])),
     firstTry: { ok: 0, total: 0 },
     quizResults: [], reviewSessions: 0,
@@ -94,6 +94,10 @@ export function normalize(state) {
   if (!PACES[state.profile.pace]) state.profile.pace = DEFAULT_PACE;
   if (!Number.isFinite(state.profile.reviewGoal)) state.profile.reviewGoal = REVIEW_GOALS[state.profile.pace];
   for (const type of EX_TYPES) if (!state.typeStats[type]) state.typeStats[type] = { ok: 0, bad: 0 };
+  // The course was rebuilt from nothing (NIKL lessons in place of the book's 50 days of "<level>-<day>-<i>"
+  // words): progress on words and days that no longer exist only weighs the object down.
+  delete state.days;
+  for (const map of [state.words, state.notes]) for (const id of Object.keys(map)) if (!parseWordId(id)) delete map[id];
   return state;
 }
 
@@ -116,8 +120,8 @@ export const mastery = (state, id) => {
   return w && w.learned ? Math.min(5, w.s) : 0;
 };
 
-// ±15% on every interval, so the thirty words met on one day stop coming back as one wave on exactly the
-// same later days. Never sooner than tomorrow.
+// ±15% on every interval, so the words met on one day stop coming back as one wave on exactly the same
+// later days. Never sooner than tomorrow.
 const fuzz = (days) => Math.max(1, Math.round(days * (0.85 + Math.random() * 0.3)));
 
 function setStep(word, step, now) {
@@ -173,7 +177,7 @@ export function settleIntroduced(state, ids, mistakes, now = today()) {
   }
 }
 
-// An exercise answer. mode: "learn" (the day's own work), "review" (the schedule), "quiz" (free practice).
+// An exercise answer. mode: "learn" (a lesson), "review" (the schedule), "quiz" (free practice).
 export function answer(state, id, correct, type, mode, now = today()) {
   const word = touch(state, id);
   // Is this the word's scheduled moment? Read first: it is what stops a word answered several times inside
@@ -195,7 +199,7 @@ export function answer(state, id, correct, type, mode, now = today()) {
     // "recall failed at the moment the schedule chose", and this is no such moment.
     if (mode !== "quiz") { setStep(word, 0, now); word.due = addDays(now, 1); }
   }
-  // A due word cleared inside the day's own work is a review; without this the day's target is unreachable.
+  // A due word cleared inside a lesson is a review; without this the day's review target is unreachable.
   if (mode === "review" || (mode === "learn" && scheduled && !fresh)) activity(state, now).reviewed++;
 }
 
@@ -284,64 +288,37 @@ export function weekRhythm(state, now = today()) {
 }
 
 // ---------- Course structure ----------
-// `course` is a loaded level: { dayCount, days, byId, words, … } — the shape content.js assembles.
+// `course` is a loaded level: { lessons, lessonCount, byId, words, … } — the shape content.js assembles.
+// There are no days in it: the lessons are one path, taken at whatever pace the learner keeps.
 
-// A course day, split into sittings. Ten new words each, and after every block but the last a short recall;
-// the day closes with a mixed test over everything it taught. Three blocks give the six stages the design
-// counts through on the day screen.
-export function dayPlan(course, day) {
-  const words = course.days[day] || [];
-  const ids = words.map((word) => word.id);
-  const blocks = [];
-  for (let at = 0; at < ids.length; at += BLOCK_SIZE) blocks.push(ids.slice(at, at + BLOCK_SIZE));
-  const stages = [];
-  blocks.forEach((block, i) => {
-    stages.push({ kind: "learn", block: i, label: `${i + 1}-blok · tanishish`, note: `${block.length} yangi so'z`, minutes: Math.max(3, Math.round(block.length * 0.5)) });
-    if (i < blocks.length - 1) {
-      stages.push({ kind: "recall", block: i, label: `${i + 1}-blok · faol eslash`, note: `${block.length} so'zni mashq bilan eslash`, minutes: Math.max(2, Math.round(block.length * 0.4)) });
-    } else {
-      stages.push({ kind: "mixed", block: -1, label: "Kun testi", note: "Butun kun bo'yicha aralash test", minutes: 4 });
-    }
-  });
-  return { day, blocks, stages, words: ids, minutes: stages.reduce((sum, stage) => sum + stage.minutes, 0) };
+export const lessonAt = (course, n) => course.lessons[n] || null;
+export const lessonState = (state, id) => state.lessons[id] || { done: false };
+export const lessonDone = (state, course, n) => !!(lessonAt(course, n) && lessonState(state, lessonAt(course, n).id).done);
+
+// The first lesson not done yet — the one the home screen offers. Past the end, the last one.
+export function currentLesson(state, course) {
+  for (let n = 1; n <= course.lessonCount; n++) if (!lessonDone(state, course, n)) return n;
+  return course.lessonCount;
 }
-
-export const dayState = (state, day) => state.days[day] || { stage: 0, done: false };
-export const dayDone = (state, day) => !!dayState(state, day).done;
-
-export function currentDay(state, course) {
-  for (let day = 1; day <= course.dayCount; day++) if (!dayDone(state, day)) return day;
-  return course.dayCount;
-}
-export const daysDone = (state, course) => {
+export const lessonsDone = (state, course) => {
   let n = 0;
-  for (let day = 1; day <= course.dayCount; day++) if (dayDone(state, day)) n++;
+  for (let i = 1; i <= course.lessonCount; i++) if (lessonDone(state, course, i)) n++;
   return n;
 };
-export const courseDone = (state, course) => course.dayCount > 0 && daysDone(state, course) === course.dayCount;
+export const courseDone = (state, course) => course.lessonCount > 0 && lessonsDone(state, course) === course.lessonCount;
+export const lessonLearned = (state, course, n) => (lessonAt(course, n)?.ids || []).filter((id) => isLearned(state, id)).length;
 
-export const dayLearned = (state, course, day) => (course.days[day] || []).filter((word) => isLearned(state, word.id)).length;
-
-// "locked" · "available" · "progress" · "completed" · "mastered". Two days ahead stay open, so nothing
-// stops a learner who has the evening free.
-export function dayStatus(state, course, day) {
-  const ds = dayState(state, day);
-  if (ds.done) return (course.days[day] || []).every((word) => isMastered(state, word.id)) ? "mastered" : "completed";
-  const current = currentDay(state, course);
-  if (day === current || ds.stage > 0) return "progress";
-  if (day <= current + 2) return "available";
-  return "locked";
+// "done" · "mastered" · "current" · "open". Nothing is locked: someone who already knows lesson 12 may
+// take lesson 13, and the order is advice, not a gate.
+export function lessonStatus(state, course, n) {
+  const lesson = lessonAt(course, n);
+  if (!lesson) return "open";
+  if (lessonState(state, lesson.id).done) return lesson.ids.every((id) => isMastered(state, id)) ? "mastered" : "done";
+  return n === currentLesson(state, course) ? "current" : "open";
 }
 
-// A day's name, taken from its own words: the three shortest single-word meanings it teaches.
-export function dayTitle(course, day) {
-  const picks = (course.days[day] || [])
-    .map((word) => String(word.uz).split("/")[0].trim())
-    .filter((uz) => uz && !/\s/.test(uz))
-    .slice(0, 3);
-  const title = picks.join(", ");
-  return title ? title.charAt(0).toUpperCase() + title.slice(1) : `${day}-kun`;
-}
+// Lessons finished today, for the home screen: the daily goal is counted in words, and a lesson is ten.
+export const lessonsToday = (state, now = today()) => Object.values(state.lessons).filter((record) => record.doneAt === now).length;
 
 // ---------- Selectors over what has been learned ----------
 export const learnedIds = (state, course) => Object.keys(state.words).filter((id) => isLearned(state, id) && course.byId[id]);
@@ -448,7 +425,7 @@ export function missedYesterday(state, course, now = today()) {
   const yesterday = addDays(now, -1);
   if (!state.act[yesterday] && !isActive(state.act[yesterday])) {
     const started = Object.keys(state.act).some((key) => key < yesterday && isActive(state.act[key]));
-    if (started) return { date: yesterday, day: currentDay(state, course) };
+    if (started) return { date: yesterday, lesson: currentLesson(state, course) };
   }
   return null;
 }
@@ -481,9 +458,12 @@ export function claimChallenge(state, now = today()) {
 export function achievementList(state, course) {
   const learned = learnedIds(state, course).length;
   const total = course.words.length;
-  const done = daysDone(state, course);
+  const done = lessonsDone(state, course);
+  const all = course.lessonCount;
+  const half = Math.max(1, Math.ceil(all / 2));
+  const first = lessonAt(course, 1);
   return [
-    { id: "first", ko: "첫", title: "Birinchi qadam", desc: "1-kun tugatildi", ok: () => dayDone(state, 1), progress: () => `${dayLearned(state, course, 1)} / ${(course.days[1] || []).length}` },
+    { id: "first", ko: "첫", title: "Birinchi qadam", desc: "Birinchi dars tugatildi", ok: () => lessonDone(state, course, 1), progress: () => `${lessonLearned(state, course, 1)} / ${first ? first.ids.length : 0}` },
     { id: "s3", ko: "삼", title: "3 kunlik seriya", desc: "3 kun ketma-ket", ok: () => state.bestStreak >= 3, progress: () => `${state.bestStreak || 0} / 3` },
     { id: "s10", ko: "십", title: "10 kunlik seriya", desc: "10 kun ketma-ket", ok: () => state.bestStreak >= 10, progress: () => `${state.bestStreak || 0} / 10` },
     { id: "s30", ko: "삼십", title: "30 kunlik seriya", desc: "30 kun ketma-ket", ok: () => state.bestStreak >= 30, progress: () => `${state.bestStreak || 0} / 30` },
@@ -495,13 +475,13 @@ export function achievementList(state, course) {
     { id: "m200", ko: "정복", title: "200 ta o'zlashtirilgan", desc: "200 so'z to'liq o'zlashtirildi", ok: () => masteredIds(state, course).length >= 200, progress: () => `${masteredIds(state, course).length} / 200` },
     { id: "perfect", ko: "완벽", title: "Mukammal mashq", desc: "10+ savolda 100%", ok: () => state.quizResults.some((r) => r.total >= 10 && r.ok === r.total), progress: () => "0 / 1" },
     { id: "rev10", ko: "복습", title: "Takrorlash ustasi", desc: "10 ta takrorlash sessiyasi", ok: () => state.reviewSessions >= 10, progress: () => `${state.reviewSessions} / 10` },
-    { id: "week", ko: "주", title: "Birinchi hafta", desc: "7 kun tugatildi", ok: () => done >= 7, progress: () => `${done} / 7 kun` },
-    { id: "d10", ko: "십일", title: "10 kun", desc: "10 kun tugatildi", ok: () => done >= 10, progress: () => `${done} / 10 kun` },
-    { id: "half", ko: "반", title: "Yarim yo'l", desc: "25 kun tugatildi", ok: () => done >= 25, progress: () => `${done} / 25 kun` },
+    { id: "l10", ko: "열", title: "10 dars", desc: "10 ta dars tugatildi", ok: () => done >= 10, progress: () => `${done} / 10 dars` },
+    { id: "l50", ko: "오십", title: "50 dars", desc: "50 ta dars tugatildi", ok: () => done >= 50, progress: () => `${done} / 50 dars` },
+    { id: "half", ko: "반", title: "Yarim yo'l", desc: `${half} ta dars tugatildi`, ok: () => all > 0 && done >= half, progress: () => `${done} / ${half} dars` },
     { id: "ear", ko: "귀", title: "Yaxshi quloq", desc: "Eshitib topish 90%+ (20+ javob)", ok: () => { const s = state.typeStats.listen; return s.ok + s.bad >= 20 && typeAccuracy(state, "listen") >= 90; }, progress: () => `${typeAccuracy(state, "listen") ?? 0}%` },
     { id: "hand", ko: "손", title: "Hangul yozuvchi", desc: "Yozishda 50 to'g'ri", ok: () => state.typeStats.type.ok >= 50, progress: () => `${state.typeStats.type.ok} / 50` },
-    { id: "perfectDay", ko: "百", title: "100% kun", desc: "Bir kunni xatosiz tugatish", ok: () => Object.values(state.days).some((d) => d.done && d.ok > 0 && !d.bad), progress: () => "0 / 1" },
-    { id: "grad", ko: "졸업", title: "Daraja tamom", desc: `${course.dayCount} kun tugatildi`, ok: () => course.dayCount > 0 && done >= course.dayCount, progress: () => `${done} / ${course.dayCount} kun` },
+    { id: "perfectLesson", ko: "百", title: "Xatosiz dars", desc: "Bir darsni xatosiz tugatish", ok: () => Object.values(state.lessons).some((d) => d.done && d.ok > 0 && !d.bad), progress: () => "0 / 1" },
+    { id: "grad", ko: "졸업", title: "Daraja tamom", desc: `${all} ta dars tugatildi`, ok: () => all > 0 && done >= all, progress: () => `${done} / ${all} dars` },
   ];
 }
 

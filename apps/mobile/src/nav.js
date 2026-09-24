@@ -1,7 +1,7 @@
 // How the screens fit together.
 //
 // Five tabs for the things done every day, and a stack over them for everything that is entered and left:
-// a day, a session, a summary. A session is pushed without the tab bar on purpose — the way out of it is
+// a lesson, a session, a summary. A session is pushed without the tab bar on purpose — the way out of it is
 // its own ✕, which asks first, because a tab tapped by accident mid-question would throw the sitting away.
 // "Ko'proq" is a small stack of its own (results, achievements, profile) so the tab bar stays under it.
 import { NavigationContainer, DefaultTheme, DarkTheme } from "@react-navigation/native";
@@ -23,9 +23,9 @@ import ResetScreen from "./screens/Reset";
 import OnboardingScreen from "./screens/Onboarding";
 import TodayScreen from "./screens/Today";
 import CourseScreen from "./screens/Course";
-import DayScreen from "./screens/Day";
+import LessonScreen from "./screens/Lesson";
 import SessionScreen from "./screens/Session";
-import DayDoneScreen from "./screens/DayDone";
+import LessonDoneScreen from "./screens/LessonDone";
 import ReviewScreen from "./screens/Review";
 import SessionDoneScreen from "./screens/SessionDone";
 import PracticeScreen from "./screens/Practice";
@@ -160,9 +160,9 @@ export function AppFlow() {
         ? <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ animation: "fade" }} />
         : null}
       <Stack.Screen name="Tabs" component={MainTabs} options={{ animation: "fade" }} />
-      <Stack.Screen name="Day" component={DayScreen} />
+      <Stack.Screen name="Lesson" component={LessonScreen} />
       <Stack.Screen name="Session" component={SessionScreen} options={{ ...rise, gestureEnabled: false }} />
-      <Stack.Screen name="DayDone" component={DayDoneScreen} options={{ ...rise, gestureEnabled: false }} />
+      <Stack.Screen name="LessonDone" component={LessonDoneScreen} options={{ ...rise, gestureEnabled: false }} />
       <Stack.Screen name="SessionDone" component={SessionDoneScreen} options={{ ...rise, gestureEnabled: false }} />
       <Stack.Screen name="LevelDone" component={LevelDoneScreen} options={{ ...rise, gestureEnabled: false }} />
       <Stack.Screen name="Practice" component={PracticeScreen} />

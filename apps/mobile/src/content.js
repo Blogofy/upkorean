@@ -1,5 +1,8 @@
 // The course on the device: three levels, each downloaded once and then read from storage.
 //
+// A level is a path of lessons, ten words each (packages/shared/course/model.js builds the same shape on the
+// server); `lessons[n]` is lesson n, so index 0 stays empty.
+//
 // On every start the app asks for the manifest and compares versions. Same version, nothing is
 // downloaded; new version, only the parts that actually changed. Offline, the stored copy is used and no
 // request is made at all — which is the point, because a learner on the bus already has the whole level.
@@ -7,7 +10,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { api } from "./api";
 
-const PARTS = ["vocab", "examples", "roots"];
+const PARTS = ["vocab", "examples"];
 const partKey = (level, part) => `uk_content_${level}_${part}`;
 const VERSION_KEY = (level) => `uk_content_version_${level}`;
 const MANIFEST_KEY = "uk_content_manifest";
@@ -44,21 +47,21 @@ function assemble(levelId, stored, offline) {
   const words = stored.vocab.words || [];
   const byId = Object.fromEntries(words.map((word) => [word.id, word]));
   const examples = Object.fromEntries((stored.examples.examples || []).map((example) => [example.id, example]));
-  // Day numbers start at 1, so index 0 stays empty and days[3] really is day 3.
-  const days = words.reduce((acc, word) => { (acc[word.day] ||= []).push(word); return acc; }, []);
+  const lessons = [null];
+  for (const lesson of stored.vocab.lessons || []) lessons[lesson.n] = { ...lesson, ids: [] };
+  for (const word of words) lessons[word.lesson]?.ids.push(word.id);
   return {
     level: levelId,
     version: stored.vocab.version,
     offline,
-    dayCount: Math.max(0, days.length - 1),
+    lessonCount: lessons.length - 1,
     words,
     byId,
     examples,
-    roots: stored.roots.roots || {},
-    days,
+    lessons,
     word: (id) => byId[id] || null,
     example: (id) => examples[id] || null,
-    dayWords: (day) => days[day] || [],
+    lessonWords: (n) => (lessons[n]?.ids || []).map((id) => byId[id]),
   };
 }
 

@@ -14,7 +14,7 @@ qurilgan. Har bir ekran faylining birinchi qatori dizayndagi raqamini aytadi (`/
 | `src/store.js` | Kim kirgan, progress, daraja; progressni serverga farqi bilan yuboradi, oflayn ishlaydi |
 | `src/theme.js` | Kunduzgi va tungi palitra, shriftlar, o'lchamlar — ranglar faqat shu yerda |
 | `src/ui.js` | Dizayndagi takrorlanadigan bo'laklar: tugma, karta, tanlov, halqa, sheet, dialog… |
-| `src/model.js` | Ekranlar kurs haqida gapiradigan narsalar: kun holati, daraja nomi, misol gapni bo'lish |
+| `src/model.js` | Ekranlar kurs haqida gapiradigan narsalar: dars holati, daraja nomi, misol gapni bo'lish |
 | `src/notify.js` | Kunlik eslatma — telefonda rejalashtiriladigan lokal bildirishnoma |
 | `src/api.js`, `src/content.js`, `src/audio.js` | API, kursni qurilmada saqlash, diktor ovozi |
 | `src/screens/` | Ekranlar |

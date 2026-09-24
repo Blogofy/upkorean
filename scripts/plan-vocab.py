@@ -1,13 +1,13 @@
-# Orders the NIKL graded vocabulary into course days: vocab/nikl/*.xlsx (+ vocab/uz.tsv) -> vocab/plan.tsv,
+# Orders the NIKL graded vocabulary into lessons: vocab/nikl/*.xlsx (+ vocab/uz.tsv) -> vocab/plan.tsv,
 # plus vocab/plan.xlsx, the same table one sheet per level for reading in Excel (not tracked by git).
 #
-# The graded list says which words belong to which grade, but inside a grade it is alphabetical — a day of
+# The graded list says which words belong to which grade, but inside a grade it is alphabetical — a lesson of
 # nothing but 가- words. This puts each grade in the order a learner should meet it:
 #
 #   1. Grade first: 1급 before 2급, and so on. Two grades make one app level (see LEVELS below).
 #   2. Frequency: the words people use most come first. Two corpus counts, each normalised per million,
 #      averaged in log space; a word neither corpus counted sits at its grade's median.
-#   3. Theme: a 10-word block (one sitting in the app, BLOCK_SIZE in packages/shared/srs.js) is built around
+#   3. Theme: a 10-word lesson (one sitting in the app, LESSON_SIZE in packages/shared/srs.js) is built around
 #      one situation — shopping, the weather — from the words that are near the front anyway. Words met
 #      in one scene support each other.
 #   4. No look-alikes together: synonyms, antonyms and same-spelled homonyms are kept GAP blocks apart, and a
@@ -35,13 +35,13 @@ OUT_FILE = ROOT / "vocab" / "plan.tsv"
 XLSX_FILE = ROOT / "vocab" / "plan.xlsx"
 
 LEVELS = {"b": ["1급", "2급"], "m": ["3급", "4급"], "a": ["5급", "6급"]}
-BLOCK = 10       # words per sitting
-PER_DAY = 30     # words per course day: three sittings
+BLOCK = 10       # words per lesson: one sitting in the app
 WINDOW = 40      # how far down the frequency order a block may reach for words of its theme
 THEME_CAP = 7    # theme words per block; the rest follow plain frequency so nothing waits for its theme
 NOUN_CAP = 7
 SEM_CAP = 2
 GAP = 3          # blocks between a word and its synonym, antonym or homonym
+THEME_NAMED = 5  # theme words a block needs before it is named after the theme
 
 
 def parts(key):
@@ -85,10 +85,17 @@ def read_info():
     return info, totals
 
 
+def one_line(value, sep):
+    """A few cells hold two headwords on two lines; the plan is a TSV, one row per line."""
+    return re.sub(r"\s*\n\s*", sep, str(value or "").strip())
+
+
 def read_grades():
     ws = openpyxl.load_workbook(NIKL / "grades.xlsx", read_only=True)["어휘"]
     return [
-        {"grade": r[2], "key": str(r[3]).strip(), "word": form(r[3]), "pos": r[4], "hint": (r[5] or "").strip()}
+        # nid — the list's own running number. It never changes, so it names the word in the app for good,
+        # whatever order the plan puts it in.
+        {"nid": int(r[0]), "grade": r[2], "key": one_line(r[3], "/"), "word": form(one_line(r[3], "/")), "pos": r[4], "hint": one_line(r[5], " ")}
         for r in list(ws.iter_rows(values_only=True))[1:]
         if r[3]
     ]
@@ -180,12 +187,12 @@ def plan_level(words, grades):
         block.sort(key=lambda w: -w["freq"])
         # A block is named after its theme only when the theme is really there.
         shared = Counter(w["theme"] for w in block if w["theme"]).most_common(1)
-        blocks.append((shared[0][0] if shared and shared[0][1] >= 3 else None, block))
+        blocks.append((shared[0][0] if shared and shared[0][1] >= THEME_NAMED else None, block))
     return blocks
 
 
 def write_xlsx(out):
-    columns = [("day", "Kun", 6), ("block", "Blok", 6), ("n", "№", 6), ("grade", "Daraja", 7), ("word", "So'z", 14),
+    columns = [("block", "Dars", 6), ("n", "№", 6), ("grade", "Daraja", 7), ("word", "So'z", 14),
                ("uz", "O'zbekcha", 30), ("pos", "Turkum", 12), ("hint", "Qo'llanish", 22), ("block_theme", "Blok mavzusi", 22),
                ("theme", "So'z mavzusi", 22), ("sem", "Ma'no guruhi", 22), ("freq", "Chastota", 9), ("key", "NIKL kaliti", 16)]
     names = {"b": "초급 (1-2급)", "m": "중급 (3-4급)", "a": "고급 (5-6급)"}
@@ -195,7 +202,7 @@ def write_xlsx(out):
         ws = wb.create_sheet(names[level])
         ws.append([title for _, title, _ in columns])
         for r in (r for r in out if r["level"] == level):
-            ws.append([float(r[k]) if k == "freq" else int(r[k]) if k in ("day", "block", "n") else r[k] for k, _, _ in columns])
+            ws.append([float(r[k]) if k == "freq" else int(r[k]) if k in ("block", "n") else r[k] for k, _, _ in columns])
         for i, (_, _, width) in enumerate(columns):
             ws.column_dimensions[openpyxl.utils.get_column_letter(i + 1)].width = width
         for cell in ws[1]:
@@ -220,8 +227,8 @@ def main():
             for i, w in enumerate(block):
                 n = b * BLOCK + i
                 out.append({
-                    "level": level, "day": n // PER_DAY + 1, "block": b + 1, "n": n + 1,
-                    "grade": w["grade"], "key": w["key"], "word": w["word"], "pos": w["pos"], "hint": w["hint"],
+                    "level": level, "block": b + 1, "n": n + 1,
+                    "nid": w["nid"], "grade": w["grade"], "key": w["key"], "word": w["word"], "pos": w["pos"], "hint": w["hint"],
                     "theme": w["theme"] or "", "block_theme": theme or "", "sem": w["sem"] or "",
                     "freq": f"{w['freq']:.2f}", "uz": uz.get(w["key"], ""),
                 })
@@ -236,7 +243,7 @@ def main():
     for level in LEVELS:
         rows = [r for r in out if r["level"] == level]
         done = sum(bool(r["uz"]) for r in rows)
-        print(f"{level}: {len(rows)} so'z, {rows[-1]['day']} kun, o'zbekcha {done}/{len(rows)}")
+        print(f"{level}: {len(rows)} so'z, {rows[-1]['block']} dars, o'zbekcha {done}/{len(rows)}")
     missing = len(words) - len(out)
     if missing:
         sys.exit(f"{missing} so'z rejaga tushmadi")

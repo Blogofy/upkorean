@@ -60,12 +60,13 @@ bilan solishtirib, kerak bo'lsa "yangilang" ekranini ko'rsatadi.
 
 ## Kurs ma'lumoti
 
-Kurs uch darajaga bo'lingan: `b` (초급), `m` (중급), `a` (고급). Har birining maqsadi — 50 kun, kuniga
-30 so'z. Tizimga kirish shart emas.
+Kurs uch darajaga bo'lingan: `b` (초급 = NIKL 1급+2급), `m` (중급 = 3급+4급), `a` (고급 = 5급+6급). Har bir
+daraja — 10 so'zlik darslardan iborat bitta yo'l; kalendar kunlari yo'q. Daraja tarjimasi tayyor bo'lgan
+darslar bilan bosqichma-bosqich ochiladi (`scripts/build-course.mjs`). Tizimga kirish shart emas.
 
-So'zning id'si o'z joyini aytadi: `"<daraja>-<kun>-<indeks>"`, masalan `"b-1-0"`. Daraja nomga
-kirgani uchun uch darajaning progressi bitta obyektda to'qnashmaydi, diktor audiosi ham shu nom bilan
-turadi (`/media/clip/words/b-1-0.mp3`).
+So'z id'si — daraja va NIKL ro'yxatidagi raqami: `"b-36"` — 것. Raqam hech qachon o'zgarmaydi, shuning
+uchun darslar qayta tartiblansa ham so'zning progressi va audiosi joyida qoladi
+(`/media/clip/words/b-36.mp3`). Dars id'si xuddi shunday: `"b-12"` — 초급 ning 12-darsi.
 
 ### `GET /api/content`
 
@@ -73,44 +74,40 @@ turadi (`/media/clip/words/b-1-0.mp3`).
 {
   "version": "91cdce023148",
   "levels": [
-    { "id": "b", "ko": "초급", "uz": "Boshlang'ich", "days": 30, "words": 1000,
-      "target": { "days": 50, "perDay": 30 }, "locked": false,
+    { "id": "b", "ko": "초급", "uz": "Boshlang'ich", "lessons": 71, "words": 710, "planned": 1835, "locked": false,
       "parts": [
-        { "name": "vocab",    "url": "/api/content/b/vocab?v=91cdce023148",    "bytes": 83332 },
-        { "name": "examples", "url": "/api/content/b/examples?v=91cdce023148", "bytes": 201549 },
-        { "name": "roots",    "url": "/api/content/b/roots?v=91cdce023148",    "bytes": 194448 }
+        { "name": "vocab",    "url": "/api/content/b/vocab?v=91cdce023148",    "bytes": 67288 },
+        { "name": "examples", "url": "/api/content/b/examples?v=91cdce023148", "bytes": 59 }
       ] },
-    { "id": "m", "ko": "중급", "uz": "O'rta", "days": 0, "words": 0,
-      "target": { "days": 50, "perDay": 30 }, "locked": true, "parts": [] },
-    { "id": "a", "ko": "고급", "uz": "Yuqori", "days": 0, "words": 0,
-      "target": { "days": 50, "perDay": 30 }, "locked": true, "parts": [] }
+    { "id": "m", "ko": "중급", "uz": "O'rta", "lessons": 0, "words": 0, "planned": 3855, "locked": true, "parts": [] },
+    { "id": "a", "ko": "고급", "uz": "Yuqori", "lessons": 0, "words": 0, "planned": 4945, "locked": true, "parts": [] }
   ]
 }
 ```
 
-`target` — reja, `days`/`words` — haqiqatda nima borligi. So'zlari hali yozilmagan daraja
-`locked: true` bilan keladi va `parts` bo'sh bo'ladi: ilova uni ko'rsatadi, lekin ochmaydi.
+`planned` — darajaning barcha so'zlari, `lessons`/`words` — hozir ochiq bo'lgani. Hali bitta darsi ham
+tayyor bo'lmagan daraja `locked: true` bilan keladi va `parts` bo'sh: ilova uni ko'rsatadi, lekin ochmaydi.
 
 ### `GET /api/content/:level/:part`
 
-`level` — `b`, `m` yoki `a`; `part` — `vocab`, `examples` yoki `roots`. Qulflangan daraja `404`.
+`level` — `b`, `m` yoki `a`; `part` — `vocab` yoki `examples`. Qulflangan daraja `404`.
 
 ```jsonc
 // vocab
-{ "version": "…", "id": "b", "ko": "초급", "uz": "Boshlang'ich", "days": 30, "count": 1000,
-  "words": [{ "id": "b-1-0", "level": "b", "day": 1, "i": 0, "ko": "필요하다", "uz": "kerak" }, …] }
+{ "version": "…", "id": "b", "ko": "초급", "uz": "Boshlang'ich", "count": 710,
+  "lessons": [{ "id": "b-1", "n": 1, "grade": 1, "theme": "", "title": "Biz, men, old" }, …],
+  "words": [{ "id": "b-36", "level": "b", "lesson": 1, "i": 0, "grade": 1, "ko": "것", "uz": "narsa", "aw": 1 }, …] }
 
 // examples
-{ "version": "…", "id": "b", "count": 1000,
-  "examples": [{ "id": "b-1-0", "w": "필요하다", "ko": "…", "hl": "…", "cloze": "…", "uz": "…" }, …] }
-
-// roots
-{ "version": "…", "id": "b", "roots": { "b-1-0": { "parts": [{ "k": "필", "h": "必", "uz": "albatta" }, …],
-  "idea": "…", "origin": "sino" }, … } }
+{ "version": "…", "id": "b", "count": 710,
+  "examples": [{ "id": "b-36", "w": "것", "ko": "…", "hl": "…", "cloze": "…", "uz": "…" }, …] }
 ```
 
+`aw: 1` — so'zning diktor audiosi bor, `as: 1` — misol gapiniki. Belgisi yo'q so'zda ilova eshitish
+tugmasini ham, eshitib topish savolini ham ko'rsatmaydi.
+
 **Tartib:** ishga tushganda `/api/content` ni so'rang va `version` ni saqlab qo'yganingiz bilan
-solishtiring. Bir xil bo'lsa hech nima yuklamang. O'zgargan bo'lsa kerakli darajaning uchala qismini
+solishtiring. Bir xil bo'lsa hech nima yuklamang. O'zgargan bo'lsa kerakli darajaning ikkala qismini
 `?v=<version>` bilan yuklab, qurilmaga yozing. `?v=` li manzil bir yilga keshlanadi; usiz `ETag`
 bo'yicha `304` qaytadi. Internet bo'lmasa saqlangan nusxa to'liq daraja — hech qanday so'rovsiz
 ishlaydi.
@@ -162,8 +159,8 @@ Demo hisobda bu uchchalasi ham `403`.
 ## Progress
 
 Progress — bitta JSON obyekt: o'rganilgan so'zlar, takrorlash jadvali, XP, kunlik faollik, sozlamalar.
-So'zlar darajali id bilan kalitlanadi (`"b-1-0"`), shuning uchun uchala darajaning progressi
-bitta obyektda yonma-yon turadi.
+So'zlar (`"b-36"`) va darslar (`"b-12"`) darajali id bilan kalitlanadi, shuning uchun uchala
+darajaning progressi bitta obyektda yonma-yon turadi.
 
 ### `GET /api/progress`
 
@@ -221,13 +218,14 @@ Shu haftaning XP'si. Eng yaxshi 5 ta, o'zingiz beshtalikka kirmasangiz oxiriga q
 
 ### `GET /media/clip/:kind/:file`
 
-`kind` — `words` yoki `sentences`; `file` — `<so'z id>.mp3`, masalan `b-1-0.mp3`.
+`kind` — `words` yoki `sentences`; `file` — `<so'z id>.mp3`, masalan `b-36.mp3`.
 
 Tizimga kirish shart: `Authorization: Bearer` sarlavhasi bilan so'ralishi kerak. `expo-audio` manba
 sifatida `{ uri, headers }` qabul qiladi — `apps/mobile/src/api.js` dagi `authHeaders()` shu uchun bor.
 Javob `audio/mpeg`, `Cache-Control: private, max-age=604800`.
 
-`config.clips` yolg'on bo'lsa, serverda hali audio to'liq emas — ilova audio tugmalarini ko'rsatmasin.
+`config.clips` yolg'on bo'lsa, serverda hali bitta ham audio yo'q. Audio kurs bilan birga bosqichma-bosqich
+yoziladi, shuning uchun qaysi so'zda bor ekanini `vocab` dagi `aw`/`as` belgilari aytadi.
 
 ## Hali yo'q narsalar
 

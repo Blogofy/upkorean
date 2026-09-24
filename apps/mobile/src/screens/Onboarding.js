@@ -1,7 +1,7 @@
 // 04–07 — Onboarding: why, how much a day, which level, and the plan that follows from the three.
 //
 // One screen with four steps rather than four routes: the answers belong together until the last button,
-// and "Orqaga" should step back through them, not out of the app. Nothing is saved until "1-kunni boshlash".
+// and "Orqaga" should step back through them, not out of the app. Nothing is saved until "Birinchi darsni boshlash".
 import { useMemo, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 
@@ -36,6 +36,7 @@ export default function Onboarding({ navigation }) {
 
   const level = levels.find((l) => l.id === levelId) || levels[0];
   const paceInfo = srs.PACES[pace];
+  const levelDays = srs.daysAtPace(level.planned, pace);
 
   const finish = async () => {
     if (busy) return;
@@ -57,7 +58,7 @@ export default function Onboarding({ navigation }) {
     state.profile.onboarded = true;
     store.save();
     setBusy(false);
-    // The onboarding route disappears with the flag; the first day is one tap away on the home screen.
+    // The onboarding route disappears with the flag; the first lesson is one tap away on the home screen.
     navigation.reset({ index: 0, routes: [{ name: "Tabs" }] });
   };
 
@@ -79,10 +80,11 @@ export default function Onboarding({ navigation }) {
 
   if (step === 3) {
     const rows = [
-      ["Jami so'z", String(level.plannedWords)],
-      ["Kurs davomiyligi", `${paceInfo.days} kun`],
+      ["Jami so'z", String(level.planned)],
+      ["Darslar", `${Math.ceil(level.planned / srs.LESSON_SIZE)} ta, har biri ${srs.LESSON_SIZE} so'z`],
       ["Kuniga yangi so'z", String(paceInfo.words)],
       ["Kunlik vaqt", `~${paceInfo.minutes} daq`],
+      ["Daraja davomiyligi", `${levelDays} kun`],
     ];
     return (
       <Screen edges={["top", "bottom"]}>
@@ -104,7 +106,7 @@ export default function Onboarding({ navigation }) {
           </View>
           <View style={{ backgroundColor: c.greenTint, borderRadius: 20, padding: 18, gap: 5 }}>
             <Text style={{ fontFamily: FONTS.bold, fontSize: 14, color: c.greenDeep }}>
-              Tugatish sanasi: {fmtDayMonth(addDays(today(), paceInfo.days - 1))}
+              Tugatish sanasi: {fmtDayMonth(addDays(today(), levelDays - 1))}
             </Text>
             <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, lineHeight: 20, color: c.greenDeep }}>
               Har kuni bajarsangiz. Sur'atni istalgan payt Profildan o'zgartirasiz.
@@ -112,7 +114,7 @@ export default function Onboarding({ navigation }) {
           </View>
           <View style={{ flex: 1, minHeight: 12 }} />
           <Col gap={10}>
-            <Button title="1-kunni boshlash" onPress={finish} loading={busy} />
+            <Button title="Birinchi darsni boshlash" onPress={finish} loading={busy} />
             <Button title="Darajani o'zgartirish" kind="clear" onPress={() => setStep(2)} />
           </Col>
         </ScrollView>
@@ -143,7 +145,7 @@ export default function Onboarding({ navigation }) {
               key={id}
               title={srs.PACES[id].name}
               desc={srs.PACES[id].desc}
-              right={`${srs.PACES[id].days} kun`}
+              right={`${srs.daysAtPace(level.planned, id)} kun`}
               selected={pace === id}
               onPress={() => setPace(id)}
             />
@@ -164,7 +166,7 @@ export default function Onboarding({ navigation }) {
     },
     2: {
       title: "Darajangizni tanlang",
-      lead: "Har bir daraja 1500 so'z, 50 kun. Keyinroq Profildan o'zgartirish mumkin.",
+      lead: "So'zlar TOPIK darajalariga mos rasmiy ro'yxatdan olingan. Keyinroq Profildan o'zgartirish mumkin.",
       body: (
         <Col gap={11}>
           {levels.map((l) => (
@@ -173,7 +175,7 @@ export default function Onboarding({ navigation }) {
               titleKo={l.ko}
               title={l.uz}
               desc={LEVEL_BLURB[l.id].desc}
-              note={l.locked ? "Tez kunda · tayyorlanmoqda" : `${l.plannedWords} so'z · ${l.plannedDays} kun`}
+              note={l.locked ? "Tez kunda · tayyorlanmoqda" : `${l.planned} so'z · ${Math.ceil(l.planned / srs.LESSON_SIZE)} dars`}
               selected={levelId === l.id}
               disabled={l.locked}
               align="flex-start"

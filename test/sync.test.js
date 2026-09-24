@@ -15,7 +15,7 @@ const baseState = () => ({
     "1-0": { s: 2, due: "2026-09-18", learned: "2026-09-10", seen: 5, ok: 4, bad: 1, lapses: 0, flag: false, last: "2026-09-14" },
     "1-1": { s: 1, due: "2026-09-17", learned: "2026-09-10", seen: 3, ok: 2, bad: 1, lapses: 0, flag: false, last: "2026-09-14" },
   },
-  days: { 1: { stage: 2, done: false } },
+  lessons: { "b-1": { done: false, ok: 4, bad: 1, min: 3, xp: 20 } },
   act: { "2026-09-15": { learned: 10, reviewed: 5, xp: 60, min: { learn: 5, review: 3 } } },
   typeStats: { mc: { ok: 10, bad: 2 } },
   firstTry: { ok: 8, total: 10 },
@@ -117,19 +117,31 @@ test("a word takes scheduling from the device that practised it last and adds it
   assert.equal(m.bad, 2);
 });
 
-test("new entries from either side survive; a finished day stays finished", () => {
+test("new entries from either side survive; a finished lesson stays finished", () => {
   const base = baseState();
   const phone = clone(base), laptop = clone(base);
   phone.words["3-1"] = { s: 1, seen: 1, learned: "2026-09-16", last: "2026-09-16" };
   laptop.words["4-2"] = { s: 1, seen: 1, learned: "2026-09-16", last: "2026-09-16" };
-  phone.days[1] = { stage: 4, done: true, doneAt: "2026-09-16" };
-  laptop.days[1] = { stage: 3, done: false };
-  laptop.days[2] = { stage: 1, done: false };
+  phone.lessons["b-1"] = { done: true, doneAt: "2026-09-16", ok: 14, bad: 1, min: 8, xp: 70 };
+  laptop.lessons["b-1"] = { done: false, ok: 6, bad: 3, min: 5, xp: 30 };
+  laptop.lessons["b-2"] = { done: false, ok: 2, bad: 0, min: 1, xp: 6 };
   const m = mergeStates(base, phone, laptop);
   assert.ok(m.words["3-1"] && m.words["4-2"] && m.words["1-0"]);
-  assert.equal(m.days[1].done, true);
-  assert.equal(m.days[1].stage, 4);
-  assert.deepEqual(m.days[2], { stage: 1, done: false });
+  assert.equal(m.lessons["b-1"].done, true);
+  assert.equal(m.lessons["b-1"].doneAt, "2026-09-16");
+  assert.equal(m.lessons["b-1"].ok, 4 + 10 + 2, "both devices' answers add up");
+  assert.deepEqual(m.lessons["b-2"], { done: false, ok: 2, bad: 0, min: 1, xp: 6 });
+});
+
+test("the removal of the old course's days syncs like any other change", () => {
+  const base = { ...baseState(), days: { 1: { stage: 2, done: false } } };
+  const cur = clone(base);
+  delete cur.days;
+  const changes = diffState(base, cur);
+  assert.deepEqual(changes, [{ p: ["days"], d: 1 }]);
+  const server = clone(base);
+  assert.equal(applyChanges(server, changes), true, "the server takes it");
+  assert.equal(server.days, undefined);
 });
 
 test("settings changed on one side keep that change; logs and quiz results are united", () => {

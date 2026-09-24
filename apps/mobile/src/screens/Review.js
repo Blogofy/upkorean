@@ -6,7 +6,7 @@ import * as srs from "@upkorean/shared/srs.js";
 import { useStore } from "../store";
 import { FONTS, useColors } from "../theme";
 import { Button, Chip, ListRow, RingStat, Row, Screen, TabHeader, tapped } from "../ui";
-import { openReview } from "../model";
+import { anyClips, openLesson, openReview } from "../model";
 
 export default function Review({ navigation }) {
   const c = useColors();
@@ -39,7 +39,7 @@ export default function Review({ navigation }) {
             <Text style={{ fontFamily: FONTS.body, fontSize: 14, lineHeight: 20, color: c.ink2 }}>
               Bugun o'rgangan so'zlaringiz ertaga shu yerga qaytadi — keyin 3, 7 va 16-kunlarda yana.
             </Text>
-            <Button title="1-kunni boshlash" size="md" style={{ marginTop: 6 }} onPress={() => navigation.navigate("Day", { day: srs.currentDay(state, course) })} />
+            <Button title="Darsni boshlash" size="md" style={{ marginTop: 6 }} onPress={() => openLesson(navigation, state, course, srs.currentLesson(state, course))} />
           </View>
         ) : (
         <View style={{ backgroundColor: c.green, borderRadius: 26, padding: 22, gap: 16 }}>
@@ -95,12 +95,14 @@ export default function Review({ navigation }) {
             <Row gap={8} wrap>
               <Chip square tone="soft" label="Aralash · ~7 daq" onPress={() => navigation.navigate("Session", { kind: "quiz", quizType: "mixed", title: "Aralash mashq", count: 20 })} />
               <Chip square tone="tint" label="Flashcard" onPress={() => navigation.navigate("Session", { kind: "quiz", quizType: "card", title: "Flashcard", count: 20 })} />
-              {store.audio ? <Chip square tone="tint" label="Eshitib topish" onPress={() => navigation.navigate("Session", { kind: "quiz", quizType: "listen", title: "Eshitib topish", count: 20 })} /> : null}
+              {anyClips(store) ? <Chip square tone="tint" label="Eshitib topish" onPress={() => navigation.navigate("Session", { kind: "quiz", quizType: "listen", title: "Eshitib topish", count: 20 })} /> : null}
               <Chip square tone="tint" label="Yozish" onPress={() => navigation.navigate("Session", { kind: "quiz", quizType: "type", title: "Yozish", count: 20 })} />
-              <Chip square tone="tint" label="Gap ichida" onPress={() => navigation.navigate("Session", { kind: "quiz", quizType: "sent", title: "Gap ichida", count: 20, ids: srs.learnedIds(state, course).filter((id) => course.examples[id]?.cloze) })} />
+              {srs.learnedIds(state, course).some((id) => course.examples[id]?.cloze) ? (
+                <Chip square tone="tint" label="Gap ichida" onPress={() => navigation.navigate("Session", { kind: "quiz", quizType: "sent", title: "Gap ichida", count: 20, ids: srs.learnedIds(state, course).filter((id) => course.examples[id]?.cloze) })} />
+              ) : null}
             </Row>
           ) : (
-            <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2 }}>Birinchi kundan keyin mashqlar shu yerda ochiladi.</Text>
+            <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2 }}>Birinchi darsdan keyin mashqlar shu yerda ochiladi.</Text>
           )}
         </View>
       </ScrollView>
