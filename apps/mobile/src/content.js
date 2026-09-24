@@ -1,12 +1,14 @@
 // The course on the device: three levels, each downloaded once and then read from storage.
 //
-// A level is a path of words in parts of ten (packages/shared/course/model.js builds the same shape on the
-// server); `parts[n]` is part n, so index 0 stays empty. A day's lesson is read off this path (srs.todayLesson).
+// A level is a path of words in parts of ten, grouped into lessons of thirty (packages/shared/course/model.js
+// builds the same shape on the server); `parts[n]` is part n and `lessons[n]` lesson n, so index 0 stays empty. A day's lesson is read off this path (srs.todayLesson).
 //
 // On every start the app asks for the manifest and compares versions. Same version, nothing is
 // downloaded; new version, only the parts that actually changed. Offline, the stored copy is used and no
 // request is made at all — which is the point, because a learner on the bus already has the whole level.
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
+import { groupLessons } from "@upkorean/shared/course/model.js";
 
 import { api } from "./api";
 
@@ -50,6 +52,9 @@ function assemble(levelId, stored, offline) {
   const parts = [null];
   for (const part of stored.vocab.parts || []) parts[part.n] = { ...part, ids: [] };
   for (const word of words) parts[word.part]?.ids.push(word.id);
+  // Parts come in order from the server, so the gaps a sparse array could leave never happen.
+  const lessons = groupLessons(parts, byId);
+  for (const word of words) word.lesson = parts[word.part]?.lesson || 1;
   return {
     level: levelId,
     version: stored.vocab.version,
@@ -59,6 +64,8 @@ function assemble(levelId, stored, offline) {
     byId,
     examples,
     parts,
+    lessons,
+    lessonCount: lessons.length - 1,
     word: (id) => byId[id] || null,
     example: (id) => examples[id] || null,
     partWords: (n) => (parts[n]?.ids || []).map((id) => byId[id]),

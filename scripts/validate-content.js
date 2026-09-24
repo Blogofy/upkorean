@@ -54,7 +54,7 @@ for (const level of written) {
   }
 
   const cloze = examples.filter((example) => example.cloze).length;
-  console.log(`${tag}: ${level.partCount} qism, ${level.words.length} so'z, ${examples.length} misol (cloze ${cloze}), audio ${wordClips}/${sentenceClips}`);
+  console.log(`${tag}: ${level.lessonCount} dars (${level.partCount} bo'lim), ${level.words.length} so'z, ${examples.length} misol (cloze ${cloze}), audio ${wordClips}/${sentenceClips}`);
 }
 
 for (const level of LEVELS) {

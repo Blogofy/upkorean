@@ -1,4 +1,4 @@
-// 18 — Dars tugadi. A green screen after a sitting. Mid-lesson it says which part is done and offers the next
+// 18 — Dars tugadi. A green screen after a sitting. Mid-plan it says which section (bo'lim) is done and offers the next
 // one or a break — the lesson carries on from there whenever the learner comes back. Once today's lesson is
 // done it says what the day took and when its words come back, and offers ten more words straight away: the
 // moment someone is most willing to do more is right now.
@@ -31,7 +31,7 @@ export default function LessonDone({ navigation, route }) {
   const goalLine = daily.done
     ? `Bugungi reja bajarildi: ${daily.learned} so'z.`
     : `Bugun ${daily.learned} / ${daily.goal} so'z — rejagacha ${daily.left} ta.`;
-  const title = partOnly ? `${lesson.sittingsDone}-qism tugadi` : outcome.extra ? "Yana 10 so'z o'rganildi" : "Bugungi dars tugadi";
+  const title = partOnly ? `${lesson.sittingsDone}-bo'lim tugadi` : outcome.extra ? "Yana 10 so'z o'rganildi" : "Bugungi dars tugadi";
 
   return (
     <Screen edges={["top", "bottom"]} style={{ backgroundColor: c.green }}>
@@ -43,7 +43,7 @@ export default function LessonDone({ navigation, route }) {
           <Title size={32} c="#FFFFFF" style={{ textAlign: "center" }}>{title}</Title>
           <Text style={{ fontFamily: FONTS.body, fontSize: 15, lineHeight: 21, color: c.greenTint, textAlign: "center" }}>
             {partOnly
-              ? `Bugungi dars · ${lesson.sittingsDone}/${lesson.sittings.length} qism. Tanaffus qilsangiz ham bo'ladi — dars shu joydan davom etadi.`
+              ? `Bugungi dars · ${lesson.sittingsDone}/${lesson.sittings.length} bo'lim. Tanaffus qilsangiz ham bo'ladi — dars shu joydan davom etadi.`
               : `${goalLine}${streak > 1 ? ` Seriya: ${streak} kun.` : ""}`}
           </Text>
         </View>
@@ -91,7 +91,7 @@ export default function LessonDone({ navigation, route }) {
         <Col gap={10}>
           {partOnly ? (
             <Button
-              title={`${lesson.sittingsDone + 1}-qismni boshlash`}
+              title={`${lesson.sittingsDone + 1}-bo'limni boshlash`}
               kind="inverse"
               onPress={() => navigation.replace("Session", { kind: "learn" })}
             />

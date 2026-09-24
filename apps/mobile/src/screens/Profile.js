@@ -47,7 +47,7 @@ export default function Profile({ navigation }) {
     const learned = srs.learnedIds(state, course).map((id) => {
       const word = course.byId[id];
       const memory = state.words[id];
-      return `${word.ko}\t${word.uz}\t${word.part}-qism\t${memory.ok}/${memory.ok + memory.bad}`;
+      return `${word.ko}\t${word.uz}\t${word.lesson}-dars\t${memory.ok}/${memory.ok + memory.bad}`;
     });
     Share.share({
       title: "UpKorean — so'zlarim",

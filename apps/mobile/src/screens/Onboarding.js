@@ -7,6 +7,7 @@ import { ScrollView, Text, View } from "react-native";
 
 import * as srs from "@upkorean/shared/srs.js";
 import { addDays, fmtDayMonth, today } from "@upkorean/shared/dates.js";
+import { LESSON_PARTS } from "@upkorean/shared/course/levels.js";
 
 import { useStore } from "../store";
 import { FONTS, useColors } from "../theme";
@@ -80,7 +81,7 @@ export default function Onboarding({ navigation }) {
   if (step === 3) {
     const rows = [
       ["Jami so'z", String(level.planned)],
-      ["Darslar", `${Math.ceil(level.planned / perDay)} ta, kuniga bittadan`],
+      ["Darslar", `${Math.floor(level.planned / (srs.PART_SIZE * LESSON_PARTS))} ta, har birida ${srs.PART_SIZE * LESSON_PARTS} so'z`],
       ["Kunlik reja", rangeLine(range)],
       ["Kunlik vaqt", `~${dailyMinutes(perDay)} daq`],
       ["Daraja davomiyligi", `~${levelDays} kun`],
@@ -136,7 +137,7 @@ export default function Onboarding({ navigation }) {
     },
     1: {
       title: "Kunlik reja",
-      lead: "Har kuni bitta dars, 10 so'zlik qismlarda — orasida tanaffus qilsa bo'ladi. So'zlarni yaxshi eslab qolsangiz, darsdagi so'z soni o'zi oshib boradi.",
+      lead: "Har kuni yangi so'zlar, 10 tadan bo'limlarda — orasida tanaffus qilsa bo'ladi. So'zlarni yaxshi eslab qolsangiz, reja har hafta 5 so'zga oshib boradi.",
       body: (
         <Col gap={11}>
           <View style={{ backgroundColor: c.card, borderRadius: 20, paddingVertical: 6, paddingHorizontal: 20 }}>

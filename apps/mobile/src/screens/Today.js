@@ -11,7 +11,7 @@ import { fmtDayMonth, fmtLong, today } from "@upkorean/shared/dates.js";
 import { useStore } from "../store";
 import { FONTS, shadow, useColors } from "../theme";
 import { Button, Col, Feather, Kicker, RingStat, Row, Screen, Segments, Title, Txt, tapped } from "../ui";
-import { firstName, levelInfo, openReview, openToday, todayAction, todayGoal, todayLine, todayProgress } from "../model";
+import { firstName, levelInfo, openReview, openToday, todayAction, todayGoal, todayKicker, todayLine, todayProgress } from "../model";
 
 const MISSED_KEY = "uk_missed_hidden_on";
 
@@ -176,12 +176,11 @@ function LessonCard({ progress, daily, course, onStart }) {
   const words = progress.nextIds.map((id) => course.byId[id]).filter(Boolean);
   const shown = Math.min(daily.learned, daily.goal);
   const ring = daily.goal > 0;
-  const sittings = progress.sittings.length;
   return (
     <Pressable onPress={onStart} style={[{ backgroundColor: c.card, borderRadius: 26, padding: 22, gap: 16 }, shadow(c, 2)]}>
       <Row justify="space-between" align="flex-start" gap={14}>
         <View style={{ flex: 1, gap: 3 }}>
-          <Kicker>Bugungi dars{sittings > 1 && !progress.done ? ` · ${progress.sittingsDone}/${sittings} qism` : ""}</Kicker>
+          <Kicker>{todayKicker(progress)}</Kicker>
           <Title size={23}>{progress.done ? "Bajarildi" : `${progress.goal} ta yangi so'z`}</Title>
           <Text style={{ fontFamily: FONTS.body, fontSize: 13, color: c.ink2 }}>{todayLine(progress)}</Text>
         </View>

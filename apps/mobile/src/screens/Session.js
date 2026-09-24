@@ -449,12 +449,12 @@ function Choose({ item, session, onChoose, onConfirm }) {
         {fromKorean ? (
           <>
             <Text style={{ fontSize: 52, lineHeight: 66, fontWeight: "700", color: c.ink }} adjustsFontSizeToFit numberOfLines={1}>{item.ko}</Text>
-            <Text style={{ fontFamily: FONTS.body, fontSize: 15, color: c.ink2 }}>{item.part}-qism</Text>
+            <Text style={{ fontFamily: FONTS.body, fontSize: 15, color: c.ink2 }}>{item.lesson}-dars</Text>
           </>
         ) : (
           <>
             <Title size={30} style={{ textAlign: "center" }}>{item.uz}</Title>
-            <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2 }}>{item.part}-qism</Text>
+            <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2 }}>{item.lesson}-dars</Text>
           </>
         )}
         {fromKorean && hasClip(store, "words", item.id) ? (
@@ -515,7 +515,7 @@ function Typing({ item, session, typed, hint, onHint, onSkip }) {
       <View style={{ backgroundColor: c.card, borderRadius: 26, paddingVertical: 30, paddingHorizontal: 22, alignItems: "center", gap: 8 }}>
         <Text style={eyebrow(c)}>Koreyscha yozing</Text>
         <Title size={30} style={{ textAlign: "center" }}>{item.uz}</Title>
-        <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2 }}>{item.syllables} bo'g'in · {item.part}-qism</Text>
+        <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, color: c.ink2 }}>{item.syllables} bo'g'in · {item.lesson}-dars</Text>
       </View>
       <View style={{
         paddingVertical: 18, paddingHorizontal: 20, borderRadius: 20, backgroundColor: c.card, borderWidth: 2,

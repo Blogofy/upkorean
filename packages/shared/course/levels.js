@@ -13,7 +13,12 @@
 //
 // The words themselves come in parts of PART_SIZE (vocab/plan.tsv cuts them so): one sitting, one theme. A
 // day's lesson is the next so many words of that path, taken a part at a time with a break allowed between.
+//
+// Parts are grouped into lessons of LESSON_PARTS — thirty words, the course's unit on the course screen —
+// never across a grade, and a lone part left at a grade's end joins the lesson before it. Inside a lesson
+// the parts are its sections (bo'lim): one sitting each.
 export const PART_SIZE = 10;
+export const LESSON_PARTS = 3;
 export const DAILY_STEP = 5;
 export const LEVELS = [
   { id: "b", ko: "초급", uz: "Boshlang'ich", grades: [1, 2], planned: 1835, daily: { from: 20, to: 30 } },

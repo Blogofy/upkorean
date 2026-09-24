@@ -1,7 +1,7 @@
 # UpKorean
 
 Koreys tili so'z boyligi ilovasi. Uch daraja — 초급, 중급, 고급 — Koreya Milliy til institutining (NIKL)
-TOPIK darajalariga mos rasmiy ro'yxatidan 10 635 so'z. Kuniga bitta dars, 10 so'zlik qismlarda — orasida
+TOPIK darajalariga mos rasmiy ro'yxatidan 10 635 so'z. Kurs 30 so'zlik darslardan iborat (초급 — 61 dars), har bir dars 10 so'zlik 3 bo'lim — orasida
 tanaffus qilsa bo'ladi. Dars hajmi natijaga qarab o'zgaradi: 초급 20 → 30, 중급 35 → 50, 고급 50 so'z
 (reja bajarilib, takrorlashda 80% dan yaxshi eslab qolinsa har hafta +5, 70% dan tushsa −5; 초급 ~65 kun). Dars bajarilgan kun seriyaga qo'shiladi.
 So'z 1, 3, 7, 14 va 30-kunlari takrorlanadi; takrorlashda ikki marta yozib to'g'ri topilgan so'z esa muddatidan

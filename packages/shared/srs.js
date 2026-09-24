@@ -389,8 +389,9 @@ export function weekRhythm(state, now = today()) {
 }
 
 // ---------- Course structure ----------
-// `course` is a loaded level: { parts, partCount, byId, words, … } — the shape content.js assembles. The words
-// are one path in parts of ten. A day's lesson is not stored anywhere but read off the path (todayLesson).
+// `course` is a loaded level: { parts, partCount, lessons, lessonCount, byId, words, … } — the shape content.js
+// assembles. The words are one path in parts of ten, grouped into lessons of thirty (course/model.js). A day's
+// plan is not stored anywhere but read off the path (todayLesson).
 
 export const partAt = (course, n) => course.parts[n] || null;
 export const partLearned = (state, course, n) => (partAt(course, n)?.ids || []).filter((id) => isLearned(state, id)).length;
@@ -412,6 +413,18 @@ export function partStatus(state, course, n) {
   if (!part) return "open";
   if (partDone(state, course, n)) return part.ids.every((id) => isMastered(state, id)) ? "mastered" : "done";
   return n === currentPart(state, course) ? "current" : "open";
+}
+
+// Lessons, as the course screen shows the path: thirty words each, their parts the sections inside.
+export const lessonAt = (course, n) => course.lessons?.[n] || null;
+export function currentLesson(state, course) {
+  return partAt(course, currentPart(state, course))?.lesson || course.lessonCount || 1;
+}
+export function lessonStatus(state, course, n) {
+  const lesson = lessonAt(course, n);
+  if (!lesson) return "open";
+  if (lesson.ids.every((id) => isLearned(state, id))) return lesson.ids.every((id) => isMastered(state, id)) ? "mastered" : "done";
+  return n === currentLesson(state, course) ? "current" : "open";
 }
 
 // Today's lesson: the words met today, in path order, then the next ones not met yet, up to the day's goal —
@@ -654,7 +667,7 @@ export function achievementList(state, course) {
     { id: "half", ko: "반", title: "Yarim yo'l", desc: `Darajaning yarmi — ${half} so'z`, ok: () => total > 0 && learned >= half, progress: () => `${learned} / ${half}` },
     { id: "ear", ko: "귀", title: "Yaxshi quloq", desc: "Eshitib topish 90%+ (20+ javob)", ok: () => { const s = state.typeStats.listen; return s.ok + s.bad >= 20 && typeAccuracy(state, "listen") >= 90; }, progress: () => `${typeAccuracy(state, "listen") ?? 0}%` },
     { id: "hand", ko: "손", title: "Hangul yozuvchi", desc: "Yozishda 50 to'g'ri", ok: () => state.typeStats.type.ok >= 50, progress: () => `${state.typeStats.type.ok} / 50` },
-    { id: "flawless", ko: "百", title: "Xatosiz o'tirish", desc: "10 so'zlik qismni xatosiz o'tish", ok: () => Object.values(state.act).some((act) => act.flawless > 0), progress: () => "0 / 1" },
+    { id: "flawless", ko: "百", title: "Xatosiz o'tirish", desc: "10 so'zlik bo'limni xatosiz o'tish", ok: () => Object.values(state.act).some((act) => act.flawless > 0), progress: () => "0 / 1" },
     { id: "grad", ko: "졸업", title: "Daraja tamom", desc: "Darajaning barcha so'zlari o'zlashtirildi", ok: () => total > 0 && mastered >= total, progress: () => `${mastered} / ${total}` },
   ];
 }

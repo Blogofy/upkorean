@@ -1,7 +1,7 @@
 # So'z rejasi (NIKL)
 
 Kursning so'z bazasi: Koreya Milliy til instituti (국립국어원, NIKL) ning rasmiy darajali ro'yxati —
-1급 dan 6급 gacha 10 635 so'z, TOPIK darajalari bilan bir xil. Reja 10 so'zlik qismlardan iborat bitta yo'l;
+1급 dan 6급 gacha 10 635 so'z, TOPIK darajalari bilan bir xil. Reja 10 so'zlik qismlardan iborat bitta yo'l (ilovada qism — bo'lim, 3 tasi bitta 30 so'zlik dars);
 ilovadagi kunlik dars shu yo'lning keyingi so'zlaridan tuziladi, hajmi esa natijaga qarab o'zgaradi
 (`packages/shared/course/levels.js` dagi `daily`). `npm run build:course` tarjimasi tayyor qismlarni
 `packages/shared/course/<daraja>/` ga yig'adi.

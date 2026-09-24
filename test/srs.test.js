@@ -215,6 +215,36 @@ test("a part without a theme is named after its shortest meanings", () => {
   assert.equal(named.parts[2].title, "Odam, narsa, qilmoq");
 });
 
+test("parts are grouped into lessons of three, never across a grade, a lone last part joining the one before", () => {
+  const vocab = [...parts(7).map((p) => ({ ...p, g: 1 })), ...parts(4).map((p, i) => ({ ...p, g: 2, w: p.w.map(([nid, ko, uz]) => [nid + 1000 + i * 10, ko, uz]) }))];
+  const level = buildLevel("b", { vocab });
+  assert.deepEqual(level.lessons.slice(1).map((lesson) => lesson.parts), [[1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]]);
+  assert.equal(level.lessonCount, 3);
+  assert.equal(level.lessons[2].ids.length, 40, "part 7 is the lone part at 1급's end");
+  assert.equal(level.lessons[3].grade, 2, "2급 starts a lesson of its own");
+  const small = buildLevel("b", { vocab: [{ g: 1, t: "", w: [[1, "것", "narsa"]] }] });
+  assert.deepEqual(small.lessons[1].parts, [1], "a level of one part is one lesson");
+  assert.equal(level.byId["b-61"].lesson, 2);
+  assert.deepEqual([level.parts[5].lesson, level.parts[5].section], [2, 2]);
+  const named = buildLevel("b", { vocab: [
+    { g: 1, t: "", w: [[1, "것", "narsa"], [2, "…다가", "…ib"], [3, "사람", "odam, inson"], [4, "좋다", "yaxshi bo'lmoq"], [5, "집", "uy"]] },
+    { g: 1, t: "Xarid", w: [[6, "가게", "do'kon"]] },
+  ] });
+  assert.equal(named.lessons[1].title, "Narsa, odam, uy", "the first one-word meanings, in path order");
+  assert.deepEqual(named.lessons[1].themes, ["Xarid"]);
+});
+
+test("a lesson is current while it holds the next word, done once all its words are met", () => {
+  const state = fresh();
+  assert.equal(course.lessonCount, 2);
+  assert.equal(srs.currentLesson(state, course), 1);
+  assert.equal(srs.lessonStatus(state, course, 1), "current");
+  assert.equal(srs.lessonStatus(state, course, 2), "open");
+  for (const id of [...ids(1), ...ids(2), ...ids(3)]) state.words[id] = { s: 1, due: "2026-10-02", learned: "2026-10-01", seen: 2, ok: 2, bad: 0, lapses: 0 };
+  assert.equal(srs.lessonStatus(state, course, 1), "done");
+  assert.equal(srs.currentLesson(state, course), 2);
+});
+
 test("the overflow above the day's goal is spread over the coming days", () => {
   const state = fresh();
   const now = "2026-09-22";

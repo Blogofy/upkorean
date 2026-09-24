@@ -61,7 +61,7 @@ bilan solishtirib, kerak bo'lsa "yangilang" ekranini ko'rsatadi.
 ## Kurs ma'lumoti
 
 Kurs uch darajaga bo'lingan: `b` (초급 = NIKL 1급+2급), `m` (중급 = 3급+4급), `a` (고급 = 5급+6급). Har bir
-daraja — 10 so'zlik qismlardan iborat bitta yo'l. Kunlik dars shu yo'lning keyingi so'zlaridan qurilmada
+daraja — 10 so'zlik qismlardan iborat bitta yo'l; ilova ularni 3 tadan 30 so'zlik darslarga guruhlaydi (`groupLessons`). Kunlik dars shu yo'lning keyingi so'zlaridan qurilmada
 tuziladi (`srs.todayLesson`), hajmi o'quvchining natijasiga qarab o'zgaradi. Daraja tarjimasi tayyor bo'lgan
 qismlar bilan bosqichma-bosqich ochiladi (`scripts/build-course.mjs`). Tizimga kirish shart emas.
 

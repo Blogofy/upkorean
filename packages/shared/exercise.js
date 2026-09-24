@@ -64,7 +64,7 @@ function chooseType(course, id, weights, opts) {
 // One question, with its options already drawn.
 export function makeItem(course, type, id) {
   const word = course.byId[id];
-  const item = { type, id, ko: word.ko, uz: word.uz, part: word.part };
+  const item = { type, id, ko: word.ko, uz: word.uz, part: word.part, lesson: word.lesson };
   // Hearing a word is answered with its meaning. Offering the Korean instead would let anyone pick the
   // shape that sounds like what was just said, without knowing what it means.
   if (type === "mc" || type === "listen") {
