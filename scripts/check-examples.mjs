@@ -99,7 +99,7 @@ function verbForms(stem, adjective) {
 // What may follow a form inside one word of a sentence: particles after a noun, endings after a verb stem.
 // Anything else after 비 or 가 is a different word (비빔밥, 가방) that a longer form should have found.
 const PARTICLE = new Set("해했할합이가은는을를에도만의와과하한으로예부까보처마쯤랑께들야이".split(""));
-const ENDING = new Set("던질이까져졌으요고서세시셨지면며러려자기게어아았었겠네나니다더든잖죠습십는은을도야라".split(""));
+const ENDING = new Set("던질이까져졌셔으요고서세시셨지면며러려자기게어아았었겠네나니다더든잖죠습십는은을도야라".split(""));
 // A few nouns spelled like a common verb form: 가요 (a song) is almost always 가다 + 요.
 const RARE = new Set(["가요"]);
 // Grammar that is not a word of the list (-고 싶다, -ㄹ 수 있다) and the names the sentences use.
@@ -204,22 +204,35 @@ const once = words.filter((w) => count(w) === 1).length;
 console.log(`Keyingi gaplarda: hech qaytmagan ${never}, bir marta ${once}, 2+ marta ${words.length - never - once} (jami ${words.length} so'z)`);
 
 // --menu N: what lesson N's sentences should bring back. Counted over lessons before N only, since the
-// sentences are written in order. First the words of the lesson before (every one of them should come
-// back), then words met 3, 7, 14 and 30 lessons earlier that have come back fewer than twice, then any
-// older word that has never come back.
+// sentences are written in order. First every word of the lesson before, then older words that have never
+// come back, then words that came back once but not in the last few lessons — each list split by part of
+// speech, so a sentence can be put together from it.
 const menu = Number(arg("menu", 0));
 if (menu) {
   const before = new Map();
-  for (const row of rows.filter((r) => r.lesson < menu)) for (const w of row.review) before.set(w.id, (before.get(w.id) || 0) + 1);
-  const seen = (w) => before.get(w.id) || 0;
-  const show = (ws) => ws.map((w) => `${w.ko}=${String(w.uz).split(/[;,(]/)[0].trim()}[${seen(w)}]`).join("  ");
-  const at = (n) => (course.lessons[n]?.ids || []).map((id) => course.byId[id]);
-  console.log(`\n== ${menu}-dars uchun takror ro'yxati ([n] — shu paytgacha necha marta qaytgan)`);
-  if (menu > 1) console.log(`Kecha (${menu - 1}-dars): ${show(at(menu - 1))}`);
-  for (const gap of [3, 7, 14, 30]) {
-    const n = menu - gap;
-    if (n >= 1) console.log(`${gap} dars oldin (${n}): ${show(at(n).filter((w) => seen(w) < 2))}`);
+  const last = new Map();
+  for (const row of rows.filter((r) => r.lesson < menu)) {
+    for (const w of row.review) {
+      before.set(w.id, (before.get(w.id) || 0) + 1);
+      last.set(w.id, row.lesson);
+    }
   }
-  const old = course.words.filter((w) => w.lesson < menu - 1 && seen(w) === 0).slice(0, 40);
-  if (old.length) console.log(`Hech qaytmagan eski so'zlar: ${show(old)}`);
+  const seen = (w) => before.get(w.id) || 0;
+  const kind = (w) => {
+    const pos = posOf.get(w.id) || "";
+    return /형용사/.test(pos) ? "sifat" : /동사/.test(pos) ? "fe'l" : /명사|대명사|수사/.test(pos) ? "ot" : "boshqa";
+  };
+  const show = (ws) => ["ot", "fe'l", "sifat", "boshqa"].map((k) => {
+    const some = ws.filter((w) => kind(w) === k);
+    return some.length ? `  ${k}: ${some.map((w) => `${w.ko}=${String(w.uz).split(/[;,(]/)[0].trim()}[${seen(w)}]`).join("  ")}` : "";
+  }).filter(Boolean).join("\n");
+  const at = (n) => (course.lessons[n]?.ids || []).map((id) => course.byId[id]);
+  const cap = Number(arg("cap", 90));
+  console.log(`\n== ${menu}-dars uchun takror ro'yxati ([n] — shu paytgacha necha marta qaytgan)`);
+  if (menu > 1) console.log(`Kecha (${menu - 1}-dars):\n${show(at(menu - 1))}`);
+  const older = course.words.filter((w) => w.lesson < menu - 1);
+  const never = older.filter((w) => seen(w) === 0).sort((a, b) => b.lesson - a.lesson);
+  console.log(`Hech qaytmagan, yangilari oldin (${never.length}):\n${show(never.slice(0, cap))}`);
+  const once = older.filter((w) => seen(w) === 1 && last.get(w.id) <= menu - 4).sort((a, b) => last.get(a.id) - last.get(b.id));
+  console.log(`Bir marta qaytgan, eng uzoq qaytmaganlari oldin (${once.length}):\n${show(once.slice(0, cap))}`);
 }
