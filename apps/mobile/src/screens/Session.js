@@ -16,7 +16,7 @@ import {
   Bar, Button, Chip, Dialog, Empty, FadeIn, Feather, Option, PlayIcon, Radio, Row, Screen, SessionTop, Title, tapped,
 } from "../ui";
 import { useNarrator, useStopAudioOnLeave } from "../audio";
-import { clozePieces, hasClip, plainUz, uzPieces } from "../model";
+import { SLOW_SENTENCE, clozePieces, hasClip, plainUz, uzPieces } from "../model";
 import { Sentence } from "./WordSheet";
 
 const TIME_LIMIT_MS = 20000;
@@ -281,14 +281,24 @@ function Intro({ item }) {
             <Text style={{ fontFamily: FONTS.body, fontSize: 13.5, lineHeight: 19, color: c.ink2 }}>{plainUz(example.uz)}</Text>
           </View>
           {hasClip(store, "sentences", item.id) ? (
-            <Pressable
-              accessibilityLabel="Gapni eshitish"
-              hitSlop={8}
-              onPress={() => { tapped(); play("sentences", item.id); }}
-              style={({ pressed }) => [{ marginTop: 6, width: 44, height: 44, borderRadius: 22, backgroundColor: c.greenTint, alignItems: "center", justifyContent: "center", transform: [{ scale: pressed ? 0.94 : 1 }] }]}
-            >
-              <PlayIcon size={14} color={c.greenDeep} />
-            </Pressable>
+            <View style={{ marginTop: 6, alignItems: "center", gap: 8 }}>
+              <Pressable
+                accessibilityLabel="Gapni eshitish"
+                hitSlop={8}
+                onPress={() => { tapped(); play("sentences", item.id); }}
+                style={({ pressed }) => [{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.greenTint, alignItems: "center", justifyContent: "center", transform: [{ scale: pressed ? 0.94 : 1 }] }]}
+              >
+                <PlayIcon size={14} color={c.greenDeep} />
+              </Pressable>
+              <Pressable
+                accessibilityLabel="Gapni sekin eshitish"
+                hitSlop={8}
+                onPress={() => { tapped(); play("sentences", item.id, { rate: SLOW_SENTENCE }); }}
+                style={({ pressed }) => [{ paddingVertical: 5, paddingHorizontal: 10, borderRadius: 99, backgroundColor: c.greenTint, transform: [{ scale: pressed ? 0.94 : 1 }] }]}
+              >
+                <Text style={{ fontFamily: FONTS.bold, fontSize: 12, color: c.greenDeep }}>Sekin</Text>
+              </Pressable>
+            </View>
           ) : null}
         </View>
       ) : null}

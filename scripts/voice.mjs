@@ -5,6 +5,7 @@
 //   npm run voice -- words --limit 10       only the first ten of those, to hear the voice before paying for all
 //   npm run voice -- words --only b-36,b-709 --force   record these again, over the old clips
 //   npm run voice -- sentences --level b    the example sentences
+//   npm run voice -- sentences --grade 1    only the sentences of NIKL grade 1
 //   npm run voice -- words --dry            say how many characters it would cost, record nothing
 //
 // A clip that exists is never asked for again, so a run that stops — no credit left, no network — carries on
@@ -37,6 +38,7 @@ const limit = Number(option("limit", 0)) || Infinity;
 const only = option("only", "") ? new Set(option("only", "").split(",").map((id) => id.trim())) : null;
 const force = flag("force");
 const dry = flag("dry");
+const grade = Number(option("grade", 0)) || null;
 
 const KEY = process.env.ELEVENLABS_API_KEY;
 const VOICE = process.env.ELEVENLABS_VOICE_ID;
@@ -49,6 +51,9 @@ const SETTINGS = {
   use_speaker_boost: true,
   speed: Number(process.env.ELEVENLABS_SPEED || 0.9),
 };
+// The first lessons are read slower for someone who has just begun; after them, at SETTINGS.speed.
+const SLOW_LESSONS = Number(process.env.ELEVENLABS_SLOW_LESSONS || 0);
+const SLOW_SPEED = Number(process.env.ELEVENLABS_SLOW_SPEED || 0.7);
 const SEED = 7;
 const PARALLEL = 2;
 
@@ -64,9 +69,14 @@ if (!course?.words.length) {
 const jobs = course.words
   .map((word) => ({
     id: word.id,
+    lesson: word.lesson,
+    grade: course.lessons[word.lesson]?.grade,
     text: kind === "words" ? wordText(word.ko) : course.examples[word.id]?.ko?.trim(),
   }))
-  .filter((job) => job.text && (!only || only.has(job.id)));
+  .filter((job) => job.text && (!only || only.has(job.id)) && (!grade || job.grade === grade));
+const lessonOf = new Map(jobs.map((job) => [job.id, job.lesson]));
+// A text shared by several words is read at the pace of the earliest lesson that uses it.
+const speedOf = (ids) => (Math.min(...ids.map((id) => lessonOf.get(id))) <= SLOW_LESSONS ? SLOW_SPEED : SETTINGS.speed);
 
 const dir = path.join(ROOT, "audio", kind);
 fs.mkdirSync(dir, { recursive: true });
@@ -103,12 +113,12 @@ await showBalance();
 class Stop extends Error {}
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function speak(text) {
+async function speak(text, speed) {
   for (let attempt = 1; ; attempt++) {
     const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE}?output_format=mp3_44100_128`, {
       method: "POST",
       headers: { "xi-api-key": KEY, "content-type": "application/json", accept: "audio/mpeg" },
-      body: JSON.stringify({ text, model_id: MODEL, voice_settings: SETTINGS, seed: SEED }),
+      body: JSON.stringify({ text, model_id: MODEL, voice_settings: { ...SETTINGS, speed }, seed: SEED }),
     }).catch((error) => ({ ok: false, status: 0, text: async () => error.message }));
     if (res.ok) return Buffer.from(await res.arrayBuffer());
     const body = await res.text();
@@ -131,7 +141,7 @@ async function worker() {
   while (queue.length && !stopped) {
     const [text, ids] = queue.shift();
     try {
-      const audio = await speak(text);
+      const audio = await speak(text, speedOf(ids));
       // Written aside and renamed, so a clip cut off halfway is never mistaken for a finished one.
       const tmp = `${fileOf(ids[0])}.part`;
       fs.writeFileSync(tmp, audio);

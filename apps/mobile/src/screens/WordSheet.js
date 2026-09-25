@@ -10,7 +10,7 @@ import { useStore } from "../store";
 import { FONTS, useColors } from "../theme";
 import { Button, PlayIcon, Row, Sheet, Ticks, tapped } from "../ui";
 import { useNarrator } from "../audio";
-import { gradeName, hasClip, highlight, nextReviewText, plainUz } from "../model";
+import { SLOW_SENTENCE, gradeName, hasClip, highlight, nextReviewText, plainUz } from "../model";
 
 export const Star = ({ size = 19, color, filled }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? color : "none"}>
@@ -85,9 +85,14 @@ export default function WordSheet({ id, onClose, navigation }) {
               <Row justify="space-between">
                 <Text style={label(c)}>Misol</Text>
                 {hasClip(store, "sentences", word.id) ? (
-                  <Pressable accessibilityLabel="Gapni eshitish" hitSlop={10} onPress={() => { tapped(); play("sentences", word.id); }}>
-                    <PlayIcon size={13} color={c.green} />
-                  </Pressable>
+                  <Row gap={16}>
+                    <Pressable accessibilityLabel="Gapni sekin eshitish" hitSlop={10} onPress={() => { tapped(); play("sentences", word.id, { rate: SLOW_SENTENCE }); }}>
+                      <Text style={{ fontFamily: FONTS.bold, fontSize: 12.5, color: c.green }}>Sekin</Text>
+                    </Pressable>
+                    <Pressable accessibilityLabel="Gapni eshitish" hitSlop={10} onPress={() => { tapped(); play("sentences", word.id); }}>
+                      <PlayIcon size={13} color={c.green} />
+                    </Pressable>
+                  </Row>
                 ) : null}
               </Row>
               <Sentence text={example.ko} part={example.hl} size={16} />

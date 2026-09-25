@@ -119,6 +119,9 @@ export const dailyMinutes = (words) => Math.round(words / srs.PART_SIZE) * srs.P
 // makes no sound reads as a broken app, so a word without one simply has no button.
 export const hasClip = (store, kind, id) => !!store.audio && !!store.course?.byId[id]?.[kind === "sentences" ? "as" : "aw"];
 export const anyClips = (store) => !!store.audio && !!store.course?.words.some((word) => word.aw);
+// "Sekin" under a sentence. The first ten lessons are already recorded slowly, so this slows less than
+// the word's 0.7.
+export const SLOW_SENTENCE = 0.8;
 
 // "hak-gyo" under a word. Only the first form of a word written with alternatives is read out.
 export const reading = (ko) => {
