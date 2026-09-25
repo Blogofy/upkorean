@@ -44,7 +44,7 @@ const MODEL = process.env.ELEVENLABS_MODEL || "eleven_multilingual_v2";
 const SETTINGS = {
   stability: Number(process.env.ELEVENLABS_STABILITY || 0.5),
   similarity_boost: Number(process.env.ELEVENLABS_SIMILARITY || 0.75),
-  style: 0,
+  style: Number(process.env.ELEVENLABS_STYLE || 0), // above 0 the sentences are read with more feeling
   use_speaker_boost: true,
   speed: Number(process.env.ELEVENLABS_SPEED || 0.9),
 };
