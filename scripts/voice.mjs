@@ -13,6 +13,7 @@
 // it reads the clip list at startup.
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 
 import { loadCourse } from "../packages/shared/course/data.js";
 
@@ -134,6 +135,7 @@ async function worker() {
       // Written aside and renamed, so a clip cut off halfway is never mistaken for a finished one.
       const tmp = `${fileOf(ids[0])}.part`;
       fs.writeFileSync(tmp, audio);
+      trim(tmp);
       fs.renameSync(tmp, fileOf(ids[0]));
       for (const id of ids.slice(1)) fs.copyFileSync(fileOf(ids[0]), fileOf(id));
       done++;
@@ -156,6 +158,24 @@ if (stopped) {
 await showBalance();
 console.log("Serverni qayta ishga tushiring — kliplar ro'yxati startda o'qiladi.");
 process.exit(stopped || failed ? 1 : 0);
+
+// ElevenLabs starts a clip with up to a third of a second of silence, which makes a tap on ▶ seem to lag.
+// The quiet ends are cut to a few hundredths, as voice-cut does for the studio recordings. Without ffmpeg
+// the clip is kept as it came.
+function trim(file) {
+  const out = `${file}.trim.mp3`;
+  const run = spawnSync("ffmpeg", ["-y", "-hide_banner", "-loglevel", "error", "-i", file, "-af", [
+    // A soft breath before the first word sits around -45 dB, so the start is cut at -40.
+    "silenceremove=start_periods=1:start_silence=0.02:start_threshold=-40dB",
+    "areverse",
+    "silenceremove=start_periods=1:start_silence=0.08:start_threshold=-50dB",
+    "afade=t=in:d=0.04",
+    "areverse",
+    "afade=t=in:d=0.02",
+  ].join(","), "-c:a", "libmp3lame", "-b:a", "128k", out]);
+  if (run.status === 0 && fs.existsSync(out)) fs.renameSync(out, file);
+  else fs.rmSync(out, { force: true });
+}
 
 // Characters left, when the key may read them; a key allowed only text to speech simply skips this.
 async function showBalance() {
