@@ -45,6 +45,16 @@ so'zlar tushib qoladi. Skript ularni o'quvchi uchrashishi kerak bo'lgan tartibga
    Nakata & Suzuki 2019).
 5. **Turkumlar aralash** — qismda ko'pi bilan 7 ta ot, qolgani fe'l, sifat, ravish: har bir qismdan gap tuzsa bo'ladi.
 
+## Misol gaplar uslubi
+
+O'quvchi avval rasmiy uslubni o'rganadi, keyin kundalik suhbat uslubiga o'tadi:
+
+- **1–5-darslar** — faqat `-습니다/-ㅂ니다` (합니다체): so'roq `-ㅂ니까?`, iltimos `-(으)십시오`, taklif `-ㅂ시다`.
+- **6–10-darslar** — aralash: hikoya gaplarining yarmiga yaqini `-습니다`, savol, iltimos va suhbat gaplari `-아요/-어요`.
+- **11-darsdan** — `-아요/-어요` (해요체); `-습니다` faqat tabiatan rasmiy so'zlarda (`그러므로`, e'lon, majlis).
+
+`나`, `너`, `야`, `응` kabi so'zlarning gaplari 반말 da qoladi — bu so'zlar rasmiy uslubda ishlatilmaydi.
+
 ## Litsenziya
 
 Ikkala NIKL fayli 공공누리 1-tur (출처표시) ostida: tijoratda ham erkin ishlatiladi, faqat manba ko'rsatiladi —

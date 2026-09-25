@@ -51,6 +51,7 @@ function verbForms(stem, adjective) {
   if (t === T.none) {
     add(pre + join(l, v, T.n), pre + join(l, v, T.l), pre + join(l, v, T.b));
     if (last === "시") add(`${pre}세`); // 계시 → 계세요
+    add(`${stem}십시오`); // 오십시오 is 오다, not 오십 "fifty"
     let merged = null;
     if ([V.a, V.eo, V.ae, V.e, V.yeo].includes(v)) merged = last;
     else if (v === V.o) merged = join(l, V.wa, 0);
@@ -101,7 +102,7 @@ function verbForms(stem, adjective) {
 
 // What may follow a form inside one word of a sentence: particles after a noun, endings after a verb stem.
 // Anything else after 비 or 가 is a different word (비빔밥, 가방) that a longer form should have found.
-const PARTICLE = new Set("씩해했할합이가은는을를에도만의와과하한으로예부까보처마쯤랑께들야이".split(""));
+const PARTICLE = new Set("씩해했할합이가은는을를에도만의와과하한으로예부까보처마쯤랑께들야이입".split(""));
 const ENDING = new Set("던질이까져졌셔보봐봤으요고서세시셨지면며러려자기게어아았었겠네나니다더든잖죠습십는은을도야라".split(""));
 // A few nouns spelled like a common verb form: 가요 (a song) is almost always 가다 + 요.
 const RARE = new Set(["가요"]);
