@@ -1,9 +1,9 @@
-// The personal "Kitob" build: the book's thousand words for one learner, with no server of its own.
+// The personal "UpKorean 1000" build: the thousand-word course for one learner, with no server of its own.
 //
 // Every screen still talks to `api` exactly as it talks to the real server, and gets the same answers:
 // the course comes from kitob/content.json (scripts/kitob-content.mjs), the account is this phone, and
-// progress is kept in AsyncStorage. Only the narrator clips come over the network, from the book's
-// recordings on upkorean.uz (AUDIO_URL).
+// progress is kept in AsyncStorage. Only the narrator clips come over the network, from the course's
+// recordings on upkorean.uz (AUDIO_URL), which are still named "<day>-<index>.mp3" there.
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { applyChanges } from "@upkorean/shared";
@@ -11,7 +11,7 @@ import { applyChanges } from "@upkorean/shared";
 import { CLIENT } from "./config";
 import CONTENT from "./kitob/content.json";
 
-export const AUDIO_URL = "https://upkorean.uz/kitob-audio";
+export const AUDIO_URL = "https://upkorean.uz/audio-1000";
 
 const USER_KEY = "kitob_user";
 const PROGRESS_KEY = "kitob_progress";
@@ -121,5 +121,5 @@ export const api = {
     return part;
   },
 
-  clipUrl: (kind, wordId) => `${AUDIO_URL}/${kind}/${wordId}.mp3`,
+  clipUrl: (kind, wordId) => `${AUDIO_URL}/${kind}/${String(wordId).replace(/^b-/, "")}.mp3`,
 };
