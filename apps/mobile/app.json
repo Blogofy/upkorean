@@ -1,19 +1,19 @@
 {
   "expo": {
-    "name": "UpKorean",
-    "slug": "upkorean",
+    "name": "UpKorean Kitob",
+    "slug": "upkorean-kitob",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "upkorean",
+    "scheme": "upkorean-kitob",
     "userInterfaceStyle": "automatic",
     "android": {
-      "package": "uz.upkorean.app",
+      "package": "uz.upkorean.kitob",
       "permissions": [
         "POST_NOTIFICATIONS"
       ]
     },
     "ios": {
-      "bundleIdentifier": "uz.upkorean.app",
+      "bundleIdentifier": "uz.upkorean.kitob",
       "supportsTablet": true
     },
     "extra": {
